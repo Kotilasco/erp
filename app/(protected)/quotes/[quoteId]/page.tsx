@@ -547,10 +547,14 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
     }
 
     setFlashMessage({ type: 'success', message: 'Project endorsed and created.' });
+    const project = await prisma.project.findUnique({ where: { quoteId: quote.id }, select: { id: true } });
+    if (project?.id) {
+      revalidatePath(`/projects/${project.id}`);
+      return redirect(`/projects/${project.id}/payments`);
+    }
     revalidatePath(`/quotes/${quote.id}`);
     revalidatePath('/quotes');
-    revalidatePath('/dashboard');
-    return redirect('/dashboard');
+    return redirect(`/quotes/${quote.id}`);
   };
 
   const assignProjectManagerAction = async (formData: FormData) => {
@@ -848,6 +852,11 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
       return;
     }
     setFlashMessage({ type: 'success', message: 'Quote endorsed successfully.' });
+    const project = await prisma.project.findUnique({ where: { quoteId: quote.id }, select: { id: true } });
+    if (project?.id) {
+      revalidatePath(`/projects/${project.id}`);
+      return redirect(`/projects/${project.id}/payments`);
+    }
     revalidatePath(`/quotes/${quote.id}`);
   };
   console.log('jkjdfjfdhjdfhjdfhjfhjernamz ns');
