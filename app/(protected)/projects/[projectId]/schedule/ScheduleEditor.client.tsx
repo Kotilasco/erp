@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import EmployeeAssignmentModal from './EmployeeAssignmentModal';
+import { PlusIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 // Helper to infer task type (copied from server action logic)
 function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | null {
@@ -326,8 +327,9 @@ export default function ScheduleEditor({
         <div className="flex items-center gap-3">
              <button
                 onClick={addRow}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-emerald-600 text-white shadow hover:bg-emerald-700 h-9 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-9 px-4 py-2"
             >
+                <PlusIcon className="h-4 w-4" />
                 Add Row
             </button>
              {items.length === 0 && (
@@ -414,16 +416,9 @@ export default function ScheduleEditor({
                             setActiveRowIndex(i);
                             setModalOpen(true);
                         }}
-                        className="flex h-9 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring hover:bg-accent text-left"
+                        className="inline-flex items-center justify-center rounded-md bg-orange-500 px-3 py-1 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 w-full h-9"
                     >
-                        <span className="truncate">
-                            {it.employeeIds && it.employeeIds.length > 0
-                                ? `${it.employeeIds.length} assigned`
-                                : 'Select employees...'}
-                        </span>
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0 opacity-50">
-                            <path d="m6 9 6 6 6-6" />
-                        </svg>
+                        Select Employees
                     </button>
                   </td>
                   <td className="px-4 py-2">
@@ -463,8 +458,9 @@ export default function ScheduleEditor({
                 <button
                 onClick={() => handleSave(true)}
                 disabled={loading}
-                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-emerald-600 text-white shadow hover:bg-emerald-700 h-9 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-9 px-4 py-2"
                 >
+                <CalendarIcon className="h-4 w-4" />
                 {loading ? 'Processing...' : 'Create Schedule'}
                 </button>
             )}
