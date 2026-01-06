@@ -64,34 +64,42 @@ export default async function EmployeesPage({
         <SearchInput placeholder="Search employees..." />
       </div>
 
-      <div className="overflow-x-auto rounded border bg-white">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Role</th>
-              <th className="px-3 py-2 text-left">Office</th>
-              <th className="px-3 py-2 text-left">Phone</th>
-              <th className="px-3 py-2 text-left">Email</th>
-              <th className="px-3 py-2 text-left">Jobs Assigned</th>
-            </tr>
-          </thead>
-          <tbody>
-            {employees.map((e) => {
-              const uniqueProjects = new Set(e.scheduleItems.map((si) => si.schedule.projectId));
-              return (
-                <tr key={e.id} className="border-t">
-                  <td className="px-3 py-2">{`${e.givenName} ${e.surname ?? ''}`.trim()}</td>
-                  <td className="px-3 py-2">{e.role}</td>
-                  <td className="px-3 py-2">{e.office ?? '-'}</td>
-                  <td className="px-3 py-2">{e.phone ?? '-'}</td>
-                  <td className="px-3 py-2">{e.email}</td>
-                  <td className="px-3 py-2">{uniqueProjects.size}</td>
+      <div className="rounded-md border bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-gray-50 border-b">
+              <tr>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Name</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Role</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Office</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Phone</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Email</th>
+                <th className="px-4 py-3 text-center font-medium text-gray-500">Jobs Assigned</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {employees.length === 0 ? (
+                <tr>
+                   <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>No employees found.</td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              ) : (
+                employees.map((e) => {
+                  const uniqueProjects = new Set(e.scheduleItems.map((si) => si.schedule.projectId));
+                  return (
+                    <tr key={e.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-4 py-3 font-medium text-gray-900">{`${e.givenName} ${e.surname ?? ''}`.trim()}</td>
+                      <td className="px-4 py-3 text-gray-500">{e.role}</td>
+                      <td className="px-4 py-3 text-gray-500">{e.office ?? '-'}</td>
+                      <td className="px-4 py-3 text-gray-500">{e.phone ?? '-'}</td>
+                      <td className="px-4 py-3 text-gray-500">{e.email}</td>
+                      <td className="px-4 py-3 text-center text-gray-900">{uniqueProjects.size}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

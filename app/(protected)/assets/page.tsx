@@ -93,33 +93,35 @@ export default async function AssetsPage({
         <button className="rounded border px-3 py-1 text-sm">Filter</button>
       </form>
 
-      <div className="rounded border bg-white overflow-x-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-3 py-2 text-left">Name</th>
-              <th className="px-3 py-2 text-left">Unit</th>
-              <th className="px-3 py-2 text-right">Qty</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
+      <div className="rounded-md border bg-white">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm border-collapse">
+            <thead className="bg-gray-50 border-b">
               <tr>
-                <td className="px-3 py-4 text-center text-gray-500" colSpan={3}>
-                  No multipurpose assets found.
-                </td>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Name</th>
+                <th className="px-4 py-3 text-left font-medium text-gray-500">Unit</th>
+                <th className="px-4 py-3 text-right font-medium text-gray-500">Qty</th>
               </tr>
-            ) : (
-              items.map((it) => (
-                <tr key={it.id} className="border-t">
-                  <td className="px-3 py-2">{it.name}</td>
-                  <td className="px-3 py-2">{it.unit ?? '-'}</td>
-                  <td className="px-3 py-2 text-right">{it.qty}</td>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {items.length === 0 ? (
+                <tr>
+                  <td className="px-4 py-8 text-center text-gray-500" colSpan={3}>
+                    No multipurpose assets found.
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                items.map((it) => (
+                  <tr key={it.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 font-medium text-gray-900">{it.name}</td>
+                    <td className="px-4 py-3 text-gray-500">{it.unit ?? '-'}</td>
+                    <td className="px-4 py-3 text-right text-gray-900">{it.qty}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="flex items-center gap-3">
