@@ -344,7 +344,8 @@ export default function TakeOffSheet() {
         lines,
       });
 
-      router.push(`/quotes/${res.quoteId}`);
+      // router.push(`/quotes/${res.quoteId}`);
+      router.push(`/dashboard`);
     } catch (err: any) {
       console.error('Quote creation failed:', err);
       setFormError(err.message || 'Failed to create quote. Please try again.');
