@@ -36,13 +36,13 @@ export default function EmployeeAssignmentModal({
   const [busyEmployees, setBusyEmployees] = useState<string[]>([]);
   const [checking, setChecking] = useState(false);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    Assistants: true,
-    Builders: true,
-    Carpenters: true,
-    Electricians: true,
-    Plumbers: true,
-    Painters: true,
-    'Aluminium Fiters': true,
+    Assistants: false,
+    Builders: false,
+    Carpenters: false,
+    Electricians: false,
+    Plumbers: false,
+    Painters: false,
+    'Aluminium Fiters': false,
   });
 
   const checkAvailability = useCallback(async () => {
