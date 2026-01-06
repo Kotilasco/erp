@@ -161,7 +161,7 @@ export default async function ProjectsPage({
             )}
           </div>
           <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center w-full sm:w-auto">
-             {!isSalesAccounts && <ProjectsFilter />}
+             {!isSalesAccounts && !isSeniorPM && <ProjectsFilter />}
              <div className="w-full sm:w-72">
                 <SearchInput placeholder="Search projects..." />
              </div>
@@ -189,18 +189,20 @@ export default async function ProjectsPage({
                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Start Date</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>
-                       <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                     </tr>
-                   )}
-                 </thead>
-                 <tbody className="bg-white divide-y divide-gray-200">
-                   {projects.length === 0 ? (
-                     <tr>
-                       <td colSpan={isSalesAccounts ? 6 : 7} className="px-6 py-12 text-center text-sm text-gray-500">
-                         No projects found matching your criteria.
-                       </td>
-                     </tr>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>
+                      {!isSeniorPM && (
+                        <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                      )}
+                    </tr>
+                  )}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {projects.length === 0 ? (
+                    <tr>
+                      <td colSpan={isSalesAccounts || isSeniorPM ? 6 : 7} className="px-6 py-12 text-center text-sm text-gray-500">
+                        No projects found matching your criteria.
+                      </td>
+                    </tr>
                    ) : (
                      projects.map((project) => {
                        if (isSalesAccounts) {
@@ -257,23 +259,25 @@ export default async function ProjectsPage({
                              {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
                            </td>
                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                             {isSeniorPM ? (
-                                <ProjectAssigner 
-                                  projectId={project.id} 
-                                  initialAssigneeId={project.assignedTo?.id} 
-                                  projectManagers={projectManagers as any}
-                                  variant="table"
-                                />
-                             ) : (
-                                project.assignedTo?.name || '-'
-                             )}
-                           </td>
-                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                             <ProjectViewButton projectId={project.id} />
-                           </td>
-                         </tr>
-                       );
-                     })
+                            {isSeniorPM ? (
+                               <ProjectAssigner 
+                                 projectId={project.id} 
+                                 initialAssigneeId={project.assignedTo?.id} 
+                                 projectManagers={projectManagers as any}
+                                 variant="table"
+                               />
+                            ) : (
+                               project.assignedTo?.name || '-'
+                            )}
+                          </td>
+                          {!isSeniorPM && (
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              <ProjectViewButton projectId={project.id} />
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                    )}
                  </tbody>
                </table>
