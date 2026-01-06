@@ -1,6 +1,10 @@
 // prisma/seed.cjs
 // Robust CommonJS seeder for Postgres/Neon (works locally & on Vercel)
-require('dotenv').config();
+try {
+  require('dotenv').config();
+} catch (e) {
+  // dotenv not found, assuming env vars are provided
+}
 
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');

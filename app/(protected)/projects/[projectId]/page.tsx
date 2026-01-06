@@ -217,6 +217,11 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     redirect('/projects');
   }
 
+  // Redirect Sales Accounts directly to Record Payment page
+  if (role === 'SALES_ACCOUNTS') {
+    redirect(`/projects/${projectId}/payments`);
+  }
+
   const hasSchedule = (await prisma.schedule.count({ where: { projectId } })) > 0;
 
   const requisitions = await prisma.procurementRequisition.findMany({
@@ -333,7 +338,6 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const canRecordPayments = role === 'SALES_ACCOUNTS' || role === 'ADMIN';
   const canViewFinancials = [
     'SALES',
-    'SALES_ACCOUNTS',
     'ADMIN',
     'ACCOUNTS',
     'CASHIER',
@@ -944,7 +948,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                          <input name="receiptNo" placeholder="Ref #" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
                       </div>
                       <div className="md:col-span-2 lg:col-span-4">
-                        <SubmitButton className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2 w-full md:w-auto">
+                        <SubmitButton className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-9 px-4 py-2 w-full md:w-auto">
                           Record Payment
                         </SubmitButton>
                       </div>
