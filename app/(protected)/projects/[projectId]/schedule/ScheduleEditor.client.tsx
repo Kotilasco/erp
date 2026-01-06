@@ -346,21 +346,21 @@ export default function ScheduleEditor({
 
       <div className="rounded-md border bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse" style={{ minWidth: '1200px' }}>
+          <table className="w-full text-sm border-collapse">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '300px' }}>Task</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '80px' }}>Unit</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '80px' }}>Qty</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-1/3 min-w-[200px]">Task</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">Unit</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">Qty</th>
                 {!isDraft && (
                   <>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '120px' }}>Start (auto)</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '120px' }}>End (auto)</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '80px' }}>Hours</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-32">Start (auto)</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-32">End (auto)</th>
+                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">Hours</th>
                   </>
                 )}
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '250px' }}>Workers</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground" style={{ width: '200px' }}>Note</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-auto whitespace-nowrap">Workers</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-full min-w-[150px]">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y">
