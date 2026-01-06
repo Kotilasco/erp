@@ -1012,14 +1012,14 @@ export async function endorseQuote(
     const installmentMinor = BigInt(Math.round((input.installment || 0) * 100));
     const dueDate = new Date(input.installmentDueDate);
 
-    // Validation 1: Commencement date must be today or future
+    // Validation 1: Commencement date must be in the future
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const commenceDate = new Date(commenceOn);
     commenceDate.setHours(0, 0, 0, 0);
 
-    if (commenceDate < today) {
-      throw new Error('Commencement date must be today or in the future');
+    if (commenceDate <= today) {
+      throw new Error('Commencement date must be in the future');
     }
 
     // Validation 2: Installment due date must be after commencement date

@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { assertRoles } from '@/lib/workflow';
 import { redirect } from 'next/navigation';
 import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
+import Money from '@/components/Money';
 
 import { SearchInput } from '@/components/ui/search-input';
 import PaymentsTableToolbar from './components/PaymentsTableToolbar';
@@ -11,6 +12,7 @@ import QuotePagination from '@/app/(protected)/quotes/components/QuotePagination
 import { Prisma } from '@prisma/client';
 import { ProjectsFilter } from './components/ProjectsFilter';
 import { ProjectViewButton } from './components/ProjectViewButton';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -160,7 +162,7 @@ export default async function ProjectsPage({
             )}
           </div>
           <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center w-full sm:w-auto">
-             <ProjectsFilter />
+             {!isSalesAccounts && !isSeniorPM && !isProjectManager && <ProjectsFilter />}
              <div className="w-full sm:w-72">
                 <SearchInput placeholder="Search projects..." />
              </div>
@@ -172,58 +174,121 @@ export default async function ProjectsPage({
              <div className="overflow-x-auto">
                <table className="min-w-full divide-y divide-gray-200">
                  <thead className="bg-gray-50">
-                   <tr>
-                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref</th>
-                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
-                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Start Date</th>
-                     <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>
-                     <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                   </tr>
-                 </thead>
-                 <tbody className="bg-white divide-y divide-gray-200">
-                   {projects.length === 0 ? (
+                   {isSalesAccounts ? (
                      <tr>
-                       <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
-                         No projects found matching your criteria.
-                       </td>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Due Amount</th>
+                       <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action(s)</th>
                      </tr>
                    ) : (
-                     projects.map((project) => (
-                       <tr key={project.id} className="hover:bg-gray-50 transition-colors">
-                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                           {project.projectNumber || project.id.slice(0, 8)}
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                           {project.quote?.customer?.displayName || 'Unknown'}
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                           {project.quote?.customer?.city || '-'}
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap">
-                           <WorkflowStatusBadge status={project.status} />
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                           {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                           {isSeniorPM ? (
-                              <ProjectAssigner 
-                                projectId={project.id} 
-                                initialAssigneeId={project.assignedTo?.id} 
-                                projectManagers={projectManagers as any}
-                                variant="table"
-                              />
-                           ) : (
-                              project.assignedTo?.name || '-'
-                           )}
-                         </td>
-                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                           <ProjectViewButton projectId={project.id} />
-                         </td>
-                       </tr>
-                     ))
+                     <tr>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Start Date</th>
+                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>
+                      {!isSeniorPM && (
+                        <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                      )}
+                    </tr>
+                  )}
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {projects.length === 0 ? (
+                    <tr>
+                      <td colSpan={isSalesAccounts || isSeniorPM ? 6 : 7} className="px-6 py-12 text-center text-sm text-gray-500">
+                        No projects found matching your criteria.
+                      </td>
+                    </tr>
+                   ) : (
+                     projects.map((project) => {
+                       if (isSalesAccounts) {
+                         const schedules = (project as any).paymentSchedules || [];
+                         const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
+                         const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
+                         const typeLabel = nextPayment?.label || 'Installment';
+                         const dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
+
+                         return (
+                           <tr key={project.id} className="hover:bg-gray-50 transition-colors">
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                               {project.projectNumber || project.id.slice(0, 8)}
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                               {project.quote?.customer?.displayName || 'Unknown'}
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                               {project.quote?.customer?.city || '-'}
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                               {typeLabel}
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                               <Money minor={dueAmount} />
+                             </td>
+                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                               <Link
+                                 href={`/projects/${project.id}/payments`}
+                                 className="inline-flex items-center justify-center rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                               >
+                                 Record Payment
+                               </Link>
+                             </td>
+                           </tr>
+                         );
+                       }
+
+                       return (
+                         <tr key={project.id} className="hover:bg-gray-50 transition-colors">
+                           <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                             {project.projectNumber || project.id.slice(0, 8)}
+                           </td>
+                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                             {project.quote?.customer?.displayName || 'Unknown'}
+                           </td>
+                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                             {project.quote?.customer?.city || '-'}
+                           </td>
+                           <td className="px-6 py-4 whitespace-nowrap">
+                             <WorkflowStatusBadge status={project.status} />
+                           </td>
+                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                             {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
+                           </td>
+                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {isSeniorPM ? (
+                               <ProjectAssigner 
+                                 projectId={project.id} 
+                                 initialAssigneeId={project.assignedTo?.id} 
+                                 projectManagers={projectManagers as any}
+                                 variant="table"
+                               />
+                            ) : (
+                               project.assignedTo?.name || '-'
+                            )}
+                          </td>
+                          {!isSeniorPM && (
+                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                              {isProjectManager ? (
+                                <Link
+                                  href={`/projects/${project.id}/schedule`}
+                                  className="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                                 >
+                                   <CalendarIcon className="h-4 w-4" />
+                                   Create Schedule
+                                 </Link>
+                              ) : (
+                                <ProjectViewButton projectId={project.id} />
+                              )}
+                            </td>
+                          )}
+                        </tr>
+                      );
+                    })
                    )}
                  </tbody>
                </table>
