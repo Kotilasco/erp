@@ -416,7 +416,7 @@ export default function ScheduleEditor({
                             setActiveRowIndex(i);
                             setModalOpen(true);
                         }}
-                        className="inline-flex items-center justify-center rounded-md bg-orange-500 px-3 py-1 text-sm font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 w-full h-9"
+                        className="inline-flex items-center justify-center rounded bg-orange-500 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
                     >
                         Select Employees
                     </button>
