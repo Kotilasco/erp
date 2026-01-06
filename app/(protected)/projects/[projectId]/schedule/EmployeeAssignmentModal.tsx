@@ -1,0 +1,233 @@
+'use client';
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { cn } from '@/lib/utils';
+import { checkEmployeeAvailability } from './actions';
+
+type Employee = {
+  id: string;
+  givenName: string;
+  surname?: string | null;
+  role: string;
+};
+
+export default function EmployeeAssignmentModal({
+  isOpen,
+  onClose,
+  employees,
+  selectedIds,
+  onSave,
+  startDate,
+  endDate,
+  scheduleItemId,
+  assignedIds,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  employees: Employee[];
+  selectedIds: string[];
+  onSave: (ids: string[]) => void;
+  startDate: string | null;
+  endDate: string | null;
+  scheduleItemId?: string | null;
+  assignedIds: string[];
+}) {
+  const [localSelected, setLocalSelected] = useState<string[]>(selectedIds);
+  const [busyEmployees, setBusyEmployees] = useState<string[]>([]);
+  const [checking, setChecking] = useState(false);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    Assistants: true,
+    Builders: true,
+    Carpenters: true,
+    Electricians: true,
+    Plumbers: true,
+    Painters: true,
+    'Aluminium Fiters': true,
+  });
+
+  const checkAvailability = useCallback(async () => {
+    if (!startDate || !endDate) return;
+    setChecking(true);
+    try {
+      // Check availability for ALL employees to show who is busy
+      // Optimization: We could only check for selected or visible, but checking all is safer for UX
+      const allIds = employees.map(e => e.id);
+      const result = await checkEmployeeAvailability(allIds, startDate, endDate, scheduleItemId ?? undefined);
+      setBusyEmployees(result.busy);
+    } catch (err) {
+      console.error('Failed to check availability', err);
+    } finally {
+      setChecking(false);
+    }
+  }, [startDate, endDate, employees, scheduleItemId]);
+
+  // Reset local state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalSelected(selectedIds);
+      checkAvailability();
+    }
+  }, [isOpen, selectedIds, startDate, endDate, checkAvailability]);
+
+  const categories = [
+    'Assistants',
+    'Builders',
+    'Carpenters',
+    'Electricians',
+    'Plumbers',
+    'Painters',
+    'Aluminium Fiters',
+  ];
+
+  const normalize = (s: string) => s.trim().toLowerCase();
+  const roleToCategory = (r: string) => {
+    const n = normalize(r);
+    if (n.includes('assistant')) return 'Assistants';
+    if (n.includes('builder')) return 'Builders';
+    if (n.includes('carpenter')) return 'Carpenters';
+    if (n.includes('electric')) return 'Electricians';
+    if (n.includes('plumb')) return 'Plumbers';
+    if (n.includes('paint')) return 'Painters';
+    if (n.includes('aluminium') || n.includes('aluminum') || n.includes('fitter') || n.includes('fiters')) return 'Aluminium Fiters';
+    return 'Assistants';
+  };
+
+  const grouped: Record<string, Employee[]> = {};
+  categories.forEach((c) => (grouped[c] = []));
+  employees.forEach((e) => {
+    const c = roleToCategory(e.role);
+    (grouped[c] ||= []).push(e);
+  });
+
+  const toggleEmployee = (id: string) => {
+    if (localSelected.includes(id)) {
+      setLocalSelected(localSelected.filter((sid) => sid !== id));
+    } else {
+      setLocalSelected([...localSelected, id]);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between border-b px-6 py-4">
+          <h2 className="text-lg font-semibold text-gray-900">Assign Employees</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between">
+            <div className="text-sm text-gray-600">
+              {checking ? 'Checking availability...' : 'Select employees by category'}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto border rounded-md">
+            <div className="divide-y divide-gray-100">
+              {categories.map((cat) => {
+                const list = grouped[cat] || [];
+                const open = openSections[cat];
+                return (
+                  <div key={cat}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenSections({ ...openSections, [cat]: !open })
+                      }
+                      className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      <span className="text-sm font-semibold text-gray-900">{cat}</span>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className={cn("h-4 w-4 transition-transform", open ? "rotate-180" : "")}
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    {open && (
+                      <div className="divide-y divide-gray-100">
+                        {list.length === 0 ? (
+                          <div className="px-4 py-3 text-sm text-gray-500">No employees</div>
+                        ) : (
+                          list.map((emp) => {
+                            const isSelected = localSelected.includes(emp.id);
+                            const isBusy = busyEmployees.includes(emp.id);
+                            const alreadyAssigned = assignedIds.includes(emp.id);
+                            return (
+                              <label
+                                key={emp.id}
+                                className={cn(
+                                  "flex items-center justify-between px-4 py-3 cursor-pointer transition-colors",
+                                  isBusy ? "bg-gray-100 text-gray-400" : "hover:bg-gray-50"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleEmployee(emp.id)}
+                                    disabled={isBusy}
+                                    className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                                  />
+                                  <div>
+                                    <p className={cn("text-sm font-medium", isBusy ? "text-gray-500" : "text-gray-900")}>
+                                      {emp.givenName} {emp.surname}
+                                    </p>
+                                    <p className="text-xs text-gray-500">{emp.role}</p>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {alreadyAssigned && (
+                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                      Assigned
+                                    </span>
+                                  )}
+                                  {isBusy && (
+                                    <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
+                                      Busy
+                                    </span>
+                                  )}
+                                </div>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="border-t px-6 py-4 flex justify-end gap-3 bg-gray-50 rounded-b-lg">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => {
+              onSave(localSelected);
+              onClose();
+            }}
+            className="px-4 py-2 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded-md shadow-sm transition-colors"
+          >
+            Save Assignments
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
