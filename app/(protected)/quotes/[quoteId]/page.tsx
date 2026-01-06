@@ -667,6 +667,11 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
   const status = normalizeStatus(quote.status);
   const isAdmin = role === 'ADMIN';
   const isSales = role === 'SALES';
+
+  // Redirect SALES users to client view if in NEGOTIATION
+  if (isSales && status === 'NEGOTIATION') {
+    redirect(`/client/quotes/${quote.id}`);
+  }
   const canSalesEndorse = (isSales || role === 'SALES_ACCOUNTS') && status === 'REVIEWED';
 
   const isReviewer = role === 'SENIOR_QS' || isAdmin;
@@ -810,6 +815,12 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
       type: 'success',
       message: `Quote moved to ${STATUS_LABELS[target] ?? target}`,
     });
+
+    // 3) Senior QS "Send to Sales" -> Redirect to /dashboard
+    if (target === 'SENT_TO_SALES' && role === 'SENIOR_QS') {
+      revalidatePath('/dashboard');
+      return redirect('/dashboard');
+    }
 
     // If Sales/Admin moves to negotiation, go to client view
     if (target === 'NEGOTIATION' && (role === 'SALES' || role === 'ADMIN')) {
