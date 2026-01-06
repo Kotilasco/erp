@@ -1,0 +1,757 @@
+'use client';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { Parser } from 'expr-eval';
+import { SHEET_COLUMNS, TAKEOFF_LAYOUT } from '@/lib/takeoffLayout';
+import { createQuote, upsertCustomer } from '@/app/(protected)/actions';
+import { QUOTE_LINE_MAP } from '@/lib/quoteMap';
+import { normalizeContext, missingVars, evalExpr } from '@/lib/expr';
+import ClearableNumberInput from './ClearableNumberInput';
+import { UserIcon, EnvelopeIcon, PhoneIcon, BuildingOfficeIcon, MapPinIcon, WrenchScrewdriverIcon, BeakerIcon, ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+
+const parser = new Parser({ allowMemberAccess: false });
+
+const TAKEOFF_DEFAULTS: Record<string, number> = {
+  A2: 3000,
+  B2: 0.6,
+  C2: 0.6,
+  D2: 100,
+};
+
+type UnitMap = Record<string, string>; // code -> unit label (optional)
+
+function varsFromExpr(expr: string): string[] {
+  try {
+    const ast = parser.parse(expr as any);
+    // @ts-ignore expr-eval exposes .variables()
+    const v = typeof ast.variables === 'function' ? ast.variables() : [];
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+export default function TakeOffSheet() {
+  const [vals, setVals] = useState<Record<string, number>>({
+    ...TAKEOFF_DEFAULTS,
+    A4: 0,
+    B4: 0,
+    D4: 0,
+    E4: 0,
+    G4: 0,
+  });
+  const [tab, setTab] = useState<'materials' | 'labour'>('materials');
+  const [units, setUnits] = useState<UnitMap>({});
+  const [customer, setCustomer] = useState({ name: '', email: '', phone: '', city: '' });
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [currency, setCurrency] = useState(process.env.NEXT_PUBLIC_CURRENCY || 'USD');
+  const [vatRate, setVatRate] = useState<number>(parseFloat(process.env.VAT_DEFAULT || '0.15'));
+  const [creating, setCreating] = useState(false);
+  const router = useRouter();
+  type CustomItem = {
+    description: string;
+    unit: string;
+    qty: number;
+    rate: number;
+    section: string;
+  };
+  const [customItems, setCustomItems] = useState<CustomItem[]>([
+    { description: '', unit: '', qty: 0, rate: 0, section: '' },
+  ]);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Per-cell numeric literal overrides, by literal index
+  const [constOverrides, setConstOverrides] = useState<Record<string, Record<number, number>>>({});
+  const [editConst, setEditConst] = useState<{ code: string; index: number; value: string } | null>(
+    null
+  );
+
+  // Find numeric literals that are not part of identifiers
+  function findNumericLiterals(expr: string): { start: number; end: number; text: string }[] {
+    const results: { start: number; end: number; text: string }[] = [];
+    const re = /(\d+\.?\d*|\.\d+)/g; // 12, 12.34, .5
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(expr))) {
+      const start = m.index;
+      const end = m.index + m[0].length;
+      const before = expr[start - 1] || '';
+      const after = expr[end] || '';
+      const isPartOfIdent = /[A-Za-z_]/.test(before) || /[A-Za-z_]/.test(after);
+      if (!isPartOfIdent) results.push({ start, end, text: m[0] });
+    }
+    return results;
+  }
+
+  const applyOverrides = useCallback((expr: string, code: string): string => {
+    const lits = findNumericLiterals(expr);
+    if (!lits.length) return expr;
+    const overrides = constOverrides[code] || {};
+    let out = '';
+    let last = 0;
+    lits.forEach((lit, i) => {
+      out += expr.slice(last, lit.start);
+      const val = overrides[i] ?? parseFloat(lit.text);
+      out += String(val);
+      last = lit.end;
+    });
+    out += expr.slice(last);
+    return out;
+  }, [constOverrides]);
+
+  function renderFormula(expr: string, code: string) {
+    const lits = findNumericLiterals(expr);
+    const overrides = constOverrides[code] || {};
+    const parts: JSX.Element[] = [];
+    let last = 0;
+    lits.forEach((lit, i) => {
+      const pre = expr.slice(last, lit.start);
+      if (pre) parts.push(<span key={code + '-pre-' + i}>{pre}</span>);
+      const shown = overrides[i] ?? lit.text;
+      const editing = editConst && editConst.code === code && editConst.index === i;
+      parts.push(
+        <span
+          key={code + '-num-' + i}
+          className="text-blue-700 underline decoration-dotted cursor-pointer"
+          onClick={() => setEditConst({ code, index: i, value: String(shown) })}
+        >
+          {editing ? (
+            <ClearableNumberInput
+              autoFocus
+              allowEmpty
+              className="w-20 px-1 py-0.5 border rounded"
+              value={editConst.value}
+              onChange={(e) => setEditConst({ code, index: i, value: e.currentTarget.value })}
+              onBlur={() => {
+                const num = Number(editConst?.value);
+                setConstOverrides((prev) => ({
+                  ...prev,
+                  [code]: { ...(prev[code] || {}), [i]: num },
+                }));
+                setEditConst(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  const num = Number(editConst?.value);
+                  setConstOverrides((prev) => ({
+                    ...prev,
+                    [code]: { ...(prev[code] || {}), [i]: num },
+                  }));
+                  setEditConst(null);
+                } else if (e.key === 'Escape') {
+                  setEditConst(null);
+                }
+              }}
+            />
+          ) : (
+            <>{String(shown)}</>
+          )}
+        </span>
+      );
+      last = lit.end;
+    });
+    const tail = expr.slice(last);
+    if (tail) parts.push(<span key={code + '-tail'}>{tail}</span>);
+    return <span>= {parts}</span>;
+  }
+
+  const [missingByCode, setMissingByCode] = useState<Record<string, string[]>>({});
+
+  const { ctx: context, missing } = useMemo(() => {
+    const ctx: Record<string, number> = { ...vals };
+    const missing: Record<string, string[]> = {};
+    // Multi-pass to allow dependencies
+    let safety = 0;
+    let progressed = true;
+    while (progressed && safety++ < 120) {
+      progressed = false;
+      for (const row of TAKEOFF_LAYOUT) {
+        if (row.type !== 'cells') continue;
+        for (const cell of row.cells) {
+          if (!cell || cell.kind !== 'calc' || !cell.expr) continue;
+          try {
+            // Track missing refs first
+            const modified = applyOverrides(cell.expr, cell.code);
+            const req = varsFromExpr(modified).filter(
+              (v) => ctx[v] === undefined || Number.isNaN(ctx[v])
+            );
+            if (req.length) {
+              missing[cell.code] = req;
+            } else if (missing[cell.code]) {
+              delete missing[cell.code];
+            }
+            const v = parser.evaluate(modified, ctx);
+            if (Number.isFinite(v)) {
+              if (ctx[cell.code] !== v) {
+                ctx[cell.code] = Number(v);
+                progressed = true;
+              }
+            }
+          } catch {}
+        }
+      }
+    }
+    return { ctx, missing };
+  }, [vals, applyOverrides]);
+
+  useEffect(() => {
+    setMissingByCode(missing);
+  }, [missing]);
+
+  function rowsForTab() {
+    const idxLabour = TAKEOFF_LAYOUT.findIndex(
+      (r) => r.type === 'heading' && r.title.toUpperCase().includes('LABOUR')
+    );
+    if (idxLabour === -1) return TAKEOFF_LAYOUT;
+    if (tab === 'materials') return TAKEOFF_LAYOUT.slice(0, idxLabour);
+    return TAKEOFF_LAYOUT.slice(idxLabour);
+  }
+
+  // async function onCreateQuote() {
+  //   setCreating(true);
+  //   try {
+  //     setFormError(null);
+  //     const { customerId } = await upsertCustomer({
+  //       displayName: customer.name || 'Walk-in Customer',
+  //       email: customer.email || null,
+  //       phone: customer.phone || null,
+  //     });
+  //     // Prefer explicit mapping: codes -> description/unit/rate
+  //     const lines: any[] = [];
+  //     for (const m of QUOTE_LINE_MAP) {
+  //       const qty = context[m.code];
+  //       if (!Number.isFinite(qty) || qty <= 0) continue;
+  //       lines.push({
+  //         description: m.description,
+  //         quantity: Number(qty),
+  //         unitPrice: m.rate ?? 0,
+  //         metaJson: {
+  //           unit: m.unit || '',
+  //           code: m.code,
+  //           label: m.description,
+  //           section: m.section || null,
+  //           from: 'TakeOffSheet',
+  //         },
+  //       });
+  //     }
+
+  //     // Note: removed fallback auto-inclusion of all worksheet cells.
+  //     // Only include explicitly mapped items and manual rows.
+  //     // Append manual items
+  //     for (const ci of customItems) {
+  //       if (!ci.description || !(Number.isFinite(ci.qty) && ci.qty > 0)) continue;
+  //       lines.push({
+  //         description: ci.description,
+  //         quantity: Number(ci.qty),
+  //         unitPrice: Number(ci.rate || 0),
+  //         metaJson: {
+  //           unit: ci.unit || '',
+  //           code: 'MANUAL',
+  //           label: ci.description,
+  //           section: ci.section || 'CUSTOM',
+  //           from: 'Manual',
+  //         },
+  //       });
+  //     }
+  //     if (lines.length === 0) {
+  //       setFormError('No items to include. Enter inputs so at least one value is > 0.');
+  //       return; // do not proceed
+  //     }
+  //     const res = await createQuote({
+  //       customerId,
+  //       currency,
+  //       vatRate,
+  //       discountPolicy: 'none',
+  //       lines,
+  //     });
+  //     router.push(`/quotes/${res.quoteId}`);
+  //   } finally {
+  //     setCreating(false);
+  //   }
+  // }
+  // Preview: count of items with qty > 0
+
+  async function onCreateQuote() {
+    setCreating(true);
+    try {
+      setFormError(null);
+
+      const { customerId } = await upsertCustomer({
+        displayName: customer.name || 'Walk-in Customer',
+        city: customer.city || null,
+        email: customer.email || null,
+        phone: customer.phone || null,
+        addressJson: customerAddress ? JSON.stringify({ line1: customerAddress }) : null,
+      });
+
+      // 1) normalize once for case-insensitive, numeric-safe lookups
+      const ctx = normalizeContext(context);
+
+      const lines: any[] = [];
+
+      // 2) compute qty from expressions
+      for (const m of QUOTE_LINE_MAP) {
+        console.log(m);
+        const qty = evalExpr(ctx, m.code); // handles A36, A36+A25, D22+D33+G22, J22*0.05, A4/3*3.6, etc.
+
+        console.log('qty', m.code, '==>', qty);
+        if (!(qty > 0)) continue;
+
+        // (optional) debug missing variables
+        // const miss = missingVars(m.code, ctx);
+        // if (miss.length) console.warn(`Missing in '${m.code}':`, miss);
+
+        lines.push({
+          description: m.description,
+          quantity: Math.ceil(Number(qty)),
+          unitPrice: m.rate ?? 0,
+          metaJson: {
+            unit: m.unit || '',
+            code: m.code,
+            label: m.description,
+            section: m.section || null,
+            from: 'TakeOffSheet',
+          },
+        });
+      }
+
+      // Manual items unchanged
+      for (const ci of customItems) {
+        if (!ci.description || !(Number.isFinite(ci.qty) && ci.qty > 0)) continue;
+        lines.push({
+          description: ci.description,
+          quantity: Math.ceil(Number(ci.qty)),
+          unitPrice: Number(ci.rate || 0),
+          metaJson: {
+            unit: ci.unit || '',
+            code: 'MANUAL',
+            label: ci.description,
+            section: ci.section || 'CUSTOM',
+            from: 'Manual',
+          },
+        });
+      }
+
+      if (lines.length === 0) {
+        setFormError('No items to include. Enter inputs so at least one value is > 0.');
+        return;
+      }
+
+      const res = await createQuote({
+        customerId,
+        currency,
+        vatRate,
+        discountPolicy: 'none',
+        lines,
+      });
+
+      router.push(`/quotes/${res.quoteId}`);
+    } catch (err: any) {
+      console.error('Quote creation failed:', err);
+      setFormError(err.message || 'Failed to create quote. Please try again.');
+    } finally {
+      setCreating(false);
+    }
+  }
+
+  const itemCount = (() => {
+    let n = 0;
+    for (const row of TAKEOFF_LAYOUT) {
+      if (row.type !== 'cells') continue;
+      for (const cell of row.cells) {
+        if (!cell || !cell.label || cell.label.trim() === '') continue;
+        const qty = context[cell.code];
+        if (Number.isFinite(qty) && qty > 0) n += 1;
+      }
+    }
+    // Include custom items
+    n += customItems.filter((ci) => Number.isFinite(ci.qty) && ci.qty > 0 && ci.description).length;
+    return n;
+  })();
+
+  return (
+    <div className="space-y-8">
+      {/* Customer & Settings at top */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
+        <div className="mb-6 flex items-center gap-3 border-b border-gray-100 pb-4 dark:border-gray-700">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
+            <UserIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Customer Details</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Enter customer information for this quote</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Full Name</label>
+            <div className="relative">
+              <input
+                className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+                placeholder="John Doe"
+                value={customer.name}
+                onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+              />
+              <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Email Address</label>
+            <div className="relative">
+              <input
+                className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+                placeholder="john@example.com"
+                value={customer.email}
+                onChange={(e) => setCustomer({ ...customer, email: e.target.value })}
+              />
+              <EnvelopeIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Phone Number</label>
+            <div className="relative">
+              <input
+                className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+                placeholder="+1 (555) 000-0000"
+                value={customer.phone}
+                onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+              />
+              <PhoneIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">City / Location</label>
+            <div className="relative">
+              <input
+                className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+                placeholder="New York, NY"
+                value={customer.city}
+                onChange={(e) => setCustomer({ ...customer, city: e.target.value })}
+              />
+              <BuildingOfficeIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+          </div>
+
+          <div className="col-span-1 space-y-2 md:col-span-2 lg:col-span-4">
+            <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Physical Address</label>
+            <div className="relative">
+              <textarea
+                className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2.5 pl-10 pr-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+                placeholder="Enter full delivery or billing address..."
+                rows={2}
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+              />
+              <MapPinIcon className="absolute left-3 top-4 h-4 w-4 text-gray-400" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-6">
+        {formError && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-900/20 dark:text-red-400">
+            {formError}
+          </div>
+        )}
+        
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                tab === 'materials' 
+                  ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400' 
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+              onClick={() => setTab('materials')}
+            >
+              <BeakerIcon className="h-4 w-4" />
+              Materials
+            </button>
+            <button
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                tab === 'labour' 
+                  ? 'bg-white text-blue-600 shadow-sm dark:bg-gray-700 dark:text-blue-400' 
+                  : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200'
+              }`}
+              onClick={() => setTab('labour')}
+            >
+              <WrenchScrewdriverIcon className="h-4 w-4" />
+              Labour
+            </button>
+          </div>
+
+          <button
+            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-4 focus:ring-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
+            onClick={async () => {
+              const res = await fetch('/takeoff/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ inputs: vals, label: `takeoff-${Date.now()}` }),
+              });
+              if (!res.ok) return alert('Export failed');
+              const blob = await res.blob();
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `takeoff-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.xlsx`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            }}
+          >
+            <ArrowDownTrayIcon className="h-4 w-4" />
+            Generate Excel
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          {rowsForTab().map((row, rIdx) => {
+            if (row.type === 'heading') {
+              return (
+                <div key={rIdx} className="flex items-center gap-2 border-b border-gray-200 pb-2 mt-8 mb-4 dark:border-gray-700">
+                  <div className="h-8 w-1 bg-blue-600 rounded-full"></div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                    {row.title}
+                  </h2>
+                </div>
+              );
+            }
+            if (row.type === 'subheading') {
+              return (
+                <h3 key={rIdx} className="text-sm font-bold text-gray-500 uppercase tracking-wider mt-6 mb-3 dark:text-gray-400">
+                  {row.title}
+                </h3>
+              );
+            }
+            const isMaterials = tab === 'materials';
+            const visibleCells =
+              row.type === 'cells'
+                ? row.cells.filter((c) => c && c.label && c.label.trim() !== '' && c.kind === 'input')
+                : [];
+            if (row.type === 'cells' && visibleCells.length === 0) return null;
+            const cols = Math.max(1, visibleCells.length);
+            return (
+              <div
+                key={rIdx}
+                className="grid gap-6"
+                style={{ gridTemplateColumns: `repeat(auto-fit, minmax(250px, 1fr))` }}
+              >
+                {visibleCells.map((cell, cIdx) => {
+                  const isInput = cell!.kind === 'input';
+                  const defaultVal = TAKEOFF_DEFAULTS[cell!.code] ?? 0;
+                  const value = isInput
+                    ? (vals[cell!.code] ?? defaultVal)
+                    : (context as any)[cell!.code];
+                  return (
+                    <div
+                      key={cIdx}
+                      className="group rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition-all hover:shadow-md dark:bg-gray-800 dark:border-gray-700"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                          {cell!.label}
+                        </label>
+                        <span className="text-[10px] font-mono text-gray-300 dark:text-gray-600">{cell!.code}</span>
+                      </div>
+                      
+                      <div className="relative">
+                        {isInput ? (
+                          cell!.code === 'A2' ? (
+                            <select
+                              className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+                              value={value ?? TAKEOFF_DEFAULTS.A2}
+                              onChange={(e) =>
+                                setVals((v) => ({ ...v, [cell!.code]: Number(e.target.value) }))
+                              }
+                            >
+                              {[3000, 5000, 7000].map((option) => (
+                                <option key={option} value={option}>
+                                  {option.toLocaleString()}
+                                </option>
+                              ))}
+                            </select>
+                          ) : (
+                            <ClearableNumberInput
+                              type="number"
+                              step={cell!.code === 'B2' || cell!.code === 'C2' ? 0.01 : 'any'}
+                              className="block w-full rounded-lg border border-gray-200 bg-gray-50 py-2 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400 placeholder:text-gray-400"
+                              value={Number.isFinite(value) ? (value as number) : ''}
+                              placeholder={String(TAKEOFF_DEFAULTS[cell!.code] ?? 0)}
+                              onChange={(e) => {
+                                const raw = e.currentTarget.value;
+                                setVals((v) => ({
+                                  ...v,
+                                  [cell!.code]: raw === '' ? Number.NaN : Number(raw),
+                                }));
+                              }}
+                            />
+                          )
+                        ) : (
+                          <div className="rounded-lg bg-gray-50 py-2 px-3 text-sm font-semibold text-gray-900 dark:bg-gray-900/50 dark:text-white border border-transparent">
+                            {Number.isFinite(value) ? Number((value as number).toFixed(4)) : '—'}
+                          </div>
+                        )}
+                        
+                        {!isInput && !!missingByCode[cell!.code]?.length && (
+                          <div className="mt-1 text-[10px] text-red-500">
+                            Missing: {missingByCode[cell!.code].join(', ')}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {cell!.expr && (
+                        <div className="mt-2 text-[10px] text-gray-400 font-mono truncate opacity-0 group-hover:opacity-100 transition-opacity">
+                          {renderFormula(cell!.expr!, cell!.code)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Manual additional items */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
+        <div className="mb-6 flex items-center gap-3 border-b border-gray-100 pb-4 dark:border-gray-700">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-50 dark:bg-purple-900/20">
+            <PlusIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Manual Items</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Add extra items not covered above</p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {customItems.map((ci, idx) => (
+            <div key={idx} className="flex flex-col gap-3 rounded-xl border border-gray-100 bg-gray-50 p-4 dark:bg-gray-900/50 dark:border-gray-700 md:flex-row md:items-start">
+              <div className="flex-1 space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Description</label>
+                <input
+                  className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  placeholder="Item description"
+                  value={ci.description}
+                  onChange={(e) =>
+                    setCustomItems((arr) =>
+                      arr.map((x, i) => (i === idx ? { ...x, description: e.target.value } : x))
+                    )
+                  }
+                />
+              </div>
+              <div className="w-full md:w-24 space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Unit</label>
+                <input
+                  className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  placeholder="ea"
+                  value={ci.unit}
+                  onChange={(e) =>
+                    setCustomItems((arr) =>
+                      arr.map((x, i) => (i === idx ? { ...x, unit: e.target.value } : x))
+                    )
+                  }
+                />
+              </div>
+              <div className="w-full md:w-24 space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Qty</label>
+                <ClearableNumberInput
+                  className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  value={Number.isFinite(ci.qty) ? ci.qty : ''}
+                  onChange={(e) => {
+                    const raw = e.currentTarget.value;
+                    setCustomItems((arr) =>
+                      arr.map((x, i) =>
+                        i === idx ? { ...x, qty: raw === '' ? Number.NaN : Number(raw) } : x
+                      )
+                    );
+                  }}
+                />
+              </div>
+              <div className="w-full md:w-24 space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Rate</label>
+                <ClearableNumberInput
+                  className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  value={Number.isFinite(ci.rate) ? ci.rate : ''}
+                  onChange={(e) => {
+                    const raw = e.currentTarget.value;
+                    setCustomItems((arr) =>
+                      arr.map((x, i) =>
+                        i === idx ? { ...x, rate: raw === '' ? Number.NaN : Number(raw) } : x
+                      )
+                    );
+                  }}
+                />
+              </div>
+              <div className="w-full md:w-32 space-y-1">
+                <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Section</label>
+                <input
+                  className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                  placeholder="Section"
+                  value={ci.section}
+                  onChange={(e) =>
+                    setCustomItems((arr) =>
+                      arr.map((x, i) => (i === idx ? { ...x, section: e.target.value } : x))
+                    )
+                  }
+                />
+              </div>
+              <div className="pt-6">
+                <button
+                  type="button"
+                  className="rounded-lg p-2 text-gray-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 transition-colors"
+                  onClick={() => setCustomItems((arr) => arr.filter((_, i) => i !== idx))}
+                >
+                  <TrashIcon className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            onClick={() =>
+              setCustomItems((arr) => [
+                ...arr,
+                { description: '', unit: '', qty: 0, rate: 0, section: '' },
+              ])
+            }
+          >
+            <PlusIcon className="h-4 w-4" />
+            Add Another Item
+          </button>
+        </div>
+      </div>
+
+      <div className="sticky bottom-6 z-10 mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-lg backdrop-blur-sm dark:bg-gray-800/90 dark:border-gray-700">
+        <div className="flex items-center justify-between gap-4">
+           <div className="text-sm font-medium text-gray-600 dark:text-gray-300">
+             Ready to generate?
+           </div>
+          <button
+            className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-6 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-green-700 hover:shadow-lg focus:ring-4 focus:ring-green-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={creating}
+            onClick={onCreateQuote}
+          >
+            {creating ? (
+              <>Generating...</>
+            ) : (
+              <>
+                <CheckCircleIcon className="h-5 w-5" />
+                Generate Quotation
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="h-12" />
+    </div>
+  );
+}
