@@ -12,6 +12,7 @@ import QuotePagination from '@/app/(protected)/quotes/components/QuotePagination
 import { Prisma } from '@prisma/client';
 import { ProjectsFilter } from './components/ProjectsFilter';
 import { ProjectViewButton } from './components/ProjectViewButton';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -161,7 +162,7 @@ export default async function ProjectsPage({
             )}
           </div>
           <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center w-full sm:w-auto">
-             {!isSalesAccounts && !isSeniorPM && <ProjectsFilter />}
+             {!isSalesAccounts && !isSeniorPM && !isProjectManager && <ProjectsFilter />}
              <div className="w-full sm:w-72">
                 <SearchInput placeholder="Search projects..." />
              </div>
@@ -272,7 +273,17 @@ export default async function ProjectsPage({
                           </td>
                           {!isSeniorPM && (
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              <ProjectViewButton projectId={project.id} />
+                              {isProjectManager ? (
+                                <Link
+                                  href={`/projects/${project.id}/schedule`}
+                                  className="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                                 >
+                                   <CalendarIcon className="h-4 w-4" />
+                                   Create Schedule
+                                 </Link>
+                              ) : (
+                                <ProjectViewButton projectId={project.id} />
+                              )}
                             </td>
                           )}
                         </tr>
