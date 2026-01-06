@@ -15,8 +15,14 @@ export const { auth,
    } = NextAuth({
   ...authConfig,
   secret: process.env.NEXTAUTH_SECRET!,
+  session: { strategy: 'jwt', maxAge: 600 },
   providers: [
     Credentials({
+      name: 'Credentials',
+      credentials: {
+        email: { label: 'Email', type: 'email' },
+        password: { label: 'Password', type: 'password' },
+      },
       async authorize(credentials) {
         console.log("-----------------------------")
         const parsedCredentials = z
@@ -33,12 +39,10 @@ export const { auth,
            if (!passwordsMatch) return null;
           if (passwordsMatch) return user;
         }
- 
+
         console.log('Invalid credentials');
         return null;
       },
-     
-        session: { strategy: "jwt", maxAge: 600, },
     }),
   ],
 });

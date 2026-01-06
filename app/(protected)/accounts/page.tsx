@@ -328,7 +328,7 @@ export default async function AccountsDashboard({
                     <div className="col-span-2 md:col-span-5">
                       <SubmitButton
                         loadingText="Saving..."
-                        className="rounded bg-slate-900 px-3 py-1.5 text-white w-full"
+                        className="rounded bg-orange-500 px-3 py-1.5 text-white w-full hover:bg-orange-600"
                       >
                         Record Payment
                       </SubmitButton>
