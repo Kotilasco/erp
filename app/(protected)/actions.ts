@@ -75,82 +75,83 @@ export async function createQuote(input: unknown, currentUserId?: string) {
       throw new Error('Customer is required: please select or create a customer before saving.');
     }
 
-  const actingUser = currentUserId
-    ? await prisma.user.findUnique({ where: { id: currentUserId }, select: { id: true, role: true, office: true } })
-    : await getCurrentUser();
+    const actingUser = currentUserId
+      ? await prisma.user.findUnique({ where: { id: currentUserId }, select: { id: true, role: true, office: true } })
+      : await getCurrentUser();
 
-  const userId = actingUser?.id ?? (await ensureSystemUserId());
-  const userRole = coerceUserRole(actingUser?.role);
-  const userOffice = actingUser ? resolveOfficeForRole(userRole, (actingUser as any).office ?? null) : null;
+    const userId = actingUser?.id ?? (await ensureSystemUserId());
+    const userRole = coerceUserRole(actingUser?.role);
+    const userOffice = actingUser ? resolveOfficeForRole(userRole, (actingUser as any).office ?? null) : null;
 
-  const linesCalced = parsed.lines.map((line) =>
-    calcLine({
-      qty: line.quantity,
-      unitPrice: money(line.unitPrice),
-      vatRate: parsed.vatRate,
-      discount: line.discount ?? null,
-    }),
-  );
+    const linesCalced = parsed.lines.map((line) =>
+      calcLine({
+        qty: line.quantity,
+        unitPrice: money(line.unitPrice),
+        vatRate: parsed.vatRate,
+        discount: line.discount ?? null,
+      }),
+    );
 
-  const sub = subtotal(linesCalced);
-  const disc = discountFn(sub, parsed.discountPolicy ?? null);
-  const net = netBeforeTax(sub, disc);
-  const taxVal = tax(net, parsed.vatRate);
-  const grand = grandTotal(net, taxVal);
+    const sub = subtotal(linesCalced);
+    const disc = discountFn(sub, parsed.discountPolicy ?? null);
+    const net = netBeforeTax(sub, disc);
+    const taxVal = tax(net, parsed.vatRate);
+    const grand = grandTotal(net, taxVal);
 
-  const meta = {
-    totals: {
-      subtotal: Number(sub),
-      discount: Number(disc),
-      net: Number(net),
-      tax: Number(taxVal),
-      grandTotal: Number(grand),
-    },
-  };
-
-  const created = await prisma.$transaction(async (tx) => {
-    const q = await tx.quote.create({
-      data: {
-        currency: parsed.currency,
-        vatBps: toBps(parsed.vatRate),
-        discountPolicy: parsed.discountPolicy ?? null,
-        metaJson: JSON.stringify(meta),
-        office: userOffice,
-        customer: { connect: { id: parsed.customerId } },
-        createdBy: { connect: { id: userId } },
-        lines: {
-          create: parsed.lines.map((line, idx) => {
-            const calc = linesCalced[idx];
-            return {
-              description: line.description,
-              quantity: line.quantity,
-              unit: line.unit ?? null,
-              product: line.productId ? { connect: { id: line.productId } } : undefined,
-              unitPriceMinor: toMinor(Number(line.unitPrice)),
-              lineSubtotalMinor: toMinor(Number(calc.lineSubtotal)),
-              lineDiscountMinor: toMinor(Number(calc.lineDiscount)),
-              lineTaxMinor: toMinor(Number(calc.lineTax)),
-              lineTotalMinor: toMinor(Number(calc.lineTotal)),
-              metaJson: line.metaJson ? JSON.stringify(line.metaJson) : null,
-            };
-          }),
-        },
+    const meta = {
+      totals: {
+        subtotal: Number(sub),
+        discount: Number(disc),
+        net: Number(net),
+        tax: Number(taxVal),
+        grandTotal: Number(grand),
       },
-      include: quoteInclude,
-    });
+    };
 
-    // Keep version creation minimal inside tx
-    await createQuoteVersionTx(tx, {
-      quote: q,
-      label: 'Initial save',
-      status: 'DRAFT',
-      byRole: userRole ?? null,
-    });
+    const created = await prisma.$transaction(async (tx) => {
+      const q = await tx.quote.create({
+        data: {
+          currency: parsed.currency,
+          vatBps: toBps(parsed.vatRate),
+          discountPolicy: parsed.discountPolicy ?? null,
+          metaJson: JSON.stringify(meta),
+          status: 'SUBMITTED_REVIEW',
+          office: userOffice,
+          customer: { connect: { id: parsed.customerId } },
+          createdBy: { connect: { id: userId } },
+          lines: {
+            create: parsed.lines.map((line, idx) => {
+              const calc = linesCalced[idx];
+              return {
+                description: line.description,
+                quantity: line.quantity,
+                unit: line.unit ?? null,
+                product: line.productId ? { connect: { id: line.productId } } : undefined,
+                unitPriceMinor: toMinor(Number(line.unitPrice)),
+                lineSubtotalMinor: toMinor(Number(calc.lineSubtotal)),
+                lineDiscountMinor: toMinor(Number(calc.lineDiscount)),
+                lineTaxMinor: toMinor(Number(calc.lineTax)),
+                lineTotalMinor: toMinor(Number(calc.lineTotal)),
+                metaJson: line.metaJson ? JSON.stringify(line.metaJson) : null,
+              };
+            }),
+          },
+        },
+        include: quoteInclude,
+      });
 
-    return q;
-  }, TX_OPTS);
+      // Keep version creation minimal inside tx
+      await createQuoteVersionTx(tx, {
+        quote: q,
+        label: 'Initial save',
+        status: 'SUBMITTED_REVIEW',
+        byRole: userRole ?? null,
+      });
 
-  return { quoteId: created.id };
+      return q;
+    }, TX_OPTS);
+
+    return { quoteId: created.id };
   } catch (error) {
     console.error('Error creating quote:', error);
     throw error;
@@ -260,7 +261,7 @@ export async function transitionQuoteStatus(quoteId: string, target: QuoteStatus
   if (!quote) throw new Error('Quote not found');
   const ensuredOffice = ensureQuoteOffice(quote.office ?? null, role, userOffice);
 
-  if (( target === 'FINALIZED') && role !== 'ADMIN') {
+  if ((target === 'FINALIZED') && role !== 'ADMIN') {
     if (!quote.projectManagerId) {
       throw new Error('Assign a project manager before proceeding');
     }
