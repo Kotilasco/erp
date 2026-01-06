@@ -461,7 +461,7 @@ async function PendingTasks({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
           <Link
             href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-yellow-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-yellow-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -473,14 +473,14 @@ async function PendingTasks({
             </svg>
             Unplanned Projects
             {pmUnplannedCount > 0 && (
-              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-yellow-600">
+              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
                 {pmUnplannedCount}
               </span>
             )}
           </Link>
           <Link
             href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-indigo-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -502,29 +502,29 @@ async function PendingTasks({
       {roles.PM && (
         <div className="flex flex-col items-center justify-center py-6 mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
-            <Link
-              href="/projects?tab=unplanned"
-              className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-yellow-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-yellow-600 hover:shadow-xl hover:-translate-y-1"
-            >
-              <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v8m-4-4h8M4 6h16M4 18h16"
-                />
-              </svg>
-              Unplanned Projects
-              {pmUnplannedCount > 0 && (
-                <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-yellow-600">
-                  {pmUnplannedCount}
-                </span>
-              )}
-            </Link>
-            <Link
-              href="/dispatches"
-              className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-indigo-600 hover:shadow-xl hover:-translate-y-1"
-            >
+          <Link
+            href="/projects?tab=unplanned"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v8m-4-4h8M4 6h16M4 18h16"
+              />
+            </svg>
+            Unplanned Projects
+            {pmUnplannedCount > 0 && (
+              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+                {pmUnplannedCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/dispatches"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          >
               <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
@@ -1418,7 +1418,7 @@ export default async function DashboardPage({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
           <Link
             href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-yellow-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-yellow-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -1430,14 +1430,14 @@ export default async function DashboardPage({
             </svg>
             Unplanned Projects
             {pmUnplannedCount > 0 && (
-              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-yellow-600">
+              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
                 {pmUnplannedCount}
               </span>
             )}
           </Link>
           <Link
             href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-indigo-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
