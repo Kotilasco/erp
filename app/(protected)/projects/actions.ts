@@ -93,8 +93,8 @@ export async function submitProcurementRequest(requisitionId: string, amountMajo
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (!['PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_MANAGER', 'ADMIN'].includes(role)) {
-    throw new Error('Only Procurement/PM/Admin');
+  if (!['PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(role)) {
+    throw new Error('Only Procurement/Ops/Admin');
   }
   await ensureNoPendingItemReviews(requisitionId);
 
@@ -254,8 +254,8 @@ export async function updateScheduleItemStatus(itemId: string, status: 'ACTIVE' 
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (!['PROJECT_MANAGER', 'ADMIN', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(role as string)) {
-    throw new Error('Only PM/Admin/MD/General Manager');
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(role as string)) {
+    throw new Error('Only Ops/Admin/MD/General Manager');
   }
 
   const item = await prisma.scheduleItem.findUnique({ where: { id: itemId }, select: { schedule: { select: { projectId: true } } } });
@@ -297,7 +297,7 @@ type ActionResult = { ok: true; dispatchId: string } | { ok: false; error: strin
   if (!user) return { ok: false, error: 'Authentication required' };
 
   // PM or Admin guard (optional)
-  if (user.role !== 'PROJECT_MANAGER' && user.role !== 'ADMIN') {
+  if (user.role !== 'PROJECT_OPERATIONS_OFFICER' && user.role !== 'ADMIN') {
     return { ok: false, error: 'Only Project Managers or Admin can create dispatches' };
   }
 
@@ -553,8 +553,8 @@ export async function createDispatchFromPurchases(projectId: string) {
 export async function createDispatchFromInventory(projectId: string) {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'Auth required' } as const;
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes(user.role as any)) {
-    return { ok: false, error: 'Only PM/Admin can create dispatches' } as const;
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(user.role as any)) {
+    return { ok: false, error: 'Only Ops/Admin can create dispatches' } as const;
   }
   // await ensureProjectIsPlanned(projectId);
   await ensureProjectIsPlanned(projectId);
@@ -596,8 +596,8 @@ export async function createDispatchFromInventory(projectId: string) {
 export async function createMultipurposeDispatch(projectId: string) {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'Auth required' } as const;
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes(user.role as any)) {
-    return { ok: false, error: 'Only PM/Admin can create dispatches' } as const;
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(user.role as any)) {
+    return { ok: false, error: 'Only Ops/Admin can create dispatches' } as const;
   }
   await ensureProjectIsPlanned(projectId);
 
@@ -643,8 +643,8 @@ export async function createDispatchFromSelectedInventory(
 ) {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'Auth required' } as const;
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes(user.role as any)) {
-    return { ok: false, error: 'Only PM/Admin can create dispatches' } as const;
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(user.role as any)) {
+    return { ok: false, error: 'Only Ops/Admin can create dispatches' } as const;
   }
 
   const clean = items
@@ -810,7 +810,7 @@ type ReturnItemInput = {
   if (!user) throw new Error('Authentication required');
 
   const role = (user as any).role as string | undefined;
-  if (!['PROJECT_MANAGER', 'PROCUREMENT', 'ADMIN'].includes(role ?? '')) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'ADMIN'].includes(role ?? '')) {
     throw new Error('Not allowed to create returns');
   }
 
@@ -946,8 +946,8 @@ export async function returnItemsToInventory(
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: 'Auth required' };
 
-  // allow PROJECT_MANAGER, PROCUREMENT, ACCOUNTS, ADMIN etc. adjust as needed:
-  if (!['PROJECT_MANAGER', 'PROCUREMENT', 'ADMIN', 'SECURITY'].includes(me.role as string)) {
+  // allow PROJECT_OPERATIONS_OFFICER, PROCUREMENT, ACCOUNTS, ADMIN etc. adjust as needed:
+  if (!['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'ADMIN', 'SECURITY'].includes(me.role as string)) {
     return { ok: false, error: 'Not authorized to return items' };
   }
 
@@ -1054,8 +1054,8 @@ export async function markItemUsedOut(itemId: string, qty?: number): Promise<Act
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: 'Auth required' };
   // authorization: PM or SECURITY? adjust
-  // we allow PM/PROJECT_MANAGER or ADMIN to mark used out
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes(me.role as string)) {
+  // we allow PM/PROJECT_OPERATIONS_OFFICER or ADMIN to mark used out
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(me.role as string)) {
     return { ok: false, error: 'Not authorized to mark used out' };
   }
 
@@ -1148,7 +1148,7 @@ export async function updateDispatchItems(
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') {
+  if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') {
     throw new Error('Only PM/Admin can edit dispatch items');
   }
 
@@ -1198,7 +1198,7 @@ export async function submitDispatch(dispatchId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') throw new Error('Only PM/Admin can submit a dispatch');
+  if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') throw new Error('Only PM/Admin can submit a dispatch');
 
   const dispatch = await prisma.dispatch.findUnique({
     where: { id: dispatchId },
@@ -1243,7 +1243,7 @@ export async function addMultipurposeToDispatch(dispatchId: string, inventoryIte
   const me = await getCurrentUser();
   if (!me) throw new Error('Auth required');
   const role = assertRole(me.role);
-  if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') throw new Error('Only PM/Admin can edit dispatch');
+  if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') throw new Error('Only PM/Admin can edit dispatch');
 
   const inv = await prisma.inventoryItem.findUnique({ where: { id: inventoryItemId } });
   if (!inv) throw new Error('Inventory item not found');
@@ -1308,7 +1308,7 @@ export async function addMultipurposeToDispatch(dispatchId: string, inventoryIte
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
 
-  if (!['ADMIN', 'PROCUREMENT', 'PROJECT_MANAGER'].includes(user.role as any)) {
+  if (!['ADMIN', 'PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER'].includes(user.role as any)) {
     throw new Error('Only Procurement / PM can request a top-up');
   }
 
@@ -1334,7 +1334,7 @@ export async function requestTopUp(requisitionId: string, amount?: number) {
 
   // Who can request a top-up? PM/Proc/Admin by your process (tweak as needed)
   const role = (me as any).role as string | undefined;
-  if (!['ADMIN', 'PROJECT_MANAGER', 'PROCUREMENT'].includes(role ?? '')) {
+  if (!['ADMIN', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT'].includes(role ?? '')) {
     throw new Error('You do not have permission to request a top-up.');
   }
 
@@ -1599,7 +1599,7 @@ export async function createRequisition(
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') {
+  if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') {
     throw new Error('Only Project Managers or Admin can create requisitions');
   }
 
@@ -1644,7 +1644,7 @@ export async function submitRequisitionToProcurement(requisitionId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes(role)) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(role)) {
     throw new Error('Only Project Manager or Admin can submit requisitions');
   }
 
@@ -2373,7 +2373,7 @@ export async function requestTopUpForItem(requisitionItemId: string, qty: number
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (!['PROCUREMENT', 'PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(role))
+  if (!['PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role))
     throw new Error('Not authorized to request a top-up');
   if (!(qty > 0)) throw new Error('Top-up qty must be greater than zero');
 
@@ -2441,7 +2441,7 @@ export async function approveTopUpRequest(topupId: string, approve = true) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (!['SENIOR_PM', 'ADMIN'].includes(role)) {
+  if (!['PROJECT_COORDINATOR', 'ADMIN'].includes(role)) {
     throw new Error('Only Senior PM or Admin users can approve top-up requests');
   }
 
@@ -2508,7 +2508,7 @@ export async function requestItemReview(requisitionItemId: string, flag: boolean
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (!['PROCUREMENT', 'PROJECT_MANAGER', 'ADMIN'].includes(role))
+  if (!['PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(role))
     throw new Error('Not authorized to update review state');
 
   const item = await prisma.procurementRequisitionItem.update({
@@ -2635,7 +2635,7 @@ export async function saveUnitPricesForRequisition(
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (!['PROCUREMENT', 'ADMIN', 'PROJECT_MANAGER'].includes(role)) {
+  if (!['PROCUREMENT', 'ADMIN', 'PROJECT_OPERATIONS_OFFICER'].includes(role)) {
     throw new Error('Not authorized to edit unit prices');
   }
 
@@ -2816,7 +2816,7 @@ export async function createDispatch(
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') {
+  if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') {
     throw new Error('Only Project Managers or Admin can create dispatches');
   }
   await ensureProjectIsPlanned(projectId);
@@ -2853,7 +2853,7 @@ export async function approveDispatch(dispatchId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (role !== 'ADMIN' && role !== 'PROJECT_MANAGER') {
+  if (role !== 'ADMIN' && role !== 'PROJECT_OPERATIONS_OFFICER') {
     throw new Error('Only Security or Admin can approve dispatches');
   }
 
@@ -3028,12 +3028,12 @@ export async function ensureProjectAccess(projectId: string, user?: Awaited<Retu
   const role = user.role as string;
 
   // 1. Absolute super-users
-  if (['ADMIN', 'SENIOR_PM', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(role)) {
+  if (['ADMIN', 'PROJECT_COORDINATOR', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(role)) {
     return; // Allowed
   }
 
   // 2. Project Manager - Strict Assignment Check
-  if (role === 'PROJECT_MANAGER') {
+  if (role === 'PROJECT_OPERATIONS_OFFICER') {
     const project = await prisma.project.findUnique({
       where: { id: projectId },
       select: { assignedToId: true },
@@ -3057,13 +3057,13 @@ export async function ensureProjectAccess(projectId: string, user?: Awaited<Retu
 
 export async function assignProjectToManager(projectId: string, userId: string) {
   const me = await getCurrentUser();
-  assertRoles(me?.role, ['ADMIN', 'SENIOR_PM', 'GENERAL_MANAGER', 'MANAGING_DIRECTOR']);
+  assertRoles(me?.role, ['ADMIN', 'PROJECT_COORDINATOR', 'GENERAL_MANAGER', 'MANAGING_DIRECTOR']);
 
   const targetUser = await prisma.user.findUnique({ where: { id: userId } });
   if (!targetUser) throw new Error('User not found');
 
   // Ideally check if targetUser is actually a PM, but flexible for now or could enforce:
-  // if (targetUser.role !== 'PROJECT_MANAGER') throw new Error('User is not a Project Manager');
+  // if (targetUser.role !== 'PROJECT_OPERATIONS_OFFICER') throw new Error('User is not a Project Manager');
 
   await prisma.project.update({
     where: { id: projectId },
@@ -3093,13 +3093,13 @@ export async function generatePaymentSchedule(projectId: string) {
 
   const role = (me as any).role as string | undefined;
 
-  if (role === 'PROJECT_MANAGER') {
+  if (role === 'PROJECT_OPERATIONS_OFFICER') {
     await ensureProjectAccess(projectId, me);
   } else if (
     ![
       'ADMIN',
       'SALES',
-      'SENIOR_PM',
+      'PROJECT_COORDINATOR',
       'ACCOUNTS',
       'SALES_ACCOUNTS',
       'CASHIER',

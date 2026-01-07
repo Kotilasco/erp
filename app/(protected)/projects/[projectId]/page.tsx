@@ -41,7 +41,7 @@ async function createProcurementRequisition(projectId: string, note?: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') throw new Error('Only PM/Admin');
+  if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') throw new Error('Only PM/Admin');
   await ensureProjectIsPlanned(projectId);
   await prisma.procurementRequisition.create({
     data: { projectId, status: 'PENDING', note: note ?? null, submittedById: user.id! },
@@ -99,7 +99,7 @@ async function createDispatch(
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
   const role = assertRole(user.role);
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes(role)) throw new Error('Only PM/Admin');
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(role)) throw new Error('Only PM/Admin');
   await ensureProjectIsPlanned(projectId);
 
   // Validate quantities against inventory/purchases
@@ -213,7 +213,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   if (!project) return <div className="p-6">Not found</div>;
 
   // Strict Access Control for Project Managers
-  if (role === 'PROJECT_MANAGER' && project.assignedToId !== user.id) {
+  if (role === 'PROJECT_OPERATIONS_OFFICER' && project.assignedToId !== user.id) {
     redirect('/projects');
   }
 
@@ -332,7 +332,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     })
   ).filter((x) => x !== null) as any[];
 
-  const isPM = role === 'PROJECT_MANAGER' || role === 'ADMIN';
+  const isPM = role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN';
   const isProc = role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
   const isAccounts = role === 'SALES_ACCOUNTS' || (role as string).startsWith('ACCOUNT') || role === 'ADMIN';
   const canRecordPayments = role === 'SALES_ACCOUNTS' || role === 'ADMIN';
@@ -346,7 +346,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     'GENERAL_MANAGER',
     'MANAGING_DIRECTOR',
   ].includes(role);
-  const canViewSchedule = ['PROJECT_MANAGER', 'SENIOR_PM', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role);
+  const canViewSchedule = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role);
   const isSalesAccountsOnly = role === 'SALES_ACCOUNTS';
   
   const sch = await prisma.paymentSchedule.findMany({ where: { projectId } });
@@ -575,7 +575,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
           {!isSalesAccountsOnly && canViewSchedule && <TabsTrigger value="overview">Schedule of work</TabsTrigger>}
           {!isSalesAccountsOnly && <TabsTrigger value="procurement">Requisition Form</TabsTrigger>}
           {!isSalesAccountsOnly && <TabsTrigger value="logistics">Dispatch</TabsTrigger>}
-          {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(role) && (
+          {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
             <>
               <TabsTrigger value="daily-tasks">Daily Tasks</TabsTrigger>
               <TabsTrigger value="reports">Reports</TabsTrigger>

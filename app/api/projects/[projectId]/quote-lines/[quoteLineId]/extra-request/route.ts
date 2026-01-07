@@ -47,7 +47,7 @@ export async function POST(req: Request, ctx: RouteParams) {
     }
 
     const role = user.role ?? '';
-    if (!['PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(role)) {
+    if (!['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role)) {
       return NextResponse.json({ error: 'Not authorized to request more' }, { status: 403 });
     }
 
@@ -92,7 +92,7 @@ export async function POST(req: Request, ctx: RouteParams) {
       );
     }
 
-    const requiresAdmin = role === 'SENIOR_PM';
+    const requiresAdmin = role === 'PROJECT_COORDINATOR';
     const requestRecord = await prisma.quoteLineExtraRequest.create({
       data: {
         projectId,

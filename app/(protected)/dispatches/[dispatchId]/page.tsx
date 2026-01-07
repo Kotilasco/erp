@@ -25,7 +25,7 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
   });
   if (!dispatch) return <div className="p-6">Not found.</div>;
 
-  const canEdit = (role === 'PROJECT_MANAGER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
+  const canEdit = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
 
   const saveAction = async (fd: FormData) => {

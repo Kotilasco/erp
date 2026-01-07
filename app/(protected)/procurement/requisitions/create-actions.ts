@@ -15,7 +15,7 @@ type Selected = {
 
 export async function createRequisitionAndPO(projectId: string, selected: Selected[]) {
   const me = await getCurrentUser();
-  assertRoles(me?.role, ['PROJECT_MANAGER', 'ADMIN']);
+  assertRoles(me?.role, ['PROJECT_OPERATIONS_OFFICER', 'ADMIN']);
 
   if (!selected?.length) throw new Error('Select at least one item');
 

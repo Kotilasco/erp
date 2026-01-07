@@ -30,26 +30,26 @@ const PAGE_DEFS: PageDef[] = [
     label: 'Projects',
     href: '/projects',
     icon: 'folder',
-    roles: USER_ROLES.filter((r) => !['QS', 'SENIOR_QS', 'SALES', 'SALES_ACCOUNTS', 'SENIOR_PM'].includes(r as string)) as Role[],
+    roles: USER_ROLES.filter((r) => !['QS', 'SENIOR_QS', 'SALES', 'SALES_ACCOUNTS', 'PROJECT_COORDINATOR'].includes(r as string)) as Role[],
   },
   // Senior PM Specific
   {
     label: 'Active Projects',
     href: '/projects?tab=active',
     icon: 'folder',
-    roles: ['SENIOR_PM'],
+    roles: ['PROJECT_COORDINATOR'],
   },
   {
     label: 'Unassigned Projects',
     href: '/projects?tab=assignment',
     icon: 'users',
-    roles: ['SENIOR_PM'],
+    roles: ['PROJECT_COORDINATOR'],
   },
   {
     label: 'Planning Pending',
     href: '/projects?tab=planning',
     icon: 'clipboard',
-    roles: ['SENIOR_PM'],
+    roles: ['PROJECT_COORDINATOR'],
   },
   // Sales Accounts Specific
   {
@@ -65,22 +65,22 @@ const PAGE_DEFS: PageDef[] = [
     roles: ['SALES_ACCOUNTS'],
   },
   // Procurement & Logistics
-  { label: 'Requisitions', href: '/procurement/requisitions', icon: 'list', roles: ['PROJECT_MANAGER', 'SENIOR_PM', 'PROCUREMENT', 'ADMIN'] },
+  { label: 'Requisitions', href: '/procurement/requisitions', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'PROCUREMENT', 'ADMIN'] },
   { label: 'Purchase Orders', href: '/accounts/po', icon: 'list', roles: ['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ADMIN'] },
-  { label: 'Dispatches', href: '/dispatches', icon: 'list', roles: ['PROJECT_MANAGER', 'SENIOR_PM', 'SECURITY', 'ADMIN'] },
+  { label: 'Dispatches', href: '/dispatches', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'SECURITY', 'ADMIN'] },
   
   // Accounts
   { label: 'Funds', href: '/funds', icon: 'banknotes', roles: ['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTING_AUDITOR', 'ADMIN'] },
   
-  // Inventory: PROJECT_MANAGER, PROCUREMENT, SECURITY, ADMIN
-  { label: 'Inventory', href: '/inventory', icon: 'box', roles: ['PROJECT_MANAGER', 'PROCUREMENT', 'SECURITY', 'ADMIN'] },
+  // Inventory: PROJECT_OPERATIONS_OFFICER, PROCUREMENT, SECURITY, ADMIN
+  { label: 'Inventory', href: '/inventory', icon: 'box', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SECURITY', 'ADMIN'] },
   
   // Admin
   { label: 'Audit Logs', href: '/audit-logs', icon: 'list', roles: ['ADMIN'] },
   // Assets (multipurpose): Procurement / Security / PM / Admin
-  { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['PROCUREMENT', 'SECURITY', 'PROJECT_MANAGER', 'ADMIN'] },
+  { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
   // Employees: Admin, Managing Director, Project Manager
-  { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_MANAGER'] },
+  { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'] },
 ];
 
 type NotificationItem = {

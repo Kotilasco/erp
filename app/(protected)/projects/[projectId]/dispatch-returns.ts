@@ -117,7 +117,7 @@ export async function returnDispatchItem(
   if (!me) throw new Error('Authentication required');
 
   // allow PM, PROCUREMENT, SECURITY, ADMIN to create returns (adjust as you need)
-  if (!['PROJECT_MANAGER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN'].includes((me as any).role)) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN'].includes((me as any).role)) {
     throw new Error('Not allowed to perform returns');
   }
 
@@ -220,7 +220,7 @@ export async function markDispatchItemUsedOut(itemId: string) {
   const me = await getCurrentUser();
   if (!me) throw new Error('Authentication required');
 
-  if (!['PROJECT_MANAGER', 'SECURITY', 'ADMIN'].includes((me as any).role)) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'SECURITY', 'ADMIN'].includes((me as any).role)) {
     throw new Error('Not allowed to mark used out');
   }
 

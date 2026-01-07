@@ -14,8 +14,8 @@ export default async function DailyTasksPage({
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  // Only PM_CLERK, PROJECT_MANAGER, and ADMIN can access
-  if (!['PM_CLERK', 'PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(user.role as string)) {
+  // Only PM_CLERK, PROJECT_OPERATIONS_OFFICER, and ADMIN can access
+  if (!['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role as string)) {
     return <div className="p-6">Not authorized</div>;
   }
 

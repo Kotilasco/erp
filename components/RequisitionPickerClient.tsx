@@ -41,8 +41,8 @@ type ExtraModalState =
   | { mode: 'request'; line: LineRow }
   | { mode: 'review'; line: LineRow; request: ExtraRequestRow };
 
-const REQUEST_ROLES = new Set(['PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN']);
-const REVIEW_ROLES = new Set(['SENIOR_PM', 'ADMIN']);
+const REQUEST_ROLES = new Set(['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN']);
+const REVIEW_ROLES = new Set(['PROJECT_COORDINATOR', 'ADMIN']);
 
 export default function RequisitionPickerClient({
   clientGrouped,

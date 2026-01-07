@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/db';
 
-const HEAD_ROLES = ['ADMIN', 'PROJECT_MANAGER', 'SENIOR_QS', 'GENERAL_MANAGER', 'MANAGING_DIRECTOR', 'ACCOUNTS'];
+const HEAD_ROLES = ['ADMIN', 'PROJECT_OPERATIONS_OFFICER', 'SENIOR_QS', 'GENERAL_MANAGER', 'MANAGING_DIRECTOR', 'ACCOUNTS'];
 
 export async function GET() {
   const now = new Date();

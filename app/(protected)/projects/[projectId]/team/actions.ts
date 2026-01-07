@@ -38,7 +38,7 @@ export async function createTask(projectId: string, args: {
 }) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes((user as any).role)) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes((user as any).role)) {
     throw new Error('Only Project Managers can create tasks');
   }
 
@@ -83,7 +83,7 @@ export async function createTask(projectId: string, args: {
 /* export async function setTaskAssignees(taskId: string, assignees: { userId: string; hoursPerDay?: number }[]) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes((user as any).role)) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes((user as any).role)) {
     throw new Error('Only Project Managers can assign tasks');
   }
 
@@ -111,7 +111,7 @@ export async function createTask(projectId: string, args: {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   // TEAM members, PM, ADMIN can log progress
-  if (!['PROJECT_TEAM', 'PROJECT_MANAGER', 'ADMIN'].includes((user as any).role)) {
+  if (!['PROJECT_TEAM', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes((user as any).role)) {
     throw new Error('Not allowed');
   }
 
@@ -139,7 +139,7 @@ export async function createTask(projectId: string, args: {
 export async function updateTaskStatus(taskId: string, status: 'PENDING' | 'IN_PROGRESS' | 'BLOCKED' | 'DONE') {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
-  if (!['PROJECT_MANAGER', 'ADMIN'].includes((user as any).role)) {
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes((user as any).role)) {
     throw new Error('Only PM can change status');
   }
   await prisma.task.update({ where: { id: taskId }, data: { status } });

@@ -7,7 +7,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { Prisma } from '@prisma/client';
 
 function canManage(role: string | null | undefined) {
-  return ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_MANAGER'].includes(role || '');
+  return ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'].includes(role || '');
 }
 
 export default async function EmployeesPage({

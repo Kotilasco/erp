@@ -39,7 +39,7 @@ async function PendingTasks({
   let dispatchTasks: Array<{ type: 'PENDING_DISPATCH'; data: any; date: Date }> = [];
   let driverTasks: any[] = []; // Initialize driverTasks
   const roles = {
-    PM: role === 'PROJECT_MANAGER' || role === 'ADMIN' || role === 'MANAGING_DIRECTOR',
+    PM: role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN' || role === 'MANAGING_DIRECTOR',
     SALES_ACCOUNTS:
       role === 'SALES_ACCOUNTS' ||
       role === 'ACCOUNTING_CLERK' ||
@@ -53,8 +53,8 @@ async function PendingTasks({
       role === 'MANAGING_DIRECTOR',
     SECURITY: role === 'SECURITY' || role === 'ADMIN',
     DRIVER: role === 'DRIVER' || role === 'ADMIN',
-    SENIOR_PM:
-      role === 'SENIOR_PM' ||
+    PROJECT_COORDINATOR:
+      role === 'PROJECT_COORDINATOR' ||
       role === 'ADMIN' ||
       role === 'GENERAL_MANAGER' ||
       role === 'MANAGING_DIRECTOR',
@@ -76,7 +76,7 @@ async function PendingTasks({
   if (roles.PM) {
     const myProjects = await prisma.project.findMany({
       where: {
-        ...(role === 'PROJECT_MANAGER' ? { assignedToId: userId } : {}),
+        ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: userId } : {}),
         status: { not: 'COMPLETED' },
       },
       select: { id: true, projectNumber: true, quote: { select: { customer: true } } },
@@ -280,7 +280,7 @@ async function PendingTasks({
   // Logic for Senior PM (Project Assignment)
   let assignmentTasks: any[] = [];
   let projectManagers: any[] = [];
-  if (roles.SENIOR_PM) {
+  if (roles.PROJECT_COORDINATOR) {
     [assignmentTasks, projectManagers] = await Promise.all([
       prisma.project.findMany({
         where: {
@@ -293,7 +293,7 @@ async function PendingTasks({
         orderBy: { createdAt: 'desc' },
       }),
       prisma.user.findMany({
-        where: { role: 'PROJECT_MANAGER' },
+        where: { role: 'PROJECT_OPERATIONS_OFFICER' },
         select: { id: true, name: true, email: true },
         orderBy: { name: 'asc' },
       }),
@@ -455,7 +455,7 @@ async function PendingTasks({
   const paginatedItems = allTasks.slice(startIndex, startIndex + itemsPerPage);
 
   // For Project Manager, strictly show only the buttons
-  if (role === 'PROJECT_MANAGER') {
+  if (role === 'PROJECT_OPERATIONS_OFFICER') {
     return (
       <div className="flex flex-col items-center justify-center py-6 mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
@@ -1258,7 +1258,7 @@ export default async function DashboardPage({
   }
 
   // Simplified Senior PM Dashboard
-  if (user.role === 'SENIOR_PM') {
+  if (user.role === 'PROJECT_COORDINATOR') {
     const unassignedCount = await prisma.project.count({
       where: {
         status: { notIn: ['CREATED', 'COMPLETED', 'CLOSED'] },
@@ -1401,7 +1401,7 @@ export default async function DashboardPage({
   }
 
   // Simplified Project Manager Dashboard
-  if (user.role === 'PROJECT_MANAGER') {
+  if (user.role === 'PROJECT_OPERATIONS_OFFICER') {
     const pmUnplannedCount = await prisma.project.count({
       where: {
         assignedToId: user.id,

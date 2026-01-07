@@ -400,7 +400,7 @@ export default async function RequisitionDetailPage({
 
   const isProcurement = role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
-  const canViewVariance = role === 'SENIOR_PM' || role === 'SENIOR_PROCUREMENT' || role === 'MANAGING_DIRECTOR' || role === 'ADMIN';
+  const canViewVariance = role === 'PROJECT_COORDINATOR' || role === 'SENIOR_PROCUREMENT' || role === 'MANAGING_DIRECTOR' || role === 'ADMIN';
   const showReviewControls = role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT';
   const fundingFormId = 'funding-form';
   const lastFundingStatus = req.funding?.[0]?.status;
@@ -409,9 +409,9 @@ export default async function RequisitionDetailPage({
   const reviewFormId = 'review-form';
   const lockedByAccounts = funding?.status && funding.status !== 'REJECTED';
   const permissions = {
-    canRequestTopUp: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(role),
-    canApproveTopUp: ['SENIOR_PM', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role),
-    canToggleReview: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_MANAGER', 'ADMIN'].includes(role),
+    canRequestTopUp: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role),
+    canApproveTopUp: ['PROJECT_COORDINATOR', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role),
+    canToggleReview: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(role),
     canApproveReview: ['SENIOR_PROCUREMENT', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role),
     canEditUnitPrice: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'].includes(role) && !lockedByAccounts,
   };
@@ -439,7 +439,7 @@ export default async function RequisitionDetailPage({
             </div>
           </div>
         </div>
-        {req.status === 'DRAFT' && ['PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(role) && (
+        {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
           <form action={submitRequisition.bind(null, req.id)}>
             <SubmitButton className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
               Submit Requisition
@@ -455,7 +455,7 @@ export default async function RequisitionDetailPage({
               Create direct PO
             </Link>
           )} */}
-          {req.status === 'DRAFT' && ['PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(role) && (
+          {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
             <form action={submitRequisition.bind(null, req.id)}>
               <SubmitButton className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 Submit Requisition
@@ -559,7 +559,7 @@ export default async function RequisitionDetailPage({
             reviewFlagFormIds={[reviewFormId]}
             showReviewControls={showReviewControls && !fundingLocked}
             readOnly={reviewSubmissionPending || fundingLocked}
-            hideFinancials={role === 'PROJECT_MANAGER' && !fundingLocked}
+            hideFinancials={role === 'PROJECT_OPERATIONS_OFFICER' && !fundingLocked}
           />
         </div>
       </section>
@@ -702,7 +702,7 @@ export default async function RequisitionDetailPage({
       )}
 
       {/* Procurement: request surplus */}
-      {/* {(role === 'PROCUREMENT' || role === 'PROJECT_MANAGER' || role === 'ADMIN') && (
+      {/* {(role === 'PROCUREMENT' || role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && (
         <form
           action={async (fd) => {
             'use server';
@@ -734,7 +734,7 @@ export default async function RequisitionDetailPage({
 
       {/* Procurement / PM / Admin can request a top-up, but we hide the form if funds remain or there is an active top-up */}
       {/* Top-up form hidden as requested */}
-      {/* {(role === 'PROCUREMENT' || role === 'PROJECT_MANAGER' || role === 'ADMIN') && (
+      {/* {(role === 'PROCUREMENT' || role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && (
         <>
           {!hideTopUpForm ? (
             <form

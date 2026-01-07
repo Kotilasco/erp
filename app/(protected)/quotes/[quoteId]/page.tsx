@@ -492,13 +492,13 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
   const managerCandidates =
     role === 'SALES' || role === 'ADMIN'
       ? await prisma.user.findMany({
-          where: { role: 'PROJECT_MANAGER', ...officeFilter },
+          where: { role: 'PROJECT_OPERATIONS_OFFICER', ...officeFilter },
           orderBy: { name: 'asc' },
         })
       : [];
 
   const teamCandidates =
-    role === 'PROJECT_MANAGER' || role === 'ADMIN'
+    role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN'
       ? await prisma.user.findMany({
           where: { role: 'PROJECT_TEAM', ...officeFilter },
           orderBy: { name: 'asc' },
@@ -670,7 +670,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
   const canSalesEndorse = (isSales || role === 'SALES_ACCOUNTS') && status === 'REVIEWED';
 
   const isReviewer = role === 'SENIOR_QS' || isAdmin;
-  const isProjectManagerUser = role === 'PROJECT_MANAGER';
+  const isProjectManagerUser = role === 'PROJECT_OPERATIONS_OFFICER';
   const isAssignedProjectManager = Boolean(
     isProjectManagerUser && currentUserId && quote.projectManagerId === currentUserId
   );

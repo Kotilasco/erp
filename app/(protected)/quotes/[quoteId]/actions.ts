@@ -31,7 +31,7 @@ const quoteInclude = {
 const USER_ROLE_SET = new Set<UserRole>(USER_ROLES as unknown as UserRole[]);
 const QUOTE_STATUS_SET = new Set<QuoteStatus>(QUOTE_STATUSES as unknown as QuoteStatus[]);
 const TASK_STATUS_VALUES = new Set(['PENDING', 'IN_PROGRESS', 'DONE']);
-const TASK_ASSIGNABLE_ROLES = new Set<UserRole>(['PROJECT_MANAGER'] as UserRole[]);
+const TASK_ASSIGNABLE_ROLES = new Set<UserRole>(['PROJECT_OPERATIONS_OFFICER'] as UserRole[]);
 
 type ActionResult<T = undefined> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -1395,7 +1395,7 @@ export async function assignProjectManager(quoteId: string, managerId: string): 
     const manager = await prisma.user.findUnique({ where: { id: managerId }, select: { id: true, role: true, office: true } });
     if (!manager) throw new Error('Project manager not found');
     const managerRole = assertRole(manager.role);
-    if (managerRole !== 'PROJECT_MANAGER' && managerRole !== 'ADMIN') {
+    if (managerRole !== 'PROJECT_OPERATIONS_OFFICER' && managerRole !== 'ADMIN') {
       throw new Error('Selected user is not a project manager');
     }
     const managerOffice = resolveOfficeForRole(managerRole, manager.office ?? null);
@@ -1426,14 +1426,14 @@ export async function createProjectTask(
     const user = await getCurrentUser();
     if (!user?.id) throw new Error('Authentication required');
     const role = assertRole(user.role);
-    if (role !== 'PROJECT_MANAGER' && role !== 'ADMIN') {
+    if (role !== 'PROJECT_OPERATIONS_OFFICER' && role !== 'ADMIN') {
       throw new Error('Only Project Managers or Admin can create tasks');
     }
     const userOffice = resolveOfficeForRole(role, user.office ?? null);
 
     const include = { projectManager: true } satisfies Prisma.QuoteInclude;
     const { quote, ensuredOffice } = await fetchQuoteWithOffice(quoteId, include, role, userOffice);
-    if (role === 'PROJECT_MANAGER' && quote.projectManagerId !== user.id) {
+    if (role === 'PROJECT_OPERATIONS_OFFICER' && quote.projectManagerId !== user.id) {
       throw new Error('You are not assigned to this quote');
     }
 
@@ -1502,7 +1502,7 @@ export async function createProjectTask(
     const ensuredOffice = ensureQuoteOffice(task.quote.office ?? null, role, userOffice);
  
     const isAdmin = role === 'ADMIN';
-    const isAssignedManager = role === 'PROJECT_MANAGER' && task.quote.projectManagerId === user.id;
+    const isAssignedManager = role === 'PROJECT_OPERATIONS_OFFICER' && task.quote.projectManagerId === user.id;
     if (!isAdmin && !isAssignedManager) {
       throw new Error('Only the assigned project manager or admin can update tasks');
     }
@@ -1620,7 +1620,7 @@ export async function updateProjectTask(
     const isAdmin = role === 'ADMIN';
     // if quote exists, only the PM on that quote can edit
     const isAssignedManager =
-      quote && quote.projectManagerId && quote.projectManagerId === user.id && role === 'PROJECT_MANAGER';
+      quote && quote.projectManagerId && quote.projectManagerId === user.id && role === 'PROJECT_OPERATIONS_OFFICER';
 
     if (!isAdmin && !isAssignedManager) {
       throw new Error('Only the assigned project manager or admin can update tasks');

@@ -17,7 +17,7 @@ async function requireManager() {
   if (!user?.id) {
     throw new Error('Authentication required');
   }
-  if (user.role !== 'PROJECT_MANAGER' && user.role !== 'ADMIN') {
+  if (user.role !== 'PROJECT_OPERATIONS_OFFICER' && user.role !== 'ADMIN') {
     throw new Error('Only Project Managers or Admins can manage teams');
   }
   return user;
