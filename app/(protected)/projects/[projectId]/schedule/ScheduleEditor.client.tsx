@@ -81,6 +81,15 @@ export default function ScheduleEditor({
   const [projectStartDate, setProjectStartDate] = useState<string>(
     initItems[0]?.plannedStart || new Date().toISOString().slice(0, 10)
   );
+
+  const normalizeUnit = (u: string) => {
+    const v = (u ?? '').trim().toLowerCase();
+    if (v === 'm2' || v === 'sqm' || v === 'm^2') return 'm²';
+    if (v === 'm3' || v === 'cum' || v === 'm^3') return 'm³';
+    if (v === 'ft2' || v === 'ft^2') return 'ft²';
+    if (v === 'ft3' || v === 'ft^3') return 'ft³';
+    return u;
+  };
   const [gapMinutes, setGapMinutes] = useState<number>(30);
 
   // Modal state
@@ -378,8 +387,8 @@ export default function ScheduleEditor({
             <thead className="bg-muted/50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground w-1/3 min-w-[200px]">Task</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">Unit</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">Qty</th>
+                <th className="px-4 py-3 text-center font-medium text-muted-foreground w-24">Unit</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-28">Qty</th>
                 {!isDraft && (
                   <>
                     <th className="px-4 py-3 text-left font-medium text-muted-foreground w-32">Start (auto)</th>
@@ -388,7 +397,7 @@ export default function ScheduleEditor({
                   </>
                 )}
                 <th className="px-4 py-3 text-left font-medium text-muted-foreground w-auto whitespace-nowrap">Workers</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-full min-w-[150px]">Note</th>
+                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-56 min-w-[160px]">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y">
@@ -406,7 +415,9 @@ export default function ScheduleEditor({
                     <input
                         value={it.unit || ''}
                         onChange={(e) => updateField(i, 'unit', e.target.value)}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        onBlur={(e) => updateField(i, 'unit', normalizeUnit(e.target.value))}
+                        placeholder="Unit (e.g., r, m², m³)"
+                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-center font-medium tracking-wide shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </td>
                   <td className="px-4 py-2">
@@ -414,7 +425,7 @@ export default function ScheduleEditor({
                         type="number"
                         value={it.quantity ?? ''}
                         onChange={(e) => updateField(i, 'quantity', Number(e.target.value))}
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </td>
 
@@ -453,7 +464,8 @@ export default function ScheduleEditor({
                     <input
                       value={it.note ?? ''}
                       onChange={(e) => updateField(i, 'note', e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      placeholder="Note"
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </td>
                 </tr>
@@ -469,7 +481,7 @@ export default function ScheduleEditor({
             value={note ?? ''}
             onChange={(e) => setNote(e.target.value)}
             placeholder="Schedule note (optional)"
-            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           />
         </div>
         
