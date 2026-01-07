@@ -36,8 +36,8 @@ export default async function ProjectsPage({
         'ADMIN',
         'CLIENT',
         'VIEWER',
-        'PROJECT_MANAGER',
-        'SENIOR_PM',
+        'PROJECT_OPERATIONS_OFFICER',
+        'PROJECT_COORDINATOR',
         'PROCUREMENT',
         'SENIOR_PROCUREMENT',
         'SECURITY',
@@ -57,8 +57,8 @@ export default async function ProjectsPage({
   }
 
   const role = me.role as string;
-  const isSeniorPM = ['SENIOR_PM', 'ADMIN', 'GENERAL_MANAGER', 'MANAGING_DIRECTOR'].includes(role);
-  const isProjectManager = role === 'PROJECT_MANAGER';
+  const isSeniorPM = ['PROJECT_COORDINATOR', 'ADMIN', 'GENERAL_MANAGER', 'MANAGING_DIRECTOR'].includes(role);
+  const isProjectManager = role === 'PROJECT_OPERATIONS_OFFICER';
   const isSalesAccounts = role === 'SALES_ACCOUNTS';
 
   const { q: query, page: pageParam, tab, status, start_date } = await searchParams;
@@ -154,7 +154,7 @@ export default async function ProjectsPage({
     }),
     prisma.project.count({ where }),
     isSeniorPM
-      ? prisma.user.findMany({ where: { role: 'PROJECT_MANAGER' }, select: { id: true, name: true } })
+      ? prisma.user.findMany({ where: { role: 'PROJECT_OPERATIONS_OFFICER' }, select: { id: true, name: true } })
       : Promise.resolve([]),
   ]);
 

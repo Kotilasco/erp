@@ -26,7 +26,7 @@ export async function createDispatch(
   }
 ) {
   const user = await getCurrentUser();
-  assertRole(user?.role, ['PROJECT_MANAGER', 'ADMIN']);
+  assertRole(user?.role, ['PROJECT_OPERATIONS_OFFICER', 'ADMIN']);
 
   if (!Array.isArray(input.items) || input.items.length === 0) {
     throw new Error('Add at least one item to dispatch.');
@@ -112,7 +112,7 @@ export async function markDispatchReceived(
   input: { siteAck?: string | null }
 ) {
   const user = await getCurrentUser();
-  assertRole(user?.role, ['SECURITY', 'ADMIN', 'PROJECT_MANAGER']);
+  assertRole(user?.role, ['SECURITY', 'ADMIN', 'PROJECT_OPERATIONS_OFFICER']);
 
   await prisma.dispatch.update({
     where: { id: dispatchId },

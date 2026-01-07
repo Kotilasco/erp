@@ -139,7 +139,7 @@ export default async function MyQuotesPage() {
     title = 'Sales Pipeline';
 
     description = 'Quotations ready for your attention.';
-  } else if (role === 'PROJECT_MANAGER') {
+  } else if (role === 'PROJECT_OPERATIONS_OFFICER') {
     if (!currentUserId) {
       return <div className="p-6 text-sm text-gray-700">User identifier missing.</div>;
     }

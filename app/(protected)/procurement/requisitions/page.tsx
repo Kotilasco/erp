@@ -15,7 +15,7 @@ export default async function RequisitionsPage({
   if (!me) return <div className="p-6">Auth required.</div>;
 
   const { status, q } = await searchParams;
-  const isPM = me.role === 'PROJECT_MANAGER';
+  const isPM = me.role === 'PROJECT_OPERATIONS_OFFICER';
   
   // Build where clause
   const where: any = {};

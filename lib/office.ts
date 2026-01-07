@@ -1,6 +1,6 @@
 import type { UserRole } from '@/lib/workflow';
 
-const OFFICE_GATED_ROLES: ReadonlySet<UserRole> = new Set(['QS', 'SENIOR_QS', 'SALES', 'PROJECT_MANAGER', 'PROJECT_TEAM']);
+const OFFICE_GATED_ROLES: ReadonlySet<UserRole> = new Set(['QS', 'SENIOR_QS', 'SALES', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_TEAM']);
 
 export function rolesRequireOffice(role: UserRole): boolean {
   return OFFICE_GATED_ROLES.has(role);

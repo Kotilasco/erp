@@ -13,7 +13,7 @@ export default async function ProjectTeamPage({
   const me = await getCurrentUser();
   if (!me) return <div className="p-6">Authentication required.</div>;
   const role = (me as any).role as string | undefined;
-  const isPM = role === 'PROJECT_MANAGER' || role === 'ADMIN';
+  const isPM = role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN';
   const isTeam = role === 'PROJECT_TEAM' || isPM;
 
   const [project, templates, team, tasks] = await Promise.all([

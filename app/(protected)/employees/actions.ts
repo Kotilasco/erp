@@ -6,7 +6,7 @@ import bcrypt from 'bcrypt';
 import { revalidatePath } from 'next/cache';
 
 function assertCanManage(role: string | null | undefined) {
-  if (!['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_MANAGER'].includes(role || '')) {
+  if (!['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'].includes(role || '')) {
     throw new Error('Only Admin, Managing Director or Project Manager can manage employees');
   }
 }

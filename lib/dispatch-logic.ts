@@ -13,10 +13,10 @@ export type PendingDispatchItem = {
  * Using the logic from dashboard/page.tsx
  */
 export async function getPendingDispatchItems(userId: string, role: string): Promise<PendingDispatchItem[]> {
-    const isPM = role === 'PROJECT_MANAGER';
+    const isPM = role === 'PROJECT_OPERATIONS_OFFICER';
     // If user is PM, filter by assigned projects
     // If not PM (e.g. Admin/Security?), maybe show all?
-    // Logic from dashboard: role === 'PROJECT_MANAGER' ? { assignedToId: userId } : {}
+    // Logic from dashboard: role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: userId } : {}
     // But strictly, let's follow the args.
 
     const myProjects = await prisma.project.findMany({

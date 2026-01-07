@@ -117,7 +117,7 @@ export async function markAsPurchased(requisitionId: string) {
 export async function submitRequisition(requisitionId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
-  assertRoles(user.role as any, ['PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN']);
+  assertRoles(user.role as any, ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN']);
 
   const req = await prisma.procurementRequisition.update({
     where: { id: requisitionId },

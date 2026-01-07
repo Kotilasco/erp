@@ -70,8 +70,8 @@ export default async function ProjectRequisitionDetailPage({
   })();
 
   const currency = process.env.NEXT_PUBLIC_CURRENCY || 'USD';
-  const canSubmit = req.status === 'DRAFT' && ['PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(user.role as string);
-  const showEstPrice = user.role !== 'PROJECT_MANAGER';
+  const canSubmit = req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(user.role as string);
+  const showEstPrice = user.role !== 'PROJECT_OPERATIONS_OFFICER';
 
   return (
     <div className="space-y-6 p-6">

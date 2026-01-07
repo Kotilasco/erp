@@ -25,7 +25,7 @@ export default async function InventoryPage({
   }
   // if (!me) return <div className="p-6">Auth required.</div>;
   try {
-    assertRoles(me.role as any, ['PROJECT_MANAGER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN'] as any);
+    assertRoles(me.role as any, ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN'] as any);
   } catch {
     const r = String((me as any).role || '');
     if (['QS', 'SENIOR_QS', 'SALES'].includes(r)) redirect('/quotes');
@@ -133,7 +133,7 @@ async function addInventoryItem(formData: FormData) {
   const me = await getCurrentUser();
   if (!me) redirect('/inventory');
   try {
-    assertRoles((me as any).role, ['PROJECT_MANAGER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'] as any);
+    assertRoles((me as any).role, ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'] as any);
   } catch {
     const r = String((me as any).role || '');
     if (['QS', 'SENIOR_QS', 'SALES'].includes(r)) redirect('/quotes');

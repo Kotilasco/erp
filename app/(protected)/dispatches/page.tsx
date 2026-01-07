@@ -19,7 +19,7 @@ export default async function DispatchListPage({
 
   const { status } = await searchParams;
   const currentStatus = status || 'AWAITING';
-  const isProjectManager = user.role === 'PROJECT_MANAGER';
+  const isProjectManager = user.role === 'PROJECT_OPERATIONS_OFFICER';
 
   // State A: "Ready to Dispatch" (Calculated)
   let pendingItems: any[] = [];

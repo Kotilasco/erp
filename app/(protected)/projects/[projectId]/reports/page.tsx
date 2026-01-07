@@ -116,7 +116,7 @@ export default async function ProjectReportsPage({
           </p>
         </div>
         <div className="flex gap-2">
-          {['PM_CLERK', 'PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(user.role as string) && (
+          {['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role as string) && (
             <Link
               href={`/projects/${projectId}/daily-tasks`}
               className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"

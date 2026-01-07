@@ -32,12 +32,12 @@ export default async function DispatchDetail({
   });
   if (!dispatch) return <div className="p-6">Not found.</div>;
 
-  const canEdit = (role === 'PROJECT_MANAGER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
+  const canEdit = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
   const canApprove =
-    (role === 'PROJECT_MANAGER' || role === 'ADMIN') && dispatch.status === 'SUBMITTED';
+    (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'SUBMITTED';
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
   const isDriver = role === 'DRIVER' || role === 'ADMIN';
-  const canReturn = role === 'PROJECT_MANAGER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
+  const canReturn = role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
 
   // ---------- server actions ----------
   // Save table edits (PM)

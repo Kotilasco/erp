@@ -15,7 +15,7 @@ export default async function TaskReportPage({
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
-  if (!['PM_CLERK', 'PROJECT_MANAGER', 'SENIOR_PM', 'ADMIN'].includes(user.role as string)) {
+  if (!['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role as string)) {
     return <div className="p-6">Not authorized</div>;
   }
 

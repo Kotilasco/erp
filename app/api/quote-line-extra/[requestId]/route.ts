@@ -43,7 +43,7 @@ export async function PATCH(req: Request, ctx: RouteParams) {
         { status: 403 },
       );
     }
-    if (!requiresAdmin && !['SENIOR_PM', 'ADMIN'].includes(role)) {
+    if (!requiresAdmin && !['PROJECT_COORDINATOR', 'ADMIN'].includes(role)) {
       return NextResponse.json(
         { error: 'Only Senior PM or Admin can decide this request' },
         { status: 403 },

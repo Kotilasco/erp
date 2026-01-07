@@ -37,7 +37,7 @@ export async function GET() {
     QS: ['DRAFT'],
     SENIOR_QS: ['SUBMITTED_REVIEW'],
     SALES: ['REVIEWED', 'SENT_TO_SALES', 'NEGOTIATION'],
-    PROJECT_MANAGER: QUOTE_STATUSES.filter((status) => status !== 'FINALIZED' && status !== 'ARCHIVED'),
+    PROJECT_OPERATIONS_OFFICER: QUOTE_STATUSES.filter((status) => status !== 'FINALIZED' && status !== 'ARCHIVED'),
     PROJECT_TEAM: QUOTE_STATUSES.filter((status) => status !== 'FINALIZED' && status !== 'ARCHIVED'),
     ADMIN: ['SUBMITTED_REVIEW', 'REVIEWED', 'SENT_TO_SALES', 'NEGOTIATION'],
   } as Record<UserRole, QuoteStatus[]>;
@@ -57,12 +57,12 @@ export async function GET() {
   } else if (role === 'SALES') {
     where.status = { in: statusesFor.SALES };
     if (officeFilter) where.office = officeFilter;
-  } else if (role === 'PROJECT_MANAGER') {
+  } else if (role === 'PROJECT_OPERATIONS_OFFICER') {
     if (!currentUserId) {
       return NextResponse.json({ total: 0, items: [] });
     }
     where.projectManagerId = currentUserId;
-    where.status = { in: statusesFor.PROJECT_MANAGER };
+    where.status = { in: statusesFor.PROJECT_OPERATIONS_OFFICER };
   } else if (role === 'PROJECT_TEAM') {
     if (!currentUserId) {
       return NextResponse.json({ total: 0, items: [] });
