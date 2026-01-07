@@ -547,11 +547,6 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
     }
 
     setFlashMessage({ type: 'success', message: 'Project endorsed and created.' });
-    const project = await prisma.project.findUnique({ where: { quoteId: quote.id }, select: { id: true } });
-    if (project?.id) {
-      revalidatePath(`/dashboard`);
-      return redirect(`/dashboard`);
-    }
     revalidatePath(`/quotes/${quote.id}`);
     revalidatePath('/quotes');
     return redirect(`/quotes/${quote.id}`);

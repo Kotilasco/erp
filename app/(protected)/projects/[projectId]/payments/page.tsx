@@ -67,13 +67,25 @@ export default async function ProjectPaymentsPage({
 
   // Fallback: If no schedules (e.g. legacy project), try to infer from project fields
   if (!currentItem && schedules.length === 0) {
-    const dep = Number((project as any).depositMinor ?? 0);
-    const inst = Number((project as any).installmentMinor ?? 0);
-    if (dep > 0) {
-      dueBal = dep;
-      currentItem = { label: 'Deposit' }; // Dummy item for type detection
-    } else if (inst > 0) {
-      dueBal = inst;
+    const dep = BigInt((project as any).depositMinor ?? 0);
+    const inst = BigInt((project as any).installmentMinor ?? 0);
+    let paid = totalPaid;
+
+    if (dep > 0n) {
+      if (paid < dep) {
+        dueBal = Number(dep - paid);
+        currentItem = { label: 'Deposit' };
+      } else {
+        paid -= dep;
+        if (inst > 0n) {
+          const remainder = paid % inst;
+          dueBal = Number(inst - remainder);
+          currentItem = { label: 'Installment' };
+        }
+      }
+    } else if (inst > 0n) {
+      const remainder = paid % inst;
+      dueBal = Number(inst - remainder);
       currentItem = { label: 'Installment' };
     }
   }
