@@ -280,7 +280,7 @@ export default function ScheduleEditor({
     }
   }
 
-  async function handleExtract() {
+  const handleExtract = useCallback(async () => {
     setExtracting(true);
     setError(null);
     try {
@@ -289,13 +289,41 @@ export default function ScheduleEditor({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Failed to extract from quote');
-      window.location.reload();
+      
+      if (Array.isArray(json.items)) {
+         const newItems = json.items.map((i: any) => ({
+             id: i.id,
+             title: i.title,
+             description: i.description,
+             unit: i.unit,
+             quantity: i.quantity,
+             plannedStart: i.plannedStart? new Date(i.plannedStart).toISOString().slice(0, 10) : null,
+             plannedEnd: i.plannedEnd? new Date(i.plannedEnd).toISOString().slice(0, 10) : null,
+             employees: i.employees,
+             estHours: i.estHours,
+             note: i.note,
+             employeeIds: Array.isArray(i.assignees) ? i.assignees.map((a: any) => a.id) : [],
+         }));
+         // Apply auto-schedule logic to new items
+         // We need to call calculateSchedule but it depends on state. 
+         // Fortunately calculateSchedule is memoized with useCallback.
+         // However, calling it here might use stale state references if not careful.
+         // But calculateSchedule depends on projectStartDate etc which are in state.
+         // We can just setItems(newItems) and let the EXISTING useEffect for auto-scheduling kick in?
+         // The existing useEffect runs when 'items' changes.
+         // useEffect(() => { const newItems = calculateSchedule(items); ... }, [items])
+         
+         setItems(newItems); 
+      }
+
     } catch (err: any) {
       setError(err?.message || 'Failed to extract schedule');
     } finally {
       setExtracting(false);
     }
-  }
+  }, [projectId]);
+
+
 
   return (
     <div className="space-y-6">

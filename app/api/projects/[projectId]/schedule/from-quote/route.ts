@@ -11,7 +11,7 @@ export async function POST(_: Request, context: { params: Promise<{ projectId: s
     if (!(res as any).ok) {
       return NextResponse.json({ error: (res as any).error || 'Failed to extract' }, { status: 400 });
     }
-    return NextResponse.json({ ok: true, scheduleId: (res as any).scheduleId });
+    return NextResponse.json({ ok: true, scheduleId: (res as any).scheduleId, items: (res as any).items });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || 'Failed to extract' }, { status: 400 });
   }
