@@ -3274,12 +3274,17 @@ export async function createScheduleFromQuote(projectId: string) {
   await ensureProjectIsPaidFor(projectId);
 
   // Idempotent: ensure only one schedule per project
+  // Idempotent: ensure only one schedule per project
   const existing = await prisma.schedule.findFirst({
     where: { projectId },
-    select: { id: true },
+    include: { items: { include: { assignees: true } } },
   });
+  if (existing && existing.items.length > 0) {
+    return { ok: true, scheduleId: existing.id, items: existing.items };
+  }
+
   if (existing) {
-    return { ok: true, scheduleId: existing.id };
+    await prisma.schedule.delete({ where: { id: existing.id } });
   }
 
   const quote = await prisma.quote.findFirst({
@@ -3339,10 +3344,10 @@ export async function createScheduleFromQuote(projectId: string) {
   });
 
   revalidatePath(`/projects/${projectId}/schedule`);
-  redirect(`/projects/${projectId}/schedule`);
+  // redirect(`/projects/${projectId}/schedule`); // Removed to allow API usage without redirect
   revalidatePath(`/projects/${projectId}`);
 
-  return { ok: true, scheduleId: schedule.id };
+  return { ok: true, scheduleId: schedule.id, items: schedule.items };
 }
 
 // Save schedule (create or update)
