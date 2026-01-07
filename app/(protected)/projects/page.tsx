@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import { SearchInput } from '@/components/ui/search-input';
 import PaymentsTableToolbar from './components/PaymentsTableToolbar';
 import QuotePagination from '@/app/(protected)/quotes/components/QuotePagination';
-import { Prisma } from '@prisma/client';
+import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import { ProjectsFilter } from './components/ProjectsFilter';
 import { ProjectViewButton } from './components/ProjectViewButton';
 import { CalendarIcon } from '@heroicons/react/24/outline';
@@ -103,6 +103,18 @@ export default async function ProjectsPage({
   let where = baseWhere;
 
   // Specific Logic for tabs (mostly for Senior PM logic or Sales logic)
+  if (isSalesAccounts && currentTab === 'due_today') {
+    where = {
+      ...where,
+      paymentSchedules: {
+        some: {
+          status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+          dueOn: { lte: new Date() },
+        },
+      },
+    };
+  }
+
   // For standard "Projects" view, we use baseWhere.
   // We will keep the tab logic for Senior PM "Assignment" vs "Planning" if needed, 
   // but if user just wants "Projects" list, maybe we simplify?
@@ -190,7 +202,7 @@ export default async function ProjectsPage({
                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Start Date</th>
-                      <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>
+                      {!isProjectManager && <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>}
                       {!isSeniorPM && (
                         <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                       )}
@@ -200,20 +212,59 @@ export default async function ProjectsPage({
                 <tbody className="bg-white divide-y divide-gray-200">
                   {projects.length === 0 ? (
                     <tr>
-                      <td colSpan={isSalesAccounts || isSeniorPM ? 6 : 7} className="px-6 py-12 text-center text-sm text-gray-500">
+                      <td colSpan={isSalesAccounts || isSeniorPM || isProjectManager ? 6 : 7} className="px-6 py-12 text-center text-sm text-gray-500">
                         No projects found matching your criteria.
                       </td>
                     </tr>
                    ) : (
                      projects.map((project) => {
                        if (isSalesAccounts) {
-                         const schedules = (project as any).paymentSchedules || [];
-                         const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
-                         const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
-                         const typeLabel = nextPayment?.label || 'Installment';
-                         const dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
+                        const schedules = (project as any).paymentSchedules || [];
+                        let typeLabel = 'Installment';
+                        let dueAmount = 0n;
 
-                         return (
+                        if (schedules.length > 0) {
+                          const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
+                          const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
+                          typeLabel = nextPayment?.label || 'Installment';
+                          dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
+                        } else {
+                           // Fallback: Smart logic for projects without generated schedules
+                           const deposit = BigInt((project as any).depositMinor ?? 0);
+                           const installment = BigInt((project as any).installmentMinor ?? 0);
+                           
+                           // Calculate total paid from client payments
+                           let totalPaid = ((project as any).clientPayments || []).reduce(
+                               (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
+                               0n
+                           );
+
+                           if (deposit > 0n) {
+                               if (totalPaid < deposit) {
+                                   typeLabel = 'Deposit';
+                                   dueAmount = deposit - totalPaid;
+                               } else {
+                                   // Deposit fully paid
+                                   totalPaid -= deposit;
+                                   
+                                   if (installment > 0n) {
+                                       typeLabel = 'Installment';
+                                       // Calculate remaining due for the current installment cycle
+                                       const remainder = totalPaid % installment;
+                                       dueAmount = installment - remainder;
+                                   } else {
+                                       typeLabel = 'Completed';
+                                       dueAmount = 0n;
+                                   }
+                               }
+                           } else if (installment > 0n) {
+                               typeLabel = 'Installment';
+                               const remainder = totalPaid % installment;
+                               dueAmount = installment - remainder;
+                           }
+                        }
+
+                        return (
                            <tr key={project.id} className="hover:bg-gray-50 transition-colors">
                              <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
                                {project.projectNumber || project.id.slice(0, 8)}
@@ -259,6 +310,7 @@ export default async function ProjectsPage({
                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                              {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
                            </td>
+                           {!isProjectManager && (
                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {isSeniorPM ? (
                                <ProjectAssigner 
@@ -271,6 +323,7 @@ export default async function ProjectsPage({
                                project.assignedTo?.name || '-'
                             )}
                           </td>
+                          )}
                           {!isSeniorPM && (
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               {isProjectManager ? (
