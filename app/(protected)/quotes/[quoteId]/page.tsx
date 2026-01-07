@@ -548,8 +548,8 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
 
     setFlashMessage({ type: 'success', message: 'Project endorsed and created.' });
     revalidatePath(`/quotes/${quote.id}`);
-    revalidatePath('/quotes');
-    return redirect(`/quotes/${quote.id}`);
+    revalidatePath('/dashboard');
+    return redirect(`/dashboard`);
   };
 
   const assignProjectManagerAction = async (formData: FormData) => {
