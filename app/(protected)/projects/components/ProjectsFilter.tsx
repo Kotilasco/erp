@@ -10,6 +10,7 @@ export function ProjectsFilter() {
 
   const currentStatus = searchParams.get('status') || '';
   const currentDate = searchParams.get('start_date') || '';
+  const currentPageSize = searchParams.get('pageSize') || '20';
 
   const handleFilter = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams);
@@ -26,8 +27,32 @@ export function ProjectsFilter() {
     });
   };
 
+  const handlePageSize = (value: string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set('pageSize', value);
+    params.set('page', '1');
+    startTransition(() => {
+      router.push(`?${params.toString()}`);
+    });
+  };
+
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-col gap-1">
+        <label className="text-xs font-medium text-gray-500 uppercase">Show</label>
+        <select
+          value={currentPageSize}
+          onChange={(e) => handlePageSize(e.target.value)}
+          disabled={isPending}
+          className="h-9 w-20 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+        >
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+
       <div className="flex flex-col gap-1">
         <label className="text-xs font-medium text-gray-500 uppercase">Status</label>
         <select

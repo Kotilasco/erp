@@ -2,7 +2,7 @@
 
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 
 interface Props {
   total: number;
@@ -13,6 +13,7 @@ interface Props {
 export default function QuotePagination({ total, currentPage, pageSize }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const totalPages = Math.ceil(total / pageSize);
   
   if (total === 0) return null;
@@ -21,6 +22,13 @@ export default function QuotePagination({ total, currentPage, pageSize }: Props)
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', pageNumber.toString());
     return `${pathname}?${params.toString()}`;
+  };
+
+  const handlePageSizeChange = (newPageSize: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('pageSize', newPageSize);
+    params.set('page', '1'); // Reset to first page
+    router.push(`${pathname}?${params.toString()}`);
   };
 
   const start = (currentPage - 1) * pageSize + 1;
@@ -43,11 +51,24 @@ export default function QuotePagination({ total, currentPage, pageSize }: Props)
         </Link>
       </div>
       <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-        <div>
+        <div className="flex items-center">
           <p className="text-sm text-gray-700 dark:text-gray-300">
             Showing <span className="font-medium">{start}</span> to <span className="font-medium">{end}</span> of{' '}
             <span className="font-medium">{total}</span> results
           </p>
+          <div className="ml-4 flex items-center gap-2">
+             <label htmlFor="pageSize" className="text-sm text-gray-600">Show</label>
+             <select
+               id="pageSize"
+               value={pageSize}
+               onChange={(e) => handlePageSizeChange(e.target.value)}
+               className="h-8 rounded-md border-gray-300 text-sm focus:border-orange-500 focus:ring-orange-500 py-1 pl-2 pr-8"
+             >
+               {[10, 20, 50, 100].map(size => (
+                 <option key={size} value={size}>{size}</option>
+               ))}
+             </select>
+          </div>
         </div>
         <div>
           <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
