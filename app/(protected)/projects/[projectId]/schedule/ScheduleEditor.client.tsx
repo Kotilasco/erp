@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import EmployeeAssignmentModal from './EmployeeAssignmentModal';
-import { PlusIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CalendarIcon, DocumentTextIcon, CheckCircleIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 // Helper to infer task type (copied from server action logic)
 function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | null {
@@ -281,7 +281,11 @@ export default function ScheduleEditor({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Save failed');
-      window.location.reload();
+      if (activate && (schedule?.status === 'DRAFT' || !schedule)) {
+        window.location.href = '/dashboard';
+      } else {
+        window.location.reload();
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to save schedule');
     } finally {
@@ -339,41 +343,41 @@ export default function ScheduleEditor({
       {/* Top Controls */}
       <div className="flex flex-wrap items-end gap-6 bg-white p-4 rounded-lg border shadow-sm">
         <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Project Start Date</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Project Start Date</label>
             <input
                 type="date"
                 value={projectStartDate}
                 onChange={(e) => setProjectStartDate(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             />
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gap Between Tasks</label>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Gap Between Tasks</label>
             <div className="flex items-center gap-2">
                 <input
                     type="number"
                     min="0"
                     value={gapMinutes}
                     onChange={(e) => setGapMinutes(Number(e.target.value))}
-                    className="flex h-9 w-20 rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-8 w-20 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 />
-                <span className="text-sm text-gray-500">minutes</span>
+                <span className="text-xs text-gray-500">minutes</span>
             </div>
         </div>
         <div className="flex-1"></div>
         <div className="flex items-center gap-3">
              <button
                 onClick={addRow}
-                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-9 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-8 px-3 py-1"
             >
-                <PlusIcon className="h-4 w-4" />
+                <PlusIcon className="h-3 w-3" />
                 Add Row
             </button>
              {items.length === 0 && (
                 <button
                     onClick={handleExtract}
                     disabled={extracting}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+                    className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1"
                 >
                     {extracting ? 'Extracting...' : 'Extract from Quote'}
                 </button>
@@ -383,90 +387,112 @@ export default function ScheduleEditor({
 
       <div className="rounded-md border bg-white">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
+          <table className="w-full text-xs border-collapse">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-1/3 min-w-[200px]">Task</th>
-                <th className="px-4 py-3 text-center font-medium text-muted-foreground w-24">Unit</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-28">Qty</th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-1/3 min-w-[200px]">Task</th>
+                <th className="px-2 py-2 text-center font-medium text-muted-foreground w-24">Unit</th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-28">Qty</th>
                 {!isDraft && (
                   <>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-32">Start (auto)</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-32">End (auto)</th>
-                    <th className="px-4 py-3 text-left font-medium text-muted-foreground w-20">Hours</th>
+                    <th className="px-2 py-2 text-left font-medium text-muted-foreground w-32">Start (auto)</th>
+                    <th className="px-2 py-2 text-left font-medium text-muted-foreground w-32">End (auto)</th>
+                    <th className="px-2 py-2 text-left font-medium text-muted-foreground w-20">Hours</th>
                   </>
                 )}
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-auto whitespace-nowrap">Workers</th>
-                <th className="px-4 py-3 text-left font-medium text-muted-foreground w-56 min-w-[160px]">Note</th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-24 whitespace-nowrap">Workers</th>
+                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-auto min-w-[200px]">Note</th>
               </tr>
             </thead>
             <tbody className="divide-y">
               {items.map((it, i) => (
                 <tr key={it.id ?? i} className="hover:bg-muted/50 transition-colors">
-                  <td className="px-4 py-2">
+                  <td className="px-2 py-1">
                     <input
                       value={it.title}
                       onChange={(e) => updateField(i, 'title', e.target.value)}
-                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                       placeholder="Task name"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-2 py-1">
                     <input
                         value={it.unit || ''}
                         onChange={(e) => updateField(i, 'unit', e.target.value)}
                         onBlur={(e) => updateField(i, 'unit', normalizeUnit(e.target.value))}
                         placeholder="Unit (e.g., r, m², m³)"
-                        className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm text-center font-medium tracking-wide shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs text-center font-medium tracking-wide shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-2 py-1">
                     <input
                         type="number"
                         value={it.quantity ?? ''}
                         onChange={(e) => updateField(i, 'quantity', Number(e.target.value))}
-                        className="flex h-10 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     />
                   </td>
 
                   {!isDraft && (
                     <>
-                      <td className="px-4 py-2">
-                        <div className="flex h-9 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-500">
+                      <td className="px-2 py-1">
+                        <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 whitespace-nowrap overflow-hidden">
                           {it.plannedStart || '-'}
                         </div>
                       </td>
-                      <td className="px-4 py-2">
-                        <div className="flex h-9 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-500">
+                      <td className="px-2 py-1">
+                        <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 whitespace-nowrap overflow-hidden">
                           {it.plannedEnd || '-'}
                         </div>
                       </td>
-                      <td className="px-4 py-2">
-                         <div className="flex h-9 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-3 py-1 text-sm text-gray-500">
+                      <td className="px-2 py-1">
+                         <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500">
                           {it.estHours || '-'}
                         </div>
                       </td>
                     </>
                   )}
-                  <td className="px-4 py-2">
+                  <td className="px-2 py-1">
                     <button
                         type="button"
                         onClick={() => {
                             setActiveRowIndex(i);
                             setModalOpen(true);
                         }}
-                        className="inline-flex items-center justify-center rounded bg-orange-500 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                        className={cn(
+                          "inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2",
+                          (it.employeeIds && it.employeeIds.length > 0)
+                            ? "bg-barmlo-green hover:bg-barmlo-green/90 focus:ring-barmlo-green"
+                            : "bg-orange-500 hover:bg-orange-600 focus:ring-orange-500"
+                        )}
                     >
                         Select Employees
                     </button>
                   </td>
-                  <td className="px-4 py-2">
-                    <input
-                      value={it.note ?? ''}
-                      onChange={(e) => updateField(i, 'note', e.target.value)}
-                      placeholder="Note"
-                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
+                  <td className="px-2 py-1">
+                    <div className="relative">
+                      <PencilSquareIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        value={it.note ?? ''}
+                        onChange={(e) => updateField(i, 'note', e.target.value)}
+                        placeholder="Add note..."
+                        className={cn(
+                          "flex h-8 w-full rounded-md bg-white px-7 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1",
+                          (it.note && it.note.trim().length > 0)
+                            ? "border-emerald-300 focus-visible:ring-emerald-400 bg-emerald-50"
+                            : "border border-input focus-visible:ring-ring"
+                        )}
+                      />
+                      {it.note && it.note.trim().length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => updateField(i, 'note', '')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-700"
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -489,8 +515,9 @@ export default function ScheduleEditor({
             <button
             onClick={() => handleSave(false)}
             disabled={loading}
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
             >
+            <DocumentTextIcon className="h-4 w-4" />
             {loading ? 'Saving...' : 'Save Draft'}
             </button>
             
@@ -509,8 +536,9 @@ export default function ScheduleEditor({
                  <button
                  onClick={() => handleSave(true)} // Keep active
                  disabled={loading}
-                 className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+                 className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-barmlo-blue text-white shadow hover:bg-barmlo-blue/90 h-9 px-4 py-2"
                  >
+                 <CheckCircleIcon className="h-4 w-4" />
                  {loading ? 'Saving...' : 'Save Changes'}
                  </button>
             )}

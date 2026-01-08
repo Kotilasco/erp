@@ -6,7 +6,7 @@ export default function PrintHeader() {
     <div className="hidden print:flex flex-row justify-between items-start mb-8 border-b-2 border-barmlo-blue pb-4 w-full">
       <div className="flex flex-col items-center">
         <div className="relative w-48 h-24">
-            <Image src="/barmlo_logo.png" alt="Barmlo Logo" fill className="object-contain" />
+            <Image src="/barmlo_logo.jpeg" alt="Barmlo Logo" fill className="object-contain" />
         </div>
         <p className="text-barmlo-orange italic mt-1 font-medium text-sm">Your happiness is our pride</p>
       </div>
