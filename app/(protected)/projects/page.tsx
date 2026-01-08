@@ -108,8 +108,16 @@ export default async function ProjectsPage({
       ...where,
       paymentSchedules: {
         some: {
-          status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
-          dueOn: { lte: new Date() },
+          OR: [
+            {
+              status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+              dueOn: { lte: new Date() },
+            },
+            {
+              status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+              label: { contains: 'Deposit', mode: 'insensitive' },
+            },
+          ],
         },
       },
     };

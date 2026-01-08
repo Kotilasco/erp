@@ -21,7 +21,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center space-y-6">
           <div className="flex flex-col items-center gap-4">
             <div className="relative h-24 w-24 overflow-hidden rounded-full border-4 border-white/20 shadow-xl">
-               <Image src="/barmlo_logo.png" alt="Barmlo Logo" fill className="object-cover" />
+               <Image src="/barmlo_logo.jpeg" alt="Barmlo Logo" fill className="object-cover" />
             </div>
           </div>
           
