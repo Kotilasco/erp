@@ -1023,7 +1023,7 @@ async function PendingTasks({
                             href={paymentUrl}
                             className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
                           >
-                            Record Payment
+                            Receive Payment
                           </Link>
                         )}
                       </div>

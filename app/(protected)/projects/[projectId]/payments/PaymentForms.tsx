@@ -15,7 +15,7 @@ type Props = {
 };
 
 export default function PaymentForms({ projectId, initialAmount = 0, fixedType, customerName, onCancel, cancelHref }: Props) {
-  return <PaymentForm projectId={projectId} type={fixedType} initialAmount={initialAmount} onSuccess={onCancel || (() => {})} onCancel={onCancel} cancelHref={cancelHref} submitLabel="Record Payment" customerName={customerName} />;
+  return <PaymentForm projectId={projectId} type={fixedType} initialAmount={initialAmount} onSuccess={onCancel || (() => {})} onCancel={onCancel} cancelHref={cancelHref} submitLabel="Receive Payment" customerName={customerName} />;
 }
 
 function PaymentForm({ 

@@ -109,7 +109,7 @@ export default async function ProjectPaymentsPage({
               </svg>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Record Payment</h2>
+              <h2 className="text-xl font-bold text-gray-900">Receive Payment</h2>
               <p className="text-sm text-gray-600">{customerName}</p>
             </div>
           </div>

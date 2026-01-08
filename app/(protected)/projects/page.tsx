@@ -24,7 +24,7 @@ const DEFAULT_PAGE_SIZE = 20;
 export default async function ProjectsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; tab?: string; status?: string; start_date?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; tab?: string; status?: string; start_date?: string; pageSize?: string }>;
 }) {
   const me = await getCurrentUser();
   if (!me) return <div className="p-6 text-sm text-gray-600">Authentication required.</div>;
@@ -61,9 +61,9 @@ export default async function ProjectsPage({
   const isProjectManager = role === 'PROJECT_OPERATIONS_OFFICER';
   const isSalesAccounts = role === 'SALES_ACCOUNTS';
 
-  const { q: query, page: pageParam, tab, status, start_date } = await searchParams;
+  const { q: query, page: pageParam, tab, status, start_date, pageSize: pageSizeParam } = await searchParams;
   const currentPage = parseInt(pageParam || '1', 10);
-  const pageSize = DEFAULT_PAGE_SIZE;
+  const pageSize = parseInt(pageSizeParam || String(DEFAULT_PAGE_SIZE), 10);
   const skip = (currentPage - 1) * pageSize;
 
   let currentTab = 'active';
@@ -286,7 +286,7 @@ export default async function ProjectsPage({
                                  href={`/projects/${project.id}/payments`}
                                  className="inline-flex items-center justify-center rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
                                >
-                                 Record Payment
+                                 Receive Payment
                                </Link>
                              </td>
                            </tr>

@@ -119,7 +119,7 @@ export default async function PaymentsDashboard() {
 
       {firstProject && (
         <section className="rounded border bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold">Record Payment (quick)</h2>
+          <h2 className="text-lg font-semibold">Receive Payment (quick)</h2>
           <form
             action={async (fd) => {
               'use server';
