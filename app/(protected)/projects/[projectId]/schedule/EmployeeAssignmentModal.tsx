@@ -131,6 +131,14 @@ export default function EmployeeAssignmentModal({
             <div className="divide-y divide-gray-100">
               {categories.map((cat) => {
                 const list = grouped[cat] || [];
+                // Sort list: alreadyAssigned first, then alphabetically
+                list.sort((a, b) => {
+                    const aAssigned = assignedIds.includes(a.id);
+                    const bAssigned = assignedIds.includes(b.id);
+                    if (aAssigned && !bAssigned) return -1;
+                    if (!aAssigned && bAssigned) return 1;
+                    return a.givenName.localeCompare(b.givenName);
+                });
                 const open = openSections[cat];
                 return (
                   <div key={cat}>
