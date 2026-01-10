@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: 'The official Website for Bamlo Enterprise',
   metadataBase: new URL('https://barmlo.co.zw/index.php/services/agricultural-processing'),
 };
+import { Toaster } from 'sonner';
+
 export default function RootLayout({
   children,
 }: {
@@ -19,7 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${montserrat.className} antialiased`}>{children}</body>
+      <body className={`${montserrat.className} antialiased`}>
+        {children}
+        <Toaster richColors position="top-center" />
+      </body>
     </html>
   );
 }

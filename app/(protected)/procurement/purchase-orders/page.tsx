@@ -3,11 +3,28 @@ import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { projectApprovedSpendMinor } from '@/lib/projectTotals';
 
-export default async function AccountsPOList() {
+export default async function AccountsPOList({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const me = await getCurrentUser();
   if (!me) return <div className="p-6">Auth required.</div>;
 
+  const { status } = await searchParams;
+  const isSecurity = me.role === 'SECURITY';
+
+  const where: any = {};
+
+  if (isSecurity || status === 'INCOMING') {
+     // Show POs that are ready to receive
+     where.status = { in: ['SUBMITTED', 'APPROVED', 'PURCHASED', 'PARTIAL', 'ORDERED'] }; 
+  } else if (status && status !== 'ALL') {
+     where.status = status;
+  }
+
   const pos = await prisma.purchaseOrder.findMany({
+    where,
     orderBy: { createdAt: 'desc' },
     include: { requisition: { select: { projectId: true } }, items: true },
     take: 50,

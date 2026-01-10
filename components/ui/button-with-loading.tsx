@@ -1,6 +1,7 @@
 'use client';
 
 import { ButtonHTMLAttributes, forwardRef } from 'react';
+import { useFormStatus } from 'react-dom';
 import { Spinner } from './spinner';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +14,9 @@ interface ButtonWithLoadingProps extends ButtonHTMLAttributes<HTMLButtonElement>
 
 export const ButtonWithLoading = forwardRef<HTMLButtonElement, ButtonWithLoadingProps>(
   ({ loading = false, loadingText, variant = 'primary', size = 'md', className, children, disabled, ...props }, ref) => {
+    const { pending } = useFormStatus();
+    const isLoading = loading || pending;
+
     const baseClasses = 'inline-flex items-center justify-center gap-2 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
     
     const variantClasses = {
@@ -31,12 +35,13 @@ export const ButtonWithLoading = forwardRef<HTMLButtonElement, ButtonWithLoading
     return (
       <button
         ref={ref}
+        type={props.type || 'submit'} // Default to submit for form usage
         className={cn(baseClasses, variantClasses[variant], sizeClasses[size], className)}
-        disabled={disabled || loading}
+        disabled={disabled || isLoading}
         {...props}
       >
-        {loading && <Spinner size="sm" variant={variant === 'primary' || variant === 'danger' ? 'white' : 'primary'} />}
-        {loading && loadingText ? loadingText : children}
+        {isLoading && <Spinner size="sm" variant={variant === 'primary' || variant === 'danger' ? 'white' : 'primary'} />}
+        {isLoading && loadingText ? loadingText : children}
       </button>
     );
   }

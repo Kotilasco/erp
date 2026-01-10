@@ -4,38 +4,76 @@ import { getCurrentUser } from '@/lib/auth';
 import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
 import { DispatchFilter } from './DispatchFilter';
 import { getPendingDispatchItems } from '@/lib/dispatch-logic';
+import ApproveDispatchButton from '@/components/ApproveDispatchButton';
 
 export const runtime = 'nodejs';
 
 export default async function DispatchListPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; search?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) {
     return <div>Please log in</div>;
   }
 
-  const { status } = await searchParams;
-  const currentStatus = status || 'AWAITING';
+  const isSecurity = user.role === 'SECURITY';
+
+  // Default status logic
+  let defaultStatus = 'AWAITING';
+  if (isSecurity) defaultStatus = 'APPROVED';
+
+  const { status, search } = await searchParams;
+  const currentStatus = status || defaultStatus;
+  const searchTerm = search?.trim() || '';
   const isProjectManager = user.role === 'PROJECT_OPERATIONS_OFFICER';
+  const isDriver = user.role === 'DRIVER';
 
   // State A: "Ready to Dispatch" (Calculated)
   let pendingItems: any[] = [];
   // State B: "Dispatch Records" (DB)
   let dispatches: any[] = [];
 
-  if (currentStatus === 'AWAITING') {
-    pendingItems = await getPendingDispatchItems(user.id, user.role);
+  // Security cannot see "AWAITING" items (creation flow)
+  // Strictly enforce that Security ONLY sees APPROVED/DISPATCHED/DELIVERED
+  if (currentStatus === 'AWAITING' && !searchTerm && !isSecurity && !isDriver) {
+    pendingItems = await getPendingDispatchItems(user.id, user.role ?? 'USER');
   } else {
     const where: any = {};
+    if (searchTerm) {
+      where.OR = [
+        { project: { projectNumber: { contains: searchTerm, mode: 'insensitive' } } },
+        { project: { quote: { customer: { displayName: { contains: searchTerm, mode: 'insensitive' } } } } },
+        { project: { quote: { customer: { city: { contains: searchTerm, mode: 'insensitive' } } } } },
+      ];
+    }
     if (isProjectManager) {
       where.project = { assignedToId: user.id };
     }
 
-    if (currentStatus !== 'ALL') {
+    if (user.role === 'DRIVER') {
+      where.assignedToDriverId = user.id;
+      // Driver sees: DISPATCHED (Open) or DELIVERED (History)
+      // They should NOT see 'APPROVED' (waiting for security) or 'AWAITING'.
+      if (currentStatus === 'ALL') {
+          where.status = { in: ['DISPATCHED', 'DELIVERED'] };
+      }
+    }
+
+    if (currentStatus !== 'ALL' && currentStatus !== 'AWAITING') {
       where.status = currentStatus;
+    }
+
+    if (isSecurity) {
+       // Security can only see approved/dispatched/delivered.
+       // If they request ALL or an invalid status, fallback to the allowed list.
+       const allowedStats = ['APPROVED', 'DISPATCHED', 'DELIVERED'];
+       if (currentStatus === 'ALL' || !allowedStats.includes(currentStatus)) {
+          where.status = { in: allowedStats };
+       } else {
+          where.status = currentStatus;
+       }
     }
 
     dispatches = await prisma.dispatch.findMany({
@@ -60,7 +98,7 @@ export default async function DispatchListPage({
     <div className="space-y-6">
       <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
         <h1 className="text-xl font-semibold text-gray-900">Dispatches</h1>
-        <DispatchFilter />
+        <DispatchFilter role={user.role ?? undefined} />
       </div>
 
       <div className="rounded-md border bg-white">
@@ -108,10 +146,10 @@ export default async function DispatchListPage({
                       </td>
                       <td className="px-4 py-2 text-right">
                         <Link
-                          href={`/projects/${item.id}?tab=logistics`}
+                          href={`/projects/${item.id}/dispatches`}
                           className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                         >
-                          Create Dispatch
+                          View Dispatches
                         </Link>
                       </td>
                     </tr>
@@ -154,9 +192,19 @@ export default async function DispatchListPage({
                         >
                           Edit
                         </Link>
+                      ) : dispatch.status === 'SUBMITTED' && (user.role === 'PROJECT_OPERATIONS_OFFICER' || user.role === 'ADMIN') ? (
+                        <div className="flex items-center justify-end gap-2">
+                           <ApproveDispatchButton dispatchId={dispatch.id} />
+                           <Link
+                              href={`/dispatches/${dispatch.id}`}
+                              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                            >
+                              View
+                            </Link>
+                        </div>
                       ) : (
                         <Link
-                          href={`/dispatches/${dispatch.id}/receipt`}
+                          href={`/dispatches/${dispatch.id}`}
                           className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                         >
                           View

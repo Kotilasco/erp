@@ -2,6 +2,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { updateDispatchItems, submitDispatch, markDispatchItemHandedOut } from '@/app/(protected)/projects/actions';
+import SignGatePassButton from '@/components/SignGatePassButton';
 import LoadingButton from '@/components/LoadingButton';
 import { redirect } from 'next/navigation';
 
@@ -70,6 +71,14 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
       ) : (
         <div className="rounded border bg-white p-3">
           <TableContent dispatch={dispatch} canEdit={false} isSecurity={isSecurity} />
+          
+          {/* Security Action: Mark Sent (Gate Pass) - Added here as redirect goes to this page now */}
+          {role === 'SECURITY' && !dispatch.securitySignedAt && (
+             <div className="mt-8 flex justify-center">
+                <SignGatePassButton dispatchId={dispatch.id} />
+             </div>
+          )}
+
           {role === 'DRIVER' && dispatch.status === 'DISPATCHED' && !dispatch.driverSignedAt && (
             <div className="mt-4 flex justify-end">
               <DriverAcknowledgeButton dispatchId={dispatch.id} />
@@ -88,7 +97,12 @@ import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
 
 async function TableContent({ dispatch, canEdit, isSecurity }: { dispatch: any, canEdit: boolean, isSecurity: boolean }) {
   let drivers: any[] = [];
-  if (isSecurity && dispatch.status === 'DISPATCHED' && !dispatch.assignedToDriverId) {
+  
+  const showAssign = isSecurity && 
+    dispatch.status === 'DISPATCHED' && 
+    !dispatch.assignedToDriverId;
+
+  if (showAssign) {
       try { drivers = await getDrivers(); } catch (e) {}
   }
   
@@ -144,7 +158,7 @@ async function TableContent({ dispatch, canEdit, isSecurity }: { dispatch: any, 
       </tbody>
     </table>
     
-    {isSecurity && dispatch.status === 'DISPATCHED' && !dispatch.assignedToDriverId && (
+    {showAssign && (
         <div className="mt-4 p-4 bg-yellow-50 rounded border border-yellow-200">
             <h3 className="text-sm font-medium text-yellow-800 mb-2">Assign to Driver for Pickup</h3>
             <AssignDriverForm dispatchId={dispatch.id} drivers={drivers} />

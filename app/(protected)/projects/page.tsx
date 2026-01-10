@@ -40,7 +40,6 @@ export default async function ProjectsPage({
         'PROJECT_COORDINATOR',
         'PROCUREMENT',
         'SENIOR_PROCUREMENT',
-        'SECURITY',
         'ACCOUNTS',
         'CASHIER',
         'ACCOUNTING_OFFICER',

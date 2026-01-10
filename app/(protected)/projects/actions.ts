@@ -560,7 +560,7 @@ export async function createDispatchFromInventory(projectId: string) {
   await ensureProjectIsPlanned(projectId);
 
   const items = await prisma.inventoryItem.findMany({
-    where: { qty: { gt: 0 }, category: { not: 'MULTIPURPOSE' } },
+    where: { qty: { gt: 0 }, category: 'MULTIPURPOSE' },
     orderBy: [{ name: 'asc' }, { description: 'asc' }],
     select: { id: true, name: true, description: true, unit: true, qty: true },
   });
@@ -788,6 +788,53 @@ export async function returnMultipurposeItem(allocationId: string) {
     await tx.inventoryAllocation.update({ where: { id: allocationId }, data: { returnedAt: new Date() } });
   });
   return { ok: true } as const;
+}
+
+// wrapper for creating stock dispatch and redirecting
+export async function createAndRedirectStockDispatch(projectId: string) {
+  'use server';
+  const result = await createDispatchFromInventory(projectId);
+  if (result.ok) {
+    redirect(`/projects/${projectId}/dispatches/${result.dispatchId}`);
+  } else {
+    // If we fail (e.g. no items), we might want to throw or redirect with error.
+    // For now, throw so the error boundary catches it or UI shows it?
+    // In server actions, redirect is the way. Passing error back requires client component handling.
+    // We will throw, Next.js error boundary/toast might handle it if invoke via useFormState (but we use form action).
+    throw new Error(result.error);
+  }
+}
+
+export async function deleteDispatch(dispatchId: string) {
+  'use server';
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Auth required');
+  const role = assertRole(user.role);
+  if (!['PROJECT_OPERATIONS_OFFICER', 'ADMIN'].includes(role)) {
+    throw new Error('Unauthorized');
+  }
+
+  const dispatch = await prisma.dispatch.findUnique({
+    where: { id: dispatchId },
+    select: { id: true, status: true, projectId: true },
+  });
+
+  if (!dispatch) throw new Error('Dispatch not found');
+  if (dispatch.status !== 'DRAFT') {
+    throw new Error('Only DRAFT dispatches can be deleted');
+  }
+
+  await prisma.$transaction([
+    prisma.dispatchItem.deleteMany({
+      where: { dispatchId },
+    }),
+    prisma.dispatch.delete({
+      where: { id: dispatchId },
+    }),
+  ]);
+
+  revalidatePath(`/projects/${dispatch.projectId}`);
+  redirect(`/projects/${dispatch.projectId}?tab=dispatches`);
 }
 
 // --- Inventory Returns ---
@@ -1117,6 +1164,29 @@ export async function markItemUsedOut(itemId: string, qty?: number): Promise<Act
   });
 }
 
+export async function createDispatchFromAssets(projectId: string) {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, error: 'Auth required' } as const;
+
+  // Basic check for assets existence
+  const assetCount = await prisma.inventoryItem.count({
+    where: { category: 'ASSET', qty: { gt: 0 } }
+  });
+
+  if (assetCount === 0) {
+    return { ok: false, error: 'No assets available to dispatch' } as const;
+  }
+
+  try {
+    const dispatch = await prisma.dispatch.create({
+      data: { projectId, status: 'DRAFT', createdById: user.id ?? null },
+      select: { id: true },
+    });
+    return { ok: true, dispatchId: dispatch.id } as const;
+  } catch (e: any) {
+    return { ok: false, error: e?.message || 'Failed to create asset dispatch' } as const;
+  }
+}
 
 
 // app/(protected)/projects/actions.ts

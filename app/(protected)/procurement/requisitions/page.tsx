@@ -9,23 +9,44 @@ export const dynamic = 'force-dynamic';
 export default async function RequisitionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; tab?: string }>;
 }) {
   const me = await getCurrentUser();
   if (!me) return <div className="p-6">Auth required.</div>;
 
-  const { status, q } = await searchParams;
+  const { status, q, tab } = await searchParams;
   const isPM = me.role === 'PROJECT_OPERATIONS_OFFICER';
   
   // Build where clause
   const where: any = {};
+  let pageTitle = 'Requisitions';
   
   if (isPM) {
     where.project = { assignedToId: me.id };
   }
 
-  if (status && status !== 'ALL') {
-    where.status = status;
+  if (tab === 'funding_needed') {
+    pageTitle = 'Request Funding';
+    where.status = { in: ['SUBMITTED', 'APPROVED'] };
+    where.funding = { none: { status: { in: ['REQUESTED', 'APPROVED'] } } };
+  } else if (tab === 'action_purchases') {
+    pageTitle = 'Action Purchases';
+    where.status = { notIn: ['PURCHASED', 'COMPLETED', 'CLOSED'] };
+    where.funding = { some: { status: 'APPROVED' } };
+  } else {
+    // Standard filter
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+  }
+
+  // Apply Search on top of any tab filters
+  if (q) {
+    where.OR = [
+      { project: { projectNumber: { contains: q, mode: 'insensitive' } } },
+      { project: { quote: { number: { contains: q, mode: 'insensitive' } } } },
+      { project: { quote: { customer: { displayName: { contains: q, mode: 'insensitive' } } } } },
+    ];
   }
 
   // Date filter requested but not passed in params yet? User said "status and or date". 
@@ -57,18 +78,23 @@ export default async function RequisitionsPage({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-900">Requisitions</h1>
+        <h1 className="text-xl font-semibold text-gray-900">{pageTitle}</h1>
         
         {/* Simple Filter - could be extracted */}
         <div className="flex items-center gap-2">
-           <form className="flex gap-2">
+           <form className="flex gap-2 items-center">
+             <input type="hidden" name="tab" value={tab || ''} />
+             <input 
+                type="text" 
+                name="q" 
+                defaultValue={q || ''} 
+                placeholder="Search project, customer..." 
+                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm px-3 py-2 border"
+             />
              <select 
                name="status" 
                defaultValue={status || ''}
                className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-              //  onChange="this.form.submit()" // Server Component form submission needs JS or a client component wrapper.
-              //  For simplicity in this step, I'll just render it. 
-              //  Actually, better to use a client component filter like DispatchFilter.
              >
                <option value="">All Statuses</option>
                <option value="DRAFT">Draft</option>
@@ -77,7 +103,13 @@ export default async function RequisitionsPage({
                <option value="REJECTED">Rejected</option>
                <option value="COMPLETED">Completed</option>
              </select>
-             <button type="submit" className="px-3 py-1 bg-gray-100 rounded text-sm hover:bg-gray-200">Filter</button>
+             <button type="submit" className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium hover:bg-indigo-700 shadow-sm">Search</button>
+             {/* Clear button if q or status exists */}
+             {(q || (status && status !== 'ALL')) && (
+               <Link href={tab ? `/procurement/requisitions?tab=${tab}` : '/procurement/requisitions'} className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-200">
+                 Clear
+               </Link>
+             )}
            </form>
         </div>
       </div>

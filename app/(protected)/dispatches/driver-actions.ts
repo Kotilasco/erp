@@ -13,10 +13,22 @@ export async function acknowledgeDispatchByDriver(dispatchId: string) {
     await prisma.dispatch.update({
         where: { id: dispatchId },
         data: {
-            status: 'SENT', // Driver has it and is leaving
+            status: 'DELIVERED', // Driver has confirmed delivery/receipt
             driverById: user.id,
             driverSignedAt: new Date(),
-            departAt: new Date()
+            // departAt is for when they leave warehouse, maybe we need another action? 
+            // The user says "confirms receipt", implying the customer received it. 
+            // Or maybe "confirms receipt" means driver received it from security?
+            // "if driver confirms receipt what status does the dispatch get. it must be shown on the table"
+            // "any dispatch i actioned" (past tense) -> implies completed.
+            // If the previous step was "Security Signs" -> status became DISPATCHED. 
+            // So Driver acts on DISPATCHED items. 
+            // So this action `acknowledgeDispatchByDriver` is likely the "I delivered it" action.
+            // But wait, the function name is `acknowledgeDispatchByDriver`. 
+            // If security signs, it is `DISPATCHED`. 
+            // Ideally: Created -> Submitted -> Approved -> Dispatched (Security gives to Driver) -> Delivered (Driver gives to Customer).
+            // Let's assume this action is the final step.
+            departAt: new Date() // Keeping this for now, but semantically 'DELIVERED' fits better for "done"
         }
     });
 

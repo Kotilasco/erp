@@ -25,10 +25,10 @@ export default async function ProjectDispatchesPage({ params }: { params: { proj
   if (!project) return notFound();
 
   // Role checks
-  const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role);
+  const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role ?? '');
   // Safely handle schedules whether it is 1-1 or 1-many
   const schedule = project.schedules;
-  const opsLocked = project.status === 'DEPOSIT_PENDING' || project.status === 'QUOTE_ACCEPTED' || !schedule;
+  const opsLocked = project.status === 'DEPOSIT_PENDING' || !schedule;
 
   // Calculate dispatchable items (logic from main page)
   // 1. Get all approved requisition items
@@ -74,6 +74,7 @@ export default async function ProjectDispatchesPage({ params }: { params: { proj
            <h1 className="text-2xl font-bold text-gray-900">Dispatches</h1>
            <p className="text-sm text-gray-500">Manage material movements.</p>
         </div>
+
         <div className="flex gap-2">
             <Link
                 href={`/projects/${projectId}`}
@@ -81,62 +82,57 @@ export default async function ProjectDispatchesPage({ params }: { params: { proj
             >
                 Back to Dashboard
             </Link>
-             {/* Create Dispatch Toggle */}
+             
+             {/* Floating Action Buttons for Dispatch Creation */}
              {isPM && !opsLocked && (
-                <details className="group relative">
-                    <summary className="list-none cursor-pointer rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                    Create Dispatch
-                    </summary>
-                    <div className="absolute right-0 top-12 z-10 w-[600px] overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/5 p-6">
-                    <h3 className="mb-4 text-lg font-semibold text-gray-900">Create New Dispatch</h3>
-                    
-                        <div className="space-y-8">
-                        <div>
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">From Verified Inventory (Requisitions)</h4>
-                            <DispatchTableClient items={dispatchableItems} projectId={project.id} />
-                        </div>
-                        
-                        <div className="border-t pt-4">
-                            <h4 className="text-sm font-medium text-gray-700 mb-2">From Multipurpose Inventory</h4>
-                            {multipurposeInventory.length > 0 ? (
-                            <form
-                                action={async (fd) => {
-                                'use server';
-                                const all = await prisma.inventoryItem.findMany({ where: { qty: { gt: 0 }, category: 'MULTIPURPOSE' }, select: { id: true, qty: true } });
-                                const items: { inventoryItemId: string; qty: number }[] = [];
-                                for (const row of all) {
-                                    const raw = fd.get(`mpqty-${row.id}`);
-                                    if (!raw) continue;
-                                    const qty = Number(raw);
-                                    if (Number.isFinite(qty) && qty > 0) items.push({ inventoryItemId: row.id, qty });
-                                }
-                                if (items.length === 0) throw new Error('Enter at least one multipurpose qty.');
-                                const res = await createDispatchFromSelectedInventory(projectId, items);
-                                if (!(res as any).ok) throw new Error((res as any).error || 'Failed to create dispatch');
-                                redirect(`/projects/${projectId}/dispatches/${(res as any).dispatchId}`);
-                                }}
-                            >
-                                <div className="max-h-60 overflow-y-auto border rounded-md mb-4">
-                                    <table className="w-full text-sm">
-                                    <thead className="bg-gray-50 sticky top-0"><tr><th className="px-2 py-1">Item</th><th className="px-2 py-1">Stock</th><th className="px-2 py-1">Qty</th></tr></thead>
-                                    <tbody>
-                                        {multipurposeInventory.map(it => (
-                                        <tr key={it.id} className="border-t">
-                                            <td className="px-2 py-1">{it.name}</td>
-                                            <td className="px-2 py-1 text-right">{Number(it.qty).toLocaleString()}</td>
-                                            <td className="px-2 py-1"><input name={`mpqty-${it.id}`} type="number" className="w-16 rounded border text-right" /></td>
-                                        </tr>
-                                        ))}
-                                    </tbody>
-                                    </table>
-                                </div>
-                                <SubmitButton className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500">Dispatch Selected</SubmitButton>
-                            </form>
-                            ) : <p className="text-sm text-gray-500">No multipurpose items in stock.</p>}
-                        </div>
-                        </div>
-                    </div>
-                </details>
+                <div className="flex gap-2">
+                    {/* 1. Standard Dispatch (Requisitions) */}
+                    {(dispatchableItems.length > 0) && (
+                        <form action={async () => {
+                            'use server';
+                            const { createAndRedirectDispatch } = await import('@/app/(protected)/dashboard/actions');
+                            await createAndRedirectDispatch(projectId);
+                        }}>
+                             <SubmitButton 
+                                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
+                             >
+                                Create Dispatch
+                             </SubmitButton>
+                        </form>
+                    )}
+
+                    {/* 2. Stock Dispatch */}
+                    {(multipurposeInventory.length > 0) && (
+                        <form action={async () => {
+                            'use server';
+                            const { createAndRedirectStockDispatch } = await import('@/app/(protected)/projects/actions');
+                            await createAndRedirectStockDispatch(projectId);
+                        }}>
+                            <SubmitButton className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-cyan-700">
+                                Dispatch from Stock
+                            </SubmitButton>
+                        </form>
+                    )}
+
+                    {/* 2. Assets Dispatch */}
+                     {/* We need to check if assets exist. We can do a quick check here or just assume button validity 
+                         if we want strictly "active if items in assets".
+                         Let's do a server-side check. 
+                     */}
+                     {(await prisma.inventoryItem.count({ where: { category: 'ASSET', qty: { gt: 0 } } })) > 0 && (
+                          <form action={async () => {
+                            'use server';
+                            const { createDispatchFromAssets } = await import('@/app/(protected)/projects/actions');
+                            const res = await createDispatchFromAssets(projectId);
+                             if (!res.ok) throw new Error(res.error);
+                             redirect(`/projects/${projectId}/dispatches/${res.dispatchId}`);
+                        }}>
+                             <SubmitButton className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700">
+                                Create Dispatch from Assets
+                             </SubmitButton>
+                        </form>
+                     )}
+                </div>
             )}
         </div>
       </div>
