@@ -52,7 +52,7 @@ export default function LoadingButton({
       )}
     >
       {isPending && (
-        <span className='h-3 w-3 animate-spin rounded-full border-2 border-white/70 border-t-transparent' />
+        <span className='h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent opacity-70' />
       )}
       <span>{isPending && loadingText ? loadingText : children}</span>
     </button>

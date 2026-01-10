@@ -12,6 +12,7 @@ import Money from '@/components/Money';
 import ViewQuoteButton from '@/components/ViewQuoteButton';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { ProjectAssigner } from '@/app/(protected)/projects/project-assigner';
+import { createAndRedirectDispatch } from './actions';
 
 async function PendingTasks({
   userId,
@@ -218,13 +219,10 @@ async function PendingTasks({
   let securityIncoming: any[] = [];
 
   if (roles.SECURITY) {
-    // 1. Outgoing Dispatches (Gate Pass) - Dispatch created but not signed by security
+    // 1. Outgoing Dispatches (Gate Pass) - Show all APPROVED dispatches (Active Outgoing)
     securityOutgoing = await prisma.dispatch.findMany({
       where: {
-        securitySignedAt: null,
-        status: { not: 'DRAFT' }, // Assuming PM moves it out of DRAFT or we just show all non-completed
-        // actually, usually PM creates it. If status default is DRAFT, maybe we only show if it's explicitly 'READY' or we show all?
-        // Let's assume for now we show all Dispatches that are created (exist) where security hasn't signed.
+        status: 'APPROVED', 
       },
       include: {
         project: {
@@ -378,9 +376,13 @@ async function PendingTasks({
     });
   }
 
-  // Logic for Procurement (Pending Requisitions)
+  // Logic for Procurement (Counts + Pending Tasks)
   let procurementTasks: any[] = [];
+  let fundingNeededCount = 0;
+  let actionPurchasesCount = 0;
+
   if (roles.PROCUREMENT) {
+    // 1. Pending Tasks List (Existing Logic: Submitted/Approved without pending funding)
     procurementTasks = await prisma.procurementRequisition.findMany({
       where: {
         status: { in: ['SUBMITTED', 'APPROVED'] },
@@ -400,7 +402,204 @@ async function PendingTasks({
         items: { select: { id: true } }, // needed for count
       },
       orderBy: { createdAt: 'desc' },
+      take: 50, // Limit for list
     });
+
+    // 2. Count: Request Funding (Submitted/Approved internally, but no active funding request)
+    fundingNeededCount = await prisma.procurementRequisition.count({
+      where: {
+        status: { in: ['SUBMITTED', 'APPROVED'] },
+        funding: { 
+            none: { 
+                status: { in: ['REQUESTED', 'APPROVED'] } 
+            } 
+        },
+      },
+    });
+
+    // 3. Count: Action Purchases (Funding Approved, but not yet fully PURCHASED/COMPLETED)
+    actionPurchasesCount = await prisma.procurementRequisition.count({
+      where: {
+        status: { notIn: ['PURCHASED', 'COMPLETED', 'CLOSED'] },
+        funding: { some: { status: 'APPROVED' } },
+      },
+    });
+  }
+/* ... sort logic ... */
+/* ... existing return ... */
+
+  // For Procurement, show Button Grid
+  if (role === 'PROCUREMENT') {
+    return (
+      <div className="flex flex-col items-center justify-center py-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
+          <Link
+            href="/procurement/requisitions?tab=funding_needed"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Request Funding
+            {fundingNeededCount > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600">
+                {fundingNeededCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/procurement/requisitions?tab=action_purchases"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-emerald-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-emerald-700 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Action Purchases
+            {actionPurchasesCount > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-emerald-600">
+                {actionPurchasesCount}
+              </span>
+            )}
+          </Link>
+          <Link
+            href="/procurement/purchase-orders"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Purchase Orders
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Logic for Security (Button Grid)
+  if (role === 'SECURITY') {
+    const outgoingCount = securityOutgoing.length;
+    const incomingCount = securityIncoming.length;
+
+    return (
+      <div className="flex flex-col items-center justify-center py-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
+          <Link
+            href="/dispatches?status=APPROVED"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            Outgoing Dispatches
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+                {outgoingCount}
+              </span>
+          </Link>
+
+          <Link
+            href="/procurement/purchase-orders?status=INCOMING" 
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Incoming Deliveries
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600">
+                {incomingCount}
+              </span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Logic for Driver (Button Grid)
+  if (role === 'DRIVER') {
+    return (
+      <div className="flex flex-col items-center justify-center py-6 mb-8">
+        <div className="grid grid-cols-1 w-full max-w-md">
+          <Link
+            href="/dispatches?status=ALL"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            My Pickups
+            {driverTasks.length > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-blue-600">
+                {driverTasks.length}
+              </span>
+            )}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Logic for Accounts (Button Grid)
+  // SALES_ACCOUNTS excluded as per user request (they keep the original view)
+  const isAccounts = ['ACCOUNTS', 'ACCOUNTING_OFFICER'].includes(role);
+  if (isAccounts) {
+    const pendingFundingCount = await prisma.fundingRequest.count({
+        where: { status: { in: ['REQUESTED', 'PENDING'] } }
+    });
+    
+    return (
+      <div className="flex flex-col items-center justify-center py-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
+          <Link
+            href="/accounts"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            Funding Requests
+            {pendingFundingCount > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600">
+                {pendingFundingCount}
+              </span>
+            )}
+          </Link>
+
+          <Link
+            href="/accounts"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-emerald-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-emerald-700 hover:shadow-xl hover:-translate-y-1"
+          >
+           <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Client Payments
+          </Link>
+
+          <Link
+            href="/projects"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+            All Projects
+          </Link>
+
+          <Link
+            href="/accounts?tab=receipts"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-amber-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-amber-600 hover:shadow-xl hover:-translate-y-1"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Acknowledge Receipts
+            {pendingGrnPos.length > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-amber-600">
+                {pendingGrnPos.length}
+              </span>
+            )}
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   pendingGrnPos.sort((a, b) => {
@@ -520,6 +719,11 @@ async function PendingTasks({
               />
             </svg>
             Dispatches
+            {dispatchTasks.length > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-blue-600">
+                {dispatchTasks.length}
+              </span>
+            )}
           </Link>
         </div>
       </div>
@@ -577,6 +781,11 @@ async function PendingTasks({
                 />
               </svg>
               Dispatches
+              {dispatchTasks.length > 0 && (
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-blue-600">
+                  {dispatchTasks.length}
+                </span>
+              )}
             </Link>
           </div>
         </div>
@@ -617,11 +826,11 @@ async function PendingTasks({
                             DISPATCH
                           </span>
                           <Link
-                            href={`/projects/${data.id}?tab=logistics`}
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-barmlo-blue hover:bg-barmlo-blue/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-barmlo-blue"
-                          >
-                            Create Dispatch
-                          </Link>
+                  href={`/projects/${data.id}/dispatches`}
+                  className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                >
+                  View Dispatches
+                </Link>
                         </div>
                       </div>
                     </div>
@@ -1586,6 +1795,36 @@ export default async function DashboardPage({
         </div>
       ),
     });
+  }
+
+  // For PM, Procurement, Security, and DRIVER, show ONLY the Button Grid (handled by PendingTasks)
+  if (
+    user.role === 'PROJECT_OPERATIONS_OFFICER' ||
+    user.role === 'PROCUREMENT' ||
+    user.role === 'ACCOUNTS' ||
+    user.role === 'ACCOUNTING_OFFICER' ||
+    user.role === 'SECURITY' ||
+    user.role === 'DRIVER'
+  ) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Welcome back, {user.name}. Here&apos;s what&apos;s happening today.
+          </p>
+        </div>
+
+        <Suspense fallback={<div>Loading actions...</div>}>
+          <PendingTasks
+            userId={user.id}
+            role={user.role}
+            endDate={endDate}
+            currentPage={currentPage}
+          />
+        </Suspense>
+      </div>
+    );
   }
 
   return (

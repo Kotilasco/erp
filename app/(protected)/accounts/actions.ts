@@ -161,7 +161,7 @@ export async function approveFunding(fundingId: string, approvedAmountMajor?: nu
 
   revalidatePath('/dashboard');
   revalidatePath('/accounts');
-  redirect('/dashboard');
+  return { success: true };
 }
 
 export async function rejectFunding(fundingId: string, reason: string) {
@@ -186,7 +186,7 @@ export async function rejectFunding(fundingId: string, reason: string) {
 
   revalidatePath('/dashboard');
   revalidatePath('/accounts');
-  redirect('/dashboard');
+  return { success: true };
 }
 
 // --- Purchase Orders: Approve/Reject (Accounts)

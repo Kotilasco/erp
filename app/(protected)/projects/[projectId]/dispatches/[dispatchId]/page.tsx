@@ -12,6 +12,7 @@ import LoadingButton from '@/components/LoadingButton';
 import { revalidatePath } from 'next/cache';
 import { markItemHandedOut, returnLineItem } from '../action';
 import { redirect } from 'next/navigation';
+import ApproveDispatchButton from '@/components/ApproveDispatchButton';
 import { use } from 'react';
 
 export const runtime = 'nodejs';
@@ -37,7 +38,7 @@ export default async function DispatchDetail({
     (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'SUBMITTED';
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
   const isDriver = role === 'DRIVER' || role === 'ADMIN';
-  const canReturn = role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
+  const canReturn = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN') && dispatch.status === 'DELIVERED';
 
   // ---------- server actions ----------
   // Save table edits (PM)
@@ -485,15 +486,7 @@ export default async function DispatchDetail({
 
       <div className="flex flex-wrap gap-3 text-sm">
         {canApprove && dispatch.status === 'SUBMITTED' && (
-          <form
-            action={async () => {
-              'use server';
-              await approveDispatch(dispatch.id);
-              revalidatePath(`/dispatches/${dispatchId}`);
-            }}
-          >
-            <LoadingButton type="submit">Approve</LoadingButton>
-          </form>
+           <ApproveDispatchButton dispatchId={dispatch.id} />
         )}
         {/*  {['APPROVED', 'OUT_FOR_DELIVERY'].includes(dispatch.status) && (
           <form
@@ -509,15 +502,31 @@ export default async function DispatchDetail({
       </div>
 
       {canEdit && (
-        <form id="editForm" action={saveAction} className="mt-4 flex gap-2">
-          <LoadingButton type="submit">Save changes</LoadingButton>
-          <LoadingButton
-            formAction={submitAction}
-            className="bg-indigo-600 text-white hover:bg-indigo-700"
-          >
-            Submit for Security
-          </LoadingButton>
-        </form>
+        <div className="mt-4 flex flex-wrap gap-2">
+            <form id="editForm" action={saveAction} className="flex gap-2">
+            <LoadingButton type="submit">Save changes</LoadingButton>
+            <LoadingButton
+                formAction={submitAction}
+                className="bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+                Submit for Security
+            </LoadingButton>
+            </form>
+            
+            <form action={async () => {
+                'use server';
+                const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
+                await deleteDispatch(dispatchId);
+            }}>
+                 <LoadingButton 
+                    type="submit" 
+                    className="bg-red-600 text-white hover:bg-red-700"
+                    loadingText="Deleting..."
+                 >
+                    Delete Draft
+                 </LoadingButton>
+            </form>
+        </div>
       )}
 
       {canReturn && (

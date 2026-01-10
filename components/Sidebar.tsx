@@ -3,11 +3,11 @@ import { SidebarNavigation } from './SidebarNavigation';
 
 const BASE: { label:string; href:string; icon:string; roles?: string[] }[] = [
   { label: 'My Quotes', href: '/quotes', icon: 'quote', roles: ['QS','SENIOR_QS','SALES','ADMIN'] },
-  { label: 'Projects', href: '/projects', icon: 'folder', roles: ['ADMIN','CLIENT','VIEWER','PROJECT_OPERATIONS_OFFICER','PROCUREMENT','SECURITY','ACCOUNTS','CASHIER','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ACCOUNTING_CLERK','DRIVER','GENERAL_MANAGER','MANAGING_DIRECTOR'] },
+  { label: 'Projects', href: '/projects', icon: 'folder', roles: ['ADMIN','CLIENT','VIEWER','PROJECT_OPERATIONS_OFFICER','PROCUREMENT','SECURITY','ACCOUNTS','CASHIER','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ACCOUNTING_CLERK','GENERAL_MANAGER','MANAGING_DIRECTOR'] },
   { label: 'New Quote', href: '/quotes/new', icon: 'quote', roles: ['QS','SENIOR_QS','ADMIN'] },
   { label: 'Requisitions', href: '/procurement/requisitions', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER','PROJECT_COORDINATOR','PROCUREMENT','ADMIN'] },
   { label: 'Purchase Orders', href: '/accounts/po', icon: 'list', roles: ['ACCOUNTS','ACCOUNTING_CLERK','ACCOUNTING_OFFICER','ADMIN'] },
-  { label: 'Dispatches', href: '/dispatches', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER','SECURITY','ADMIN'] },
+  { label: 'Dispatches', href: '/dispatches', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER','SECURITY','ADMIN','DRIVER'] },
   { label: 'Funds', href: '/funds', icon: 'bank', roles: ['ACCOUNTS','ACCOUNTING_CLERK','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ADMIN'] },
   { label: 'Inventory', href: '/inventory', icon: 'boxes', roles: ['PROCUREMENT','PROJECT_OPERATIONS_OFFICER','ADMIN'] },
   { label: 'Audit Logs', href: '/audit-logs', icon: 'list', roles: ['ADMIN'] },
@@ -17,7 +17,11 @@ const BASE: { label:string; href:string; icon:string; roles?: string[] }[] = [
 export default async function Sidebar() {
   const me = await getCurrentUser();
   const role = (me?.role ?? 'VIEWER') as string;
-  const pages = BASE.filter(p => !p.roles || p.roles.includes(role));
+  let pages = BASE.filter(p => !p.roles || p.roles.includes(role));
+
+  if (role === 'DRIVER') {
+    pages = pages.map(p => p.label === 'Dispatches' ? { ...p, label: 'My Pickups' } : p);
+  }
 
   return <SidebarNavigation links={pages} />;
 }
