@@ -239,11 +239,6 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     orderBy: { createdAt: 'desc' },
   });
 
-  const purchaseOrders = await prisma.purchaseOrder.findMany({
-    where: { projectId: projectId },
-    select: { id: true, requisitionId: true, status: true, vendor: true },
-  });
-
   // Sort funding arrays client-side
   requisitions.forEach((r) => {
     const funding = (r as any).funding;
@@ -255,82 +250,6 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
       );
     }
   });
-
-
-
-  // Compute eligible requisitions and remaining-by-item for dispatch UI
-  const eligibleReqs = project.requisitions.filter((r: any) =>
-    ['APPROVED', 'PARTIAL', 'PURCHASED', 'COMPLETED'].includes(r.status)
-  ) as any[];
-
-  // Only fetch verified GRN items (which means received and accepted into inventory)
-  const reqIds = eligibleReqs.map((r) => r.id);
-  const verifiedGrnItems =
-    reqIds.length > 0
-      ? await prisma.goodsReceivedNoteItem.findMany({
-          where: {
-            grn: {
-              status: 'VERIFIED',
-              purchaseOrder: { projectId: project.id },
-            },
-            poItem: {
-              requisitionItem: { requisitionId: { in: reqIds } }
-            },
-          },
-          select: {
-            qtyAccepted: true,
-            poItem: { select: { requisitionItemId: true } },
-          },
-        })
-      : [];
-  
-  const dispatched = await prisma.dispatchItem.groupBy({
-    by: ['requisitionItemId'],
-    where: { requisitionItemId: { not: null }, dispatch: { projectId: project.id } },
-    _sum: { qty: true } as any,
-  });
-
-  const verifiedByItem = new Map<string, number>();
-  verifiedGrnItems.forEach((item) => {
-    const rid = item.poItem?.requisitionItemId;
-    if (rid) {
-      verifiedByItem.set(rid, (verifiedByItem.get(rid) || 0) + item.qtyAccepted);
-    }
-  });
-  
-  const dispatchedByItem = new Map<string, number>();
-  dispatched.forEach((d: any) => d.requisitionItemId && dispatchedByItem.set(d.requisitionItemId, Number(d._sum.qty ?? 0)));
-  
-  const remainingByItem = new Map<string, number>();
-  eligibleReqs.forEach((req) => {
-    if (req.items) {
-      req.items.forEach((it: any) => {
-        const verified = verifiedByItem.get(it.id) ?? 0;
-        const sent = dispatchedByItem.get(it.id) ?? 0;
-        remainingByItem.set(it.id, Math.max(0, verified - sent));
-      });
-    }
-  });
-
-  // Filter requisitions that have nothing remaining
-  // const dispatchableReqs = eligibleReqs.filter((req) =>
-  //   (req.items || []).some((it: any) => (remainingByItem.get(it.id) ?? 0) > 0)
-  // );
-
-  const dispatchableItems = eligibleReqs.flatMap((req) =>
-    (req.items || []).map((it: any) => {
-      const rem = remainingByItem.get(it.id) ?? 0;
-      if (rem <= 0) return null;
-      return {
-        id: it.id,
-        requisitionItemId: it.id,
-        description: it.description,
-        unit: it.unit || '-',
-        qtyAvailable: rem,
-        sourceLabel: `Req #${req.id.slice(-6)}`,
-      };
-    })
-  ).filter((x) => x !== null) as any[];
 
   const isPM = role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN';
   const isProc = role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
@@ -379,12 +298,6 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   const totalPaid = schedule.reduce((a, s) => a + BigInt(s.paidMinor ?? 0), 0n);
   const bal = totalDue - totalPaid;
   
-  const multipurposeInventory = await prisma.inventoryItem.findMany({
-    where: { category: 'MULTIPURPOSE', qty: { gt: 0 } },
-    orderBy: [{ name: 'asc' }, { description: 'asc' }],
-    select: { id: true, name: true, description: true, unit: true, qty: true },
-  });
-
   // Financial Snapshot Logic
   const firstFunding = (
     Array.isArray((project as any).requisitions)
@@ -398,567 +311,241 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
   });
   const next = nextDueDate((project as any).installmentDueDay ?? null, project.commenceOn);
 
-  return (
-    <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gradient-to-r from-blue-50 to-orange-50 p-6 rounded-lg border border-orange-200 shadow-sm">
-        <div className="flex items-start gap-4">
-          {/* Logo Placeholder - User can add actual image here */}
-          {/* <div className="h-12 w-12 bg-slate-900 rounded-lg flex items-center justify-center text-white font-bold">B</div> */}
-          
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-2xl font-bold text-slate-900">
-                {project.quote?.customer?.displayName || 'Project'}
-                {project.quote?.customer?.city ? ` - ${project.quote.customer.city}` : ''}
-              </h1>
-              <WorkflowStatusBadge status={project.status} />
+    return (
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+      {/* Premium Header */}
+      <header className="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-900 pb-12 pt-10 text-white shadow-xl">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
+        <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+          <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
+            <div className="space-y-2">
+              <div className="flex items-center gap-3">
+                <h1 className="text-4xl font-extrabold tracking-tight text-white drop-shadow-sm">
+                  {project.quote?.customer?.displayName || 'Project'}
+                </h1>
+                <span className="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-white ring-1 ring-inset ring-white/20 backdrop-blur-md">
+                  {project.status.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <p className="text-lg text-blue-100">
+                {project.quote?.customer?.city ? `${project.quote.customer.city} • ` : ''}
+                <span className="font-mono opacity-80">{project.projectNumber || project.id}</span>
+              </p>
+              <div className="mt-2 flex items-center gap-6 text-sm font-medium text-blue-200">
+                <span className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 opacity-70">
+                    <path fillRule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0118 6.75v8.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25v-8.5A2.75 2.75 0 014.75 4h.25V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v6.5c0 .69.56 1.25 1.25 1.25h10.5c.69 0 1.25-.56 1.25-1.25v-6.5c0-.69-.56-1.25-1.25-1.25H4.75z" clipRule="evenodd" />
+                  </svg>
+                  Commenced: {new Date(project.commenceOn).toLocaleDateString()}
+                </span>
+                {next && (
+                   <span className="flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 opacity-70">
+                      <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                    </svg>
+                    Next Due: {formatDateYMD(next)}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="mt-1 text-sm text-gray-500 space-y-1">
-              <p>Ref: <span className="font-medium text-gray-900">{project.projectNumber || project.id}</span></p>
-              <p>Commences: {new Date(project.commenceOn).toLocaleDateString()}</p>
+            <div className="flex flex-wrap gap-3">
+              {canRecordPayments && (
+                <Link
+                  href={`/projects/${projectId}/payments`}
+                  className="rounded-lg bg-emerald-500/20 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-white/20 backdrop-blur-sm transition-all hover:bg-emerald-500/30 hover:ring-white/30"
+                >
+                  💰 Payments
+                </Link>
+              )}
+              <Link
+                href="/projects"
+                className="rounded-lg bg-white/10 px-4 py-2.5 text-sm font-semibold text-white shadow-sm ring-1 ring-inset ring-white/20 backdrop-blur-sm transition-all hover:bg-white/20 hover:ring-white/30"
+              >
+                Back to Projects
+              </Link>
             </div>
           </div>
-        </div>
-        <div className="flex flex-col gap-2">
-          {canRecordPayments && (
-            <Link
-              href={`/projects/${projectId}/payments`}
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-emerald-600 text-white shadow hover:bg-emerald-700 h-9 px-6 py-2"
-            >
-              💰 Payments
-            </Link>
+
+          {/* Key Metrics Strip (Glass) */}
+          {canViewFinancials && role !== 'SALES_ACCOUNTS' && (
+            <div className="mt-8 grid grid-cols-1 divide-y divide-white/10 rounded-2xl bg-white/5 shadow-2xl ring-1 ring-white/10 backdrop-blur-2xl md:grid-cols-3 md:divide-x md:divide-y-0 text-center">
+              <div className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-blue-200">Contract Value</p>
+                <p className="mt-1 text-2xl font-bold text-white"><Money minor={BigInt(Math.round(totals.contractTotal * 100))} /></p>
+              </div>
+              <div className="p-4">
+                <p className="text-xs font-medium uppercase tracking-wider text-blue-200">Paid to Date</p>
+                <p className="mt-1 text-2xl font-bold text-emerald-300"><Money minor={BigInt(Math.round(totals.paid * 100))} /></p>
+              </div>
+              <div className="p-4">
+                 <p className="text-xs font-medium uppercase tracking-wider text-blue-200">Balance Due</p>
+                 <p className={cn("mt-1 text-2xl font-bold", totals.remaining > 0 ? "text-rose-300" : "text-white")}>
+                    <Money minor={BigInt(Math.round(totals.remaining * 100))} />
+                 </p>
+              </div>
+            </div>
           )}
-          <Link href="/projects" className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-600 text-white shadow hover:bg-orange-700 h-9 px-6 py-2">
-            ← Back to Projects
-          </Link>
         </div>
       </header>
-
-      {depositLocked && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
-          Deposit not recorded yet. Project functions (schedule, requisitions, dispatches) unlock once status is PLANNED.
-        </div>
-      )}
       
-      {!depositLocked && !hasSchedule && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm">
-          Project schedule not created yet. Please create a schedule to unlock requisitions and dispatches.
-        </div>
-      )}
-
-      {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {canViewFinancials && role !== 'SALES_ACCOUNTS' && (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Contract Value</CardTitle>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  className="h-4 w-4 text-muted-foreground"
-                >
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold"><Money minor={BigInt(Math.round(totals.contractTotal * 100))} /></div>
-                <p className="text-xs text-muted-foreground">Total project value</p>
-              </CardContent>
-            </Card>
-          </>
+      <main className="mx-auto max-w-7xl px-6 lg:px-8 space-y-8">
+        {/* Alerts */}
+        {depositLocked && (
+          <div className="mt-6 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 shadow-sm">
+            Deposit not recorded yet. Project functions are limited until status is PLANNED.
+          </div>
         )}
-        {canViewFinancials && (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Contract Value</CardTitle>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  className="h-4 w-4 text-muted-foreground"
-                >
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold"><Money minor={BigInt(Math.round(totals.contractTotal * 100))} /></div>
-                <p className="text-xs text-muted-foreground">Total project value</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Paid to Date</CardTitle>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  className="h-4 w-4 text-muted-foreground"
-                >
-                  <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600"><Money minor={BigInt(Math.round(totals.paid * 100))} /></div>
-                <p className="text-xs text-muted-foreground">Received from client</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Balance Due</CardTitle>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  className="h-4 w-4 text-muted-foreground"
-                >
-                  <rect width="20" height="14" x="2" y="5" rx="2" />
-                  <path d="M2 10h20" />
-                </svg>
-              </CardHeader>
-              <CardContent>
-                <div className={cn("text-2xl font-bold", totals.remaining > 0 ? "text-rose-600" : "text-gray-900")}>
-                  <Money minor={BigInt(Math.round(totals.remaining * 100))} />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Next due: {formatDateYMD(next)}
-                </p>
-              </CardContent>
-            </Card>
-          </>
+        
+        {!depositLocked && !hasSchedule && (
+          <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 shadow-sm">
+            Project schedule not created yet. Please create a schedule to unlock requisitions and dispatches.
+          </div>
         )}
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Dispatches</CardTitle>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-              className="h-4 w-4 text-muted-foreground"
-            >
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{project.dispatches.length}</div>
-            <p className="text-xs text-muted-foreground">Total dispatches created</p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Tabs Layout */}
-      <Tabs defaultValue={tab || (isSalesAccountsOnly ? 'financials' : 'overview')} className="space-y-4">
-        <TabsList>
-          {!isSalesAccountsOnly && canViewSchedule && <TabsTrigger value="overview">Schedule of work</TabsTrigger>}
-          {!isSalesAccountsOnly && <TabsTrigger value="procurement">Requisition Form</TabsTrigger>}
-          {!isSalesAccountsOnly && <TabsTrigger value="logistics">Dispatch</TabsTrigger>}
-          {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
-            <>
-              <TabsTrigger value="daily-tasks">Daily Tasks</TabsTrigger>
-              <TabsTrigger value="reports">Reports</TabsTrigger>
-            </>
-          )}
-          {canViewFinancials && <TabsTrigger value="financials">Financials</TabsTrigger>}
-        </TabsList>
-
-        {/* Schedule of Work Tab */}
-        <TabsContent value="overview" className="space-y-4">
-          {canViewSchedule && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Schedule of Work</CardTitle>
-                <CardDescription>View or build the project schedule from the quote labour items.</CardDescription>
-              </CardHeader>
-              <CardContent className="flex items-center justify-end gap-3">
-                {hasSchedule ? (
-                  <Link
-                    href={`/projects/${projectId}/schedule`}
-                    className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-600 text-white shadow hover:bg-orange-700 h-9 px-4 py-2"
-                  >
-                    View Schedule
-                  </Link>
-                ) : (
-                  <form
-                    action={async () => {
-                      'use server';
-                      const res = await createScheduleFromQuote(projectId);
-                      if (!(res as any).ok)
-                        throw new Error((res as any).error || 'Failed to build schedule');
-                      redirect(`/projects/${projectId}/schedule`);
-                    }}
-                  >
-                    <SubmitButton
-                      disabled={depositLocked}
-                      className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-emerald-600 text-white shadow hover:bg-emerald-700 h-9 px-4 py-2"
-                    >
-                      {depositLocked ? 'Awaiting Deposit' : 'Create Schedule'}
-                    </SubmitButton>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        {/* Procurement Tab */}
-        <TabsContent value="procurement" className="space-y-4">
-          {opsLocked && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Procurement is disabled until the deposit is received and schedule is created.
-            </div>
-          )}
-          {isPM && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Requisition</CardTitle>
-                <CardDescription>
-                  Build a requisition from the project quote lines and send it for procurement.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    Use the quote items to compose a requisition before requesting funding.
-                  </p>
-                  <Link
-                    href={`/projects/${projectId}/requisitions/new`}
-                    aria-disabled={opsLocked}
-                    tabIndex={opsLocked ? -1 : 0}
-                    className={cn(
-                      "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2",
-                      opsLocked ? "pointer-events-none opacity-50" : ""
-                    )}
-                  >
-                    {depositLocked ? 'Awaiting Deposit' : !hasSchedule ? 'Create Schedule First' : 'Create from Quote'}
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Requisitions History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {requisitions.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No requisitions found.</p>
-              ) : (
-                <div className="space-y-4">
-                  {requisitions.map((req) => {
-                    const po = purchaseOrders.find((p) => p.requisitionId === req.id);
-                    return (
-                      <div key={req.id} className="border rounded-lg p-4">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="font-medium">Requisition {req.id.slice(0, 8)}</div>
-                            <div className="text-xs text-gray-500">{new Date(req.createdAt).toLocaleDateString()}</div>
-                          </div>
-                          <StatusBadge status={req.status} />
+        {/* Dashboard Grid */}
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            
+            {/* Schedule Button */}
+            {!isSalesAccountsOnly && canViewSchedule && (
+                <Link 
+                    href={hasSchedule ? `/projects/${projectId}/schedule` : '#'} 
+                    className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
+                >
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-blue-50 transition-all group-hover:bg-blue-100"></div>
+                    <div className="relative">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/20">
+                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+                             <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                           </svg>
                         </div>
+                        <h3 className="text-xl font-semibold text-gray-900">Schedule</h3>
+                        <p className="mt-2 text-sm text-gray-500">Manage timeline, tasks, and employee assignments.</p>
                         
-                        <div className="mt-4 flex gap-2">
-                          <Link
-                            href={`/procurement/requisitions/${req.id}`}
-                            className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1"
-                          >
-                            View Requisition
-                          </Link>
-                          
-                          {po ? (
-                            <Link
-                              href={`/procurement/purchase-orders/${po.id}`}
-                              className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-slate-900 text-white shadow hover:bg-slate-900/90 h-8 px-3 py-1"
-                            >
-                              View PO ({po.status})
-                            </Link>
-                          ) : (
-                            req.status === 'APPROVED' && isProc && (
-                              <form
-                                action={async (fd) => {
-                                  'use server';
-                                  await createPOFromRequisition(req.id, fd);
-                                }}
-                                className="flex gap-2 items-center"
-                              >
-                                <input
-                                  name="vendor"
-                                  placeholder="Vendor Name"
-                                  required
-                                  className="h-8 w-32 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                />
-                                <SubmitButton className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 px-3 py-1">
-                                  Create PO
-                                </SubmitButton>
-                              </form>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Logistics Tab */}
-        <TabsContent value="logistics" className="space-y-4">
-          {opsLocked && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-              Dispatches are blocked until the deposit is received and schedule is created.
-            </div>
-          )}
-          {isPM && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Create Dispatch</CardTitle>
-                <CardDescription>Dispatch materials from approved requisitions or inventory.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Materials Dispatch Form */}
-                {/* Dispatch Forms Per Requisition */}
-                <div className="space-y-8">
-                  <h3 className="text-sm font-semibold">From Verified Inventory (Requisitions)</h3>
-                  <DispatchTableClient items={dispatchableItems} projectId={project.id} />
-                </div>
-
-                {/* Multipurpose Dispatch Form */}
-                <div className="space-y-4 pt-4 border-t">
-                  <h3 className="text-sm font-semibold">From Multipurpose Inventory</h3>
-                  {multipurposeInventory.length > 0 ? (
-                    <form
-                      action={async (fd) => {
-                        'use server';
-                        const all = await prisma.inventoryItem.findMany({
-                          where: { qty: { gt: 0 }, category: 'MULTIPURPOSE' },
-                          select: { id: true, qty: true },
-                        });
-                        const items: { inventoryItemId: string; qty: number }[] = [];
-                        for (const row of all) {
-                          const raw = fd.get(`mpqty-${row.id}`);
-                          if (!raw) continue;
-                          const qty = Number(raw);
-                          if (Number.isFinite(qty) && qty > 0) {
-                            if (qty > Number(row.qty ?? 0)) {
-                              throw new Error(`Qty exceeds available (${row.qty ?? 0}).`);
-                            }
-                            items.push({ inventoryItemId: row.id, qty });
-                          }
-                        }
-                        if (items.length === 0) throw new Error('Enter at least one multipurpose qty.');
-                        const res = await createDispatchFromSelectedInventory(projectId, items);
-                        if (!(res as any).ok)
-                          throw new Error((res as any).error || 'Failed to create dispatch');
-                        redirect(`/projects/${projectId}/dispatches/${(res as any).dispatchId}`);
-                      }}
-                      className="space-y-4"
-                    >
-                      <div className="rounded-md border">
-                        <table className="w-full text-sm">
-                          <thead className="bg-muted/50">
-                            <tr>
-                              <th className="px-4 py-2 text-left font-medium">Item</th>
-                              <th className="px-4 py-2 text-center font-medium">Unit</th>
-                              <th className="px-4 py-2 text-right font-medium">In Stock</th>
-                              <th className="px-4 py-2 text-right font-medium">Dispatch Qty</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {multipurposeInventory.map((it) => (
-                              <tr key={it.id} className="border-t">
-                                <td className="px-4 py-2">{it.name ?? it.description}</td>
-                                <td className="px-4 py-2 text-center">{it.unit ?? '-'}</td>
-                                <td className="px-4 py-2 text-right">{Number(it.qty ?? 0).toLocaleString()}</td>
-                                <td className="px-4 py-2 text-right">
-                                  <input
-                                    name={`mpqty-${it.id}`}
-                                    type="number"
-                                    step="0.01"
-                                    min={0}
-                                    max={Number(it.qty ?? 0)}
-                                    placeholder="0"
-                                    disabled={opsLocked}
-                                    className="w-24 rounded-md border border-input bg-transparent px-2 py-1 text-right text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                                  />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="flex justify-end">
-                        <SubmitButton
-                          disabled={opsLocked}
-                          className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
-                        >
-                          Dispatch Multipurpose
-                        </SubmitButton>
-                      </div>
-                    </form>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No multipurpose items in stock.</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Dispatches History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {project.dispatches.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No dispatches yet.</p>
-              ) : (
-                <div className="space-y-2">
-                  {project.dispatches.map((d: any) => (
-                    <div key={d.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 transition-colors">
-                      <div>
-                        <div className="font-medium">Dispatch {d.id.slice(0, 8)}</div>
-                        <div className="text-xs text-muted-foreground">{new Date(d.createdAt).toLocaleString()}</div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <StatusBadge status={d.status} />
-                        <Link
-                          href={`/projects/${d.projectId}/dispatches/${d.id}`}
-                          className="inline-flex items-center justify-center rounded-md text-xs font-medium border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
-                        >
-                          Open
-                        </Link>
-                      </div>
+                        {!hasSchedule && (
+                             <div className="mt-4">
+                                <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">Not Created</span>
+                             </div>
+                        )}
+                        {hasSchedule && (
+                            <div className="mt-4 flex items-center gap-2 text-sm font-medium text-blue-600 group-hover:text-blue-700">
+                                View Schedule
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                                    <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                        )}
                     </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Daily Tasks Tab */}
-        <TabsContent value="daily-tasks" className="space-y-4">
-           <DailyTasksPage params={params} />
-        </TabsContent>
-
-        {/* Reports Tab */}
-        <TabsContent value="reports" className="space-y-4">
-           <ProjectReportsPage params={params} />
-        </TabsContent>
-
-        {/* Financials Tab */}
-        {canViewFinancials && (
-          <TabsContent value="financials" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Payment Schedule</CardTitle>
-                <CardDescription>Track client payments against the schedule.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-md border">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
-                      <tr>
-                        <th className="px-4 py-2 text-left font-medium">Milestone</th>
-                        <th className="px-4 py-2 text-left font-medium">Due Date</th>
-                        <th className="px-4 py-2 text-right font-medium">Amount</th>
-                        <th className="px-4 py-2 text-right font-medium">Paid</th>
-                        <th className="px-4 py-2 text-center font-medium">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {schedule.map((s) => (
-                        <tr key={s.id} className="border-t">
-                          <td className="px-4 py-2">{s.label}</td>
-                          <td className="px-4 py-2">{new Date(s.dueOn).toLocaleDateString()}</td>
-                          <td className="px-4 py-2 text-right"><Money minor={s.amountMinor} /></td>
-                          <td className="px-4 py-2 text-right"><Money minor={s.paidMinor ?? 0n} /></td>
-                          <td className="px-4 py-2 text-center">
-                            <StatusBadge status={s.status} />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-
-            {canRecordPayments && (
-               <Card>
-                 <CardHeader>
-                   <CardTitle>Receive Payment</CardTitle>
-                 </CardHeader>
-                 <CardContent>
-                   <form
-                      action={async (fd) => {
-                        'use server';
-                        await recordClientPayment(projectId, {
-                          type: fd.get('type') as any,
-                          amount: Number(fd.get('amount') || 0),
-                          receivedAt: String(fd.get('receivedAt') || new Date().toISOString().slice(0, 10)),
-                          receiptNo: String(fd.get('receiptNo') || ''),
-                          method: 'CASH',
-                          attachmentUrl: null,
-                        });
-                      }}
-                      className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 items-end"
-                    >
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Type</label>
-                        <select name="type" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring">
-                          <option value="DEPOSIT">Deposit</option>
-                          <option value="INSTALLMENT">Installment</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Amount</label>
-                        <input name="amount" type="number" step="0.01" placeholder="0.00" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-                      </div>
-                      <div className="space-y-2">
-                         <label className="text-sm font-medium">Date</label>
-                         <input name="receivedAt" type="date" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-                      </div>
-                      <div className="space-y-2">
-                         <label className="text-sm font-medium">Reference</label>
-                         <input name="receiptNo" placeholder="Ref #" className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring" />
-                      </div>
-                      <div className="md:col-span-2 lg:col-span-4">
-                        <SubmitButton className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-9 px-4 py-2 w-full md:w-auto">
-                          Receive Payment
-                        </SubmitButton>
-                      </div>
-                    </form>
-                 </CardContent>
-               </Card>
+                </Link>
             )}
-          </TabsContent>
-        )}
-      </Tabs>
+
+            {/* Requisitions Button */}
+            {!isSalesAccountsOnly && (
+                <Link 
+                    href={`/projects/${projectId}/requisitions`}
+                    className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
+                >
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-indigo-50 transition-all group-hover:bg-indigo-100"></div>
+                     <div className="relative">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 text-white shadow-lg shadow-indigo-600/20">
+                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+                             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                           </svg>
+                        </div>
+                        <div className="flex justify-between items-start">
+                             <h3 className="text-xl font-semibold text-gray-900">Requisitions</h3>
+                             {requisitions.length > 0 && <span className="rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-semibold text-indigo-600">{requisitions.length}</span>}
+                        </div>
+                        <p className="mt-2 text-sm text-gray-500">Create requests and track procurement status.</p>
+                         <div className="mt-4 flex items-center gap-2 text-sm font-medium text-indigo-600 group-hover:text-indigo-700">
+                             Manage Requisitions
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                               <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                             </svg>
+                         </div>
+                    </div>
+                </Link>
+            )}
+
+            {/* Dispatches Button */}
+            {!isSalesAccountsOnly && (
+                 <Link 
+                    href={`/projects/${projectId}/dispatches`}
+                    className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
+                 >
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-emerald-50 transition-all group-hover:bg-emerald-100"></div>
+                     <div className="relative">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-600 text-white shadow-lg shadow-emerald-600/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                            </svg>
+                        </div>
+                         <div className="flex justify-between items-start">
+                             <h3 className="text-xl font-semibold text-gray-900">Dispatches</h3>
+                             {project.dispatches.length > 0 && <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-600">{project.dispatches.length}</span>}
+                        </div>
+                        <p className="mt-2 text-sm text-gray-500">Inventory movement and delivery tracking.</p>
+                         <div className="mt-4 flex items-center gap-2 text-sm font-medium text-emerald-600 group-hover:text-emerald-700">
+                             Manage Dispatches
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                               <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                             </svg>
+                         </div>
+                    </div>
+                </Link>
+            )}
+
+            {/* Daily Tasks Button */}
+            {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role) && (
+                 <Link 
+                    href={`/projects/${projectId}/daily-tasks`}
+                    className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
+                 >
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-amber-50 transition-all group-hover:bg-amber-100"></div>
+                     <div className="relative">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-amber-600 text-white shadow-lg shadow-amber-600/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900">Daily Tasks</h3>
+                        <p className="mt-2 text-sm text-gray-500">Log progress and daily activities.</p>
+                         <div className="mt-4 flex items-center gap-2 text-sm font-medium text-amber-600 group-hover:text-amber-700">
+                             View Daily Tasks
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                               <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                             </svg>
+                         </div>
+                    </div>
+                 </Link>
+            )}
+            
+            {/* Reports Button */}
+            {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role) && (
+                 <Link 
+                    href={`/projects/${projectId}/reports`}
+                    className="group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
+                 >
+                     <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-purple-50 transition-all group-hover:bg-purple-100"></div>
+                     <div className="relative">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-purple-600 text-white shadow-lg shadow-purple-600/20">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-900">Reports</h3>
+                        <p className="mt-2 text-sm text-gray-500">Generate analytics and progress reports.</p>
+                         <div className="mt-4 flex items-center gap-2 text-sm font-medium text-purple-600 group-hover:text-purple-700">
+                             View Reports
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+                               <path fillRule="evenodd" d="M3 10a.75.75 0 01.75-.75h10.638L10.23 5.29a.75.75 0 111.04-1.08l5.5 5.25a.75.75 0 010 1.08l-5.5 5.25a.75.75 0 11-1.04-1.08l4.158-3.96H3.75A.75.75 0 013 10z" clipRule="evenodd" />
+                             </svg>
+                         </div>
+                    </div>
+                 </Link>
+            )}
+            
+        </div>
+      </main>
     </div>
   );
 }

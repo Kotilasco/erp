@@ -178,7 +178,7 @@ export async function computeEstimatesForItems(
     note?: string | null;
   }[],
   settings: ProductivitySettings,
-): Promise<ScheduleItem[]> {
+): Promise<any[]> {
   return items.map((item) => {
     const type = inferTaskType(item.unit, item.description);
     const qty = Number(item.quantity ?? 0);
@@ -1753,7 +1753,8 @@ export async function createRequisitionFromQuotePicks(formData: FormData) {
     include: { items: true },
   });
 
-  redirect(`/projects/${projectId}/requisitions/${req.id}`);
+  revalidatePath(`/projects/${projectId}`);
+  redirect(`/projects/${projectId}/requisitions`);
 }
 
 export async function createRequisitionFromQuote(
@@ -3413,9 +3414,9 @@ export async function saveSchedule(
             employees: it.employees ?? null,
             estHours: it.estHours ?? null,
             note: it.note ?? null,
-            assignees: Array.isArray(it.employeeIds)
+            assignees: Array.isArray((it as any).employeeIds)
               ? {
-                set: (it.employeeIds as string[])
+                set: ((it as any).employeeIds as string[])
                   .filter((id) => typeof id === 'string' && id.trim().length > 0)
                   .map((id) => ({ id })),
               }
@@ -3435,9 +3436,9 @@ export async function saveSchedule(
             employees: it.employees ?? null,
             estHours: it.estHours ?? null,
             note: it.note ?? null,
-            assignees: Array.isArray(it.employeeIds)
+            assignees: Array.isArray((it as any).employeeIds)
               ? {
-                connect: (it.employeeIds as string[])
+                connect: ((it as any).employeeIds as string[])
                   .filter((id) => typeof id === 'string' && id.trim().length > 0)
                   .map((id) => ({ id })),
               }

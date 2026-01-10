@@ -139,6 +139,20 @@ export default async function ProjectsPage({
      }
   }
 
+  if (isProjectManager) {
+    if (currentTab === 'unplanned') {
+      where = {
+        ...where,
+        OR: [
+          { schedules: { is: null } },
+          { schedules: { status: 'DRAFT' } }
+        ]
+      };
+    } else if (currentTab === 'active') {
+       where = { ...where, schedules: { status: 'ACTIVE' } };
+    }
+  }
+
   // Fetch Data
   const [projects, totalCount, projectManagers] = await Promise.all([
     prisma.project.findMany({
@@ -175,7 +189,9 @@ export default async function ProjectsPage({
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
             {!isSalesAccounts && !isSeniorPM && (
-               <p className="mt-1 text-sm text-gray-600">Your assigned projects.</p>
+               <p className="mt-1 text-sm text-gray-600">
+                  {currentTab === 'unplanned' ? 'Projects waiting for schedule.' : 'Active projects.'}
+               </p>
             )}
             {isSeniorPM && (
                <p className="mt-1 text-sm text-gray-600">Manage all projects.</p>
@@ -334,7 +350,7 @@ export default async function ProjectsPage({
                           )}
                           {!isSeniorPM && (
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              {isProjectManager ? (
+                              {isProjectManager && currentTab === 'unplanned' ? (
                                 <Link
                                   href={`/projects/${project.id}/schedule`}
                                   className="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
