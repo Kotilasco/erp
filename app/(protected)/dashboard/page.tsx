@@ -299,13 +299,28 @@ async function PendingTasks({
       }),
     ]);
   }
-  // Logic for Project Manager (Unplanned Count)
+  // Logic for Project Manager (Unplanned Count and Active Count)
   let pmUnplannedCount = 0;
+  let pmActiveCount = 0;
   if (roles.PM) {
+    // Unplanned: No schedule OR Draft schedule
     pmUnplannedCount = await prisma.project.count({
       where: {
         assignedToId: userId,
         status: { notIn: ['COMPLETED', 'CLOSED'] },
+        OR: [
+            { schedules: { is: null } },
+            { schedules: { status: 'DRAFT' } }
+        ]
+      },
+    });
+
+    // Active: Active schedule
+    pmActiveCount = await prisma.project.count({
+      where: {
+        assignedToId: userId,
+        status: { notIn: ['COMPLETED', 'CLOSED'] },
+        schedules: { status: 'ACTIVE' }
       },
     });
   }
@@ -458,10 +473,10 @@ async function PendingTasks({
   if (role === 'PROJECT_OPERATIONS_OFFICER') {
     return (
       <div className="flex flex-col items-center justify-center py-6 mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
           <Link
             href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -471,16 +486,30 @@ async function PendingTasks({
                 d="M12 8v8m-4-4h8M4 6h16M4 18h16"
               />
             </svg>
-            Unplanned Projects
+            Unplanned
             {pmUnplannedCount > 0 && (
-              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
                 {pmUnplannedCount}
               </span>
             )}
           </Link>
           <Link
+             href="/projects?tab=active"
+             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-emerald-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-emerald-700 hover:shadow-xl hover:-translate-y-1"
+           >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+             Active
+             {pmActiveCount > 0 && (
+               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-emerald-600">
+                 {pmActiveCount}
+               </span>
+             )}
+           </Link>
+          <Link
             href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -501,10 +530,10 @@ async function PendingTasks({
     <div className="space-y-6">
       {roles.PM && (
         <div className="flex flex-col items-center justify-center py-6 mb-8">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
           <Link
             href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -514,16 +543,30 @@ async function PendingTasks({
                 d="M12 8v8m-4-4h8M4 6h16M4 18h16"
               />
             </svg>
-            Unplanned Projects
+            Unplanned
             {pmUnplannedCount > 0 && (
-              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
                 {pmUnplannedCount}
               </span>
             )}
           </Link>
           <Link
+             href="/projects?tab=active"
+             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-emerald-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-emerald-700 hover:shadow-xl hover:-translate-y-1"
+           >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+             Active
+             {pmActiveCount > 0 && (
+               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-emerald-600">
+                 {pmActiveCount}
+               </span>
+             )}
+           </Link>
+          <Link
             href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
           >
               <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -1206,6 +1249,27 @@ export default async function DashboardPage({
     return <div className="p-6">Please log in.</div>;
   }
 
+  // Simplified Project Operations Officer Dashboard
+  if (user.role === 'PROJECT_OPERATIONS_OFFICER') {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            Welcome back, {user.name}. Here&apos;s what&apos;s happening today.
+          </p>
+        </div>
+        <div className="mt-8">
+            <PendingTasks
+                userId={user.id}
+                role={user.role}
+                currentPage={1}
+            />
+        </div>
+      </div>
+    );
+  }
+
   // Simplified QS Dashboard
   if (user.role === 'QS') {
     return (
@@ -1394,60 +1458,6 @@ export default async function DashboardPage({
               />
             </svg>
             Other Payments
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  // Simplified Project Manager Dashboard
-  if (user.role === 'PROJECT_OPERATIONS_OFFICER') {
-    const pmUnplannedCount = await prisma.project.count({
-      where: {
-        assignedToId: user.id,
-        status: { notIn: ['COMPLETED', 'CLOSED'] },
-      },
-    });
-
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6">
-        <div className="text-center">
-          <p className="text-xl text-gray-600">Welcome back, {user.name}. Here's what's happening today.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
-          <Link
-            href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
-          >
-            <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v8m-4-4h8M4 6h16M4 18h16"
-              />
-            </svg>
-            Unplanned Projects
-            {pmUnplannedCount > 0 && (
-              <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                {pmUnplannedCount}
-              </span>
-            )}
-          </Link>
-          <Link
-            href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
-          >
-            <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 10h11M9 21V3m5 6l7 7-7 7"
-              />
-            </svg>
-            Dispatches
           </Link>
         </div>
       </div>

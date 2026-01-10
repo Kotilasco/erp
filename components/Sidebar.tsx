@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
+import { SidebarNavigation } from './SidebarNavigation';
 
 const BASE: { label:string; href:string; icon:string; roles?: string[] }[] = [
   { label: 'My Quotes', href: '/quotes', icon: 'quote', roles: ['QS','SENIOR_QS','SALES','ADMIN'] },
@@ -19,15 +19,5 @@ export default async function Sidebar() {
   const role = (me?.role ?? 'VIEWER') as string;
   const pages = BASE.filter(p => !p.roles || p.roles.includes(role));
 
-  return (
-    <nav className="flex flex-col gap-2 p-2">
-      {pages.map(p => {
-        return (
-          <Link key={p.href} href={p.href} className="px-3 py-2 rounded bg-gray-100 text-gray-700 hover:bg-gray-200">
-            {p.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
+  return <SidebarNavigation links={pages} />;
 }
