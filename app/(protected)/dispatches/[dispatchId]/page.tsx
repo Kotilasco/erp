@@ -5,6 +5,32 @@ import { updateDispatchItems, submitDispatch, markDispatchItemHandedOut } from '
 import SignGatePassButton from '@/components/SignGatePassButton';
 import LoadingButton from '@/components/LoadingButton';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import clsx from 'clsx';
+import { 
+  ArrowLeftIcon, 
+  CalendarIcon, 
+  TruckIcon, 
+  UserIcon, 
+  MapPinIcon,
+  DocumentCheckIcon
+} from '@heroicons/react/24/outline';
+import MarkHandedOutButton from '@/components/MarkHandedOutButton';
+import DriverAcknowledgeButton from '@/components/DriverAcknowledgeButton';
+import AssignDriverForm from '@/components/AssignDriverForm';
+import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
+
+const STATUS_BADGE: Record<string, string> = {
+  DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
+  PENDING: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  SUBMITTED: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  APPROVED: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+  REJECTED: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+  DISPATCHED: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  OUT_FOR_DELIVERY: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
+  DELIVERED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  RECEIVED: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+};
 
 export default async function DispatchDetail({ params }: { params: Promise<{ dispatchId: string }> }) {
   const me = await getCurrentUser();
@@ -20,11 +46,12 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
   const dispatch = await prisma.dispatch.findUnique({
     where: { id: dispatchId },
     include: {
-      project: { select: { id: true } },
+      project: { select: { id: true, projectNumber: true, quote: { select: { customer: { select: { displayName: true } } } } } },
       items: { orderBy: { id: 'asc' }, include: { inventoryItem: true } },
+      createdBy: { select: { name: true, email: true } },
     },
   });
-  if (!dispatch) return <div className="p-6">Not found.</div>;
+  if (!dispatch) return <div className="p-6 text-gray-500">Dispatch not found.</div>;
 
   const canEdit = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
@@ -57,30 +84,78 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
   };
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Dispatch {dispatch.id.slice(0, 8)} — {dispatch.status}</h1>
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+      {/* Header with Breadcrumb-like nav */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3">
+               <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                 Project Name: <span className="text-gray-700 dark:text-gray-200">{dispatch.project?.quote?.customer?.displayName || dispatch.project?.projectNumber || 'Unknown'}</span>
+               </h1>
+               <span
+                 className={clsx(
+                   'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide',
+                   STATUS_BADGE[dispatch.status] || 'bg-gray-100 text-gray-800'
+                 )}
+               >
+                 {dispatch.status.replace(/_/g, ' ')}
+               </span>
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+               Dispatch <span className="font-mono">#{dispatch.id.slice(0, 8)}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
+               <div className="flex items-center gap-1">
+                 <UserIcon className="h-4 w-4 text-gray-400" />
+                 <span>Requested by: <span className="font-medium text-gray-900 dark:text-white">{dispatch.createdBy?.name || dispatch.createdBy?.email}</span></span>
+               </div>
+               <div className="flex items-center gap-1">
+                 <CalendarIcon className="h-4 w-4 text-gray-400" />
+                 <span>Date: {new Date(dispatch.createdAt).toLocaleDateString()}</span>
+               </div>
+            </div>
+          </div>
+          <div>
+            <Link href="/dispatches" className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 transition-colors w-fit">
+               <ArrowLeftIcon className="h-4 w-4" />
+               Back to Dispatches
+            </Link>
+          </div>
+        </div>
+      </div>
 
       {canEdit ? (
-        <form action={saveAction} className="rounded border bg-white p-3">
-          <TableContent dispatch={dispatch} canEdit={true} isSecurity={isSecurity} />
-          <div className="mt-4 flex gap-2">
-            <LoadingButton type="submit">Save changes</LoadingButton>
-            <LoadingButton formAction={submitAction} className="bg-indigo-600 text-white hover:bg-indigo-700">Submit for Security</LoadingButton>
+        <form action={saveAction} className="space-y-6">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
+             <TableContent dispatch={dispatch} canEdit={true} isSecurity={isSecurity} />
+          </div>
+          
+          <div className="flex gap-3 justify-end">
+            <LoadingButton type="submit" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                Save Draft
+            </LoadingButton>
+            <LoadingButton formAction={submitAction} className="bg-emerald-600 text-white hover:bg-emerald-700 border-transparent shadow-sm">
+                <DocumentCheckIcon className="h-4 w-4 mr-2" />
+                Submit for Security
+            </LoadingButton>
           </div>
         </form>
       ) : (
-        <div className="rounded border bg-white p-3">
-          <TableContent dispatch={dispatch} canEdit={false} isSecurity={isSecurity} />
+        <div className="space-y-6">
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
+             <TableContent dispatch={dispatch} canEdit={false} isSecurity={isSecurity} />
+          </div>
           
-          {/* Security Action: Mark Sent (Gate Pass) - Added here as redirect goes to this page now */}
+          {/* Security Action: Mark Sent (Gate Pass) */}
           {role === 'SECURITY' && !dispatch.securitySignedAt && (
-             <div className="mt-8 flex justify-center">
+             <div className="flex justify-center p-4 bg-blue-50 border border-blue-100 rounded-xl dark:bg-blue-900/20 dark:border-blue-800">
                 <SignGatePassButton dispatchId={dispatch.id} />
              </div>
           )}
 
           {role === 'DRIVER' && dispatch.status === 'DISPATCHED' && !dispatch.driverSignedAt && (
-            <div className="mt-4 flex justify-end">
+            <div className="flex justify-end p-4 bg-yellow-50 border border-yellow-100 rounded-xl dark:bg-yellow-900/20 dark:border-yellow-800">
               <DriverAcknowledgeButton dispatchId={dispatch.id} />
             </div>
           )}
@@ -89,11 +164,6 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
     </div>
   );
 }
-
-import MarkHandedOutButton from '@/components/MarkHandedOutButton';
-import DriverAcknowledgeButton from '@/components/DriverAcknowledgeButton';
-import AssignDriverForm from '@/components/AssignDriverForm';
-import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
 
 async function TableContent({ dispatch, canEdit, isSecurity }: { dispatch: any, canEdit: boolean, isSecurity: boolean }) {
   let drivers: any[] = [];
@@ -107,63 +177,70 @@ async function TableContent({ dispatch, canEdit, isSecurity }: { dispatch: any, 
   }
   
   return (
-    <div>
-    <table className="w-full text-sm mb-4">
-      <thead>
-        <tr className="bg-gray-50 text-left">
-          <th className="px-3 py-2">Include</th>
-          <th className="px-3 py-2">Description</th>
-          <th className="px-3 py-2">Qty</th>
-          <th className="px-3 py-2">Unit</th>
-          <th className="px-3 py-2">Handed Out</th>
-          <th className="px-3 py-2">Received</th>
-          <th className="px-3 py-2">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {dispatch.items.map((it: any) => (
-          <tr key={it.id} className="border-b">
-            <td className="px-3 py-2">
-              {canEdit ? (
-                <input type="checkbox" name={`sel-${it.id}`} defaultChecked={it.selected ?? true} />
-              ) : it.selected ? (
-                '✓'
-              ) : (
-                '—'
-              )}
-            </td>
-            <td className="px-3 py-2">
-              {it.description}
-              {it.inventoryItem ? (
-                <span className="ml-2 text-xs text-gray-500">(inv: {it.inventoryItem.name})</span>
-              ) : null}
-            </td>
-            <td className="px-3 py-2">
-              {canEdit ? (
-                <input name={`qty-${it.id}`} type="number" min={0} step="0.01" defaultValue={Number(it.qty)} className="w-24 rounded border px-2 py-1" />
-              ) : (
-                Number(it.qty)
-              )}
-            </td>
-            <td className="px-3 py-2">{it.unit ?? '-'}</td>
-            <td className="px-3 py-2">{it.handedOutAt ? new Date(it.handedOutAt).toLocaleString() : '—'}</td>
-            <td className="px-3 py-2">{it.receivedAt ? new Date(it.receivedAt).toLocaleString() : '—'}</td>
-            <td className="px-3 py-2">
-              {!canEdit && isSecurity && dispatch.status !== 'DRAFT' && !it.handedOutAt && (
-                 <MarkHandedOutButton dispatchItemId={it.id} />
-              )}
-            </td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-    
-    {showAssign && (
-        <div className="mt-4 p-4 bg-yellow-50 rounded border border-yellow-200">
-            <h3 className="text-sm font-medium text-yellow-800 mb-2">Assign to Driver for Pickup</h3>
-            <AssignDriverForm dispatchId={dispatch.id} drivers={drivers} />
+    <div className="space-y-6">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+                <tr>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Include</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Description</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Handed Out</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Received</th>
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
+                </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                {dispatch.items.map((it: any) => (
+                <tr key={it.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    {canEdit ? (
+                        <input type="checkbox" name={`sel-${it.id}`} defaultChecked={it.selected ?? true} className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                    ) : it.selected ? (
+                        <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓</span>
+                    ) : (
+                        <span className="text-gray-400">—</span>
+                    )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">
+                    <div className="font-medium">{it.description}</div>
+                    {it.inventoryItem && (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Inv: {it.inventoryItem.name}</div>
+                    )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                    {canEdit ? (
+                        <input name={`qty-${it.id}`} type="number" min={0} step="0.01" defaultValue={Number(it.qty)} className="w-24 rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-1" />
+                    ) : (
+                        <span className="font-medium">{Number(it.qty)}</span>
+                    )}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{it.unit ?? '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{it.handedOutAt ? new Date(it.handedOutAt).toLocaleString() : '—'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{it.receivedAt ? new Date(it.receivedAt).toLocaleString() : '—'}</td>
+                    <td className="px-4 py-3 text-center">
+                    {!canEdit && isSecurity && dispatch.status !== 'DRAFT' && !it.handedOutAt && (
+                        <div className="flex justify-center">
+                           <MarkHandedOutButton dispatchItemId={it.id} />
+                        </div>
+                    )}
+                    </td>
+                </tr>
+                ))}
+            </tbody>
+            </table>
         </div>
-    )}
+        
+        {showAssign && (
+            <div className="rounded-xl bg-amber-50 border border-amber-200 p-4 dark:bg-amber-900/20 dark:border-amber-800">
+                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-4 flex items-center gap-2">
+                    <TruckIcon className="h-5 w-5" />
+                    Assign to Driver for Pickup
+                </h3>
+                <AssignDriverForm dispatchId={dispatch.id} drivers={drivers} />
+            </div>
+        )}
     </div>
   );
 }

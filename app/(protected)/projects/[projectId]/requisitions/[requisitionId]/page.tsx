@@ -1,5 +1,6 @@
 // app/(protected)/projects/[projectId]/requisitions/[requisitionId]/page.tsx
 import { prisma } from '@/lib/db';
+import React from 'react';
 import { fromMinor } from '@/helpers/money';
 import Money from '@/components/Money';
 import { getCurrentUser } from '@/lib/auth';
@@ -7,6 +8,8 @@ import { notFound, redirect } from 'next/navigation';
 import { submitRequisitionToProcurement } from '@/app/(protected)/projects/actions';
 import Link from 'next/link';
 import SubmitButton from '@/components/SubmitButton';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { ArrowLeftIcon, ShoppingCartIcon, DocumentTextIcon, UserIcon, CalendarIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 export default async function ProjectRequisitionDetailPage({
   params,
@@ -25,7 +28,7 @@ export default async function ProjectRequisitionDetailPage({
           quoteLine: { select: { metaJson: true } },
         },
       },
-      project: { include: { quote: { select: { number: true } } } },
+      project: { include: { quote: { select: { number: true, customer: { select: { displayName: true } } } } } },
       submittedBy: { select: { name: true } },
     },
   });
@@ -69,72 +72,38 @@ export default async function ProjectRequisitionDetailPage({
     return Array.from(buckets.entries());
   })();
 
-  const currency = process.env.NEXT_PUBLIC_CURRENCY || 'USD';
   const canSubmit = req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER'].includes(user.role as string);
   const showEstPrice = user.role !== 'PROJECT_OPERATIONS_OFFICER';
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Requisition Details</h1>
-          <div className="text-sm text-gray-600 mt-2">
-            <div>
-              <span className="font-medium">Requisition ID:</span> {req.id}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-orange-100 rounded-lg dark:bg-orange-900/30">
+                <ShoppingCartIcon className="h-8 w-8 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <span className="font-medium">Project:</span> {req.project?.projectNumber || req.projectId}
+                <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Requisition Details</h1>
+                <div className="flex items-center gap-2 mt-1 text-sm text-gray-500">
+                    <span className="font-mono font-medium text-gray-700">#{req.id.slice(0, 8)}</span>
+                    <span>•</span>
+                    <span>{req.project?.quote?.customer?.displayName || 'Unknown Client'}</span>
+                </div>
             </div>
-            <div>
-              <span className="font-medium">Quote:</span> {req.project?.quote?.number ?? '-'}
-            </div>
-            <div>
-              <span className="font-medium">Status:</span>{' '}
-              <span
-                className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                  req.status === 'DRAFT'
-                    ? 'bg-gray-100 text-gray-800'
-                    : req.status === 'SUBMITTED'
-                      ? 'bg-blue-100 text-blue-800'
-                      : 'bg-green-100 text-green-800'
-                }`}
-              >
-                {req.status}
-              </span>
-            </div>
-            {req.submittedBy && (
-              <div>
-                <span className="font-medium">Submitted by:</span> {req.submittedBy.name}
-              </div>
-            )}
-          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-3">
           <Link
-            href={`/projects/${projectId}`}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            href={`/projects/${projectId}/requisitions`}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm border border-gray-300 transition-all hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
           >
-            Back to Project
+            <ArrowLeftIcon className="h-4 w-4 stroke-2" />
+            Back to Requisitions
           </Link>
-          {canSubmit && (
-            <form action={submitRequisitionToProcurement.bind(null, requisitionId)}>
-              <SubmitButton
-                className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 shadow-sm"
-                loadingText="Submitting..."
-              >
-                Submit to Procurement
-              </SubmitButton>
-            </form>
-          )}
-          {!canSubmit && req.status === 'DRAFT' && (
-            <div className="rounded-md bg-yellow-50 border border-yellow-200 px-4 py-2 text-sm text-yellow-800">
-              Only Project Managers can submit requisitions
-            </div>
-          )}
           {req.status === 'SUBMITTED' && (
             <Link
               href={`/procurement/requisitions/${requisitionId}`}
-              className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+              className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
               View in Procurement
             </Link>
@@ -142,82 +111,137 @@ export default async function ProjectRequisitionDetailPage({
         </div>
       </div>
 
-      <section className="rounded border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Requisition Items</h2>
-        <div className="space-y-6">
-          {groupedItemEntries.map(([section, items]) => (
-            <div key={section}>
-              <h3 className="text-base font-semibold text-gray-700 mb-2 uppercase">{section}</h3>
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left">Item</th>
-                      <th className="px-3 py-2 text-left">Unit</th>
-                      <th className="px-3 py-2 text-right">Requested Qty</th>
-                      {showEstPrice && <th className="px-3 py-2 text-right">Est. Price</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((it) => (
-                      <tr key={it.id} className="border-b last:border-b-0">
-                        <td className="px-3 py-2">{it.description}</td>
-                        <td className="px-3 py-2">{it.unit ?? '-'}</td>
-                        <td className="px-3 py-2 text-right">{Number(it.qtyRequested ?? 0)}</td>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content (Items) */}
+        <div className="lg:col-span-2 space-y-6">
+            <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <DocumentTextIcon className="h-5 w-5 text-gray-500" />
+                        Requisition Items
+                    </CardTitle>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50/50">
+                            <tr>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Item Description</th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Unit</th>
+                                <th scope="col" className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Qty</th>
+                                {showEstPrice && <th scope="col" className="px-6 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-500">Est. Price</th>}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                            {groupedItemEntries.map(([section, items]) => (
+                                <React.Fragment key={section}>
+                                    <tr className="bg-gray-50/30">
+                                        <td colSpan={showEstPrice ? 4 : 3} className="px-6 py-2 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                            {section}
+                                        </td>
+                                    </tr>
+                                    {items.map((it) => (
+                                        <tr key={it.id} className="hover:bg-orange-50/30 transition-colors group">
+                                            <td className="px-6 py-3 text-sm text-gray-700 font-medium">{it.description}</td>
+                                            <td className="px-6 py-3 text-sm text-gray-500">{it.unit ?? '-'}</td>
+                                            <td className="px-6 py-3 text-sm text-gray-900 text-right font-mono">{Number(it.qtyRequested ?? 0)}</td>
+                                            {showEstPrice && (
+                                                <td className="px-6 py-3 text-sm text-gray-900 text-right font-mono">
+                                                    <Money value={fromMinor(BigInt(it.amountMinor ?? 0))} />
+                                                </td>
+                                            )}
+                                        </tr>
+                                    ))}
+                                </React.Fragment>
+                            ))}
+                        </tbody>
                         {showEstPrice && (
-                          <td className="px-3 py-2 text-right">
-                            <Money value={fromMinor(BigInt(it.amountMinor ?? 0))} />
-                          </td>
+                            <tfoot className="bg-gray-50">
+                                <tr>
+                                    <td colSpan={3} className="px-6 py-4 text-sm font-bold text-gray-900 text-right">Total Estimated Cost</td>
+                                    <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
+                                        <Money value={grand} />
+                                    </td>
+                                </tr>
+                            </tfoot>
                         )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ))}
-        </div>
-        {showEstPrice && (
-          <div className="mt-4 flex justify-end border-t pt-4">
-            <div className="text-right">
-              <div className="text-sm text-gray-600">Total Estimated Cost</div>
-              <div className="text-2xl font-bold text-gray-900">
-                <Money value={grand} />
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
+                    </table>
+                </div>
+            </Card>
 
-      {req.status === 'DRAFT' && (
-        <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-blue-400"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-blue-800">Draft Requisition</h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p>
-                  This requisition is in draft status. Review the items above and click &quot;Submit to
-                  Procurement&quot; when ready to send it for approval.
-                </p>
-              </div>
-            </div>
-          </div>
+            {req.status === 'DRAFT' && (
+                <div className="rounded-xl bg-blue-50 border border-blue-100 p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex gap-4">
+                        <div className="p-2 bg-blue-100 rounded-lg text-blue-600">
+                             <CheckCircleIcon className="h-6 w-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-blue-900">Ready to Submit?</h3>
+                            <p className="text-sm text-blue-700 mt-1">
+                                Review the items above. Once submitted, this requisition will be sent to Procurement for processing.
+                            </p>
+                        </div>
+                    </div>
+                    {canSubmit ? (
+                        <form action={submitRequisitionToProcurement.bind(null, requisitionId)}>
+                            <SubmitButton
+                                className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                                loadingText="Submitting..."
+                            >
+                                Submit Requisition
+                            </SubmitButton>
+                        </form>
+                    ) : (
+                        <div className="px-4 py-2 bg-white/50 rounded-lg text-sm text-blue-800 font-medium border border-blue-200">
+                            Waiting for Project Manager approval
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
-      )}
+
+        {/* Sidebar Info */}
+        <div className="space-y-6">
+            <Card className="border-gray-200 shadow-sm">
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base font-bold">Details</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    <div>
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Status</div>
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${
+                          req.status === 'APPROVED' ? 'bg-green-50 text-green-700 ring-green-600/20' :
+                          req.status === 'REJECTED' ? 'bg-red-50 text-red-700 ring-red-600/20' :
+                          req.status === 'SUBMITTED' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' :
+                          'bg-gray-100 text-gray-600 ring-gray-500/10'
+                        }`}>
+                          {req.status}
+                        </span>
+                    </div>
+
+                    <div>
+                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <UserIcon className="h-3 w-3" /> Created By
+                         </div>
+                         <div className="text-sm font-medium text-gray-900">{req.submittedBy?.name || 'Unknown'}</div>
+                    </div>
+
+                    <div>
+                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
+                            <CalendarIcon className="h-3 w-3" /> Date
+                         </div>
+                         <div className="text-sm font-medium text-gray-900">
+                            {new Date(req.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                         </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-gray-100">
+                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Project</div>
+                        <div className="text-sm font-semibold text-gray-900">{req.project?.projectNumber || 'No Number'}</div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+      </div>
     </div>
   );
 }

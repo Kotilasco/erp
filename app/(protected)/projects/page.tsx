@@ -6,13 +6,10 @@ import { redirect } from 'next/navigation';
 import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
 import Money from '@/components/Money';
 
-import { SearchInput } from '@/components/ui/search-input';
-import PaymentsTableToolbar from './components/PaymentsTableToolbar';
-import QuotePagination from '@/app/(protected)/quotes/components/QuotePagination';
+import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
-import { ProjectsFilter } from './components/ProjectsFilter';
-import { ProjectViewButton } from './components/ProjectViewButton';
-import { CalendarIcon } from '@heroicons/react/24/outline';
+import ProjectTableToolbar from './components/ProjectTableToolbar';
+import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -122,12 +119,6 @@ export default async function ProjectsPage({
     };
   }
 
-  // For standard "Projects" view, we use baseWhere.
-  // We will keep the tab logic for Senior PM "Assignment" vs "Planning" if needed, 
-  // but if user just wants "Projects" list, maybe we simplify?
-  // User said: "for /projects let it be a table with a view button also filter by status and or start date."
-  // I will preserve the tab structure for safety but render everything as a table.
-
   if (isSeniorPM) {
      if (currentTab === 'assignment') {
        where = { ...where, assignedToId: null, status: { notIn: ['CREATED','COMPLETED','CLOSED'] } };
@@ -179,199 +170,199 @@ export default async function ProjectsPage({
       : Promise.resolve([]),
   ]);
 
-  const totalPages = Math.ceil(totalCount / pageSize);
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <div className="space-y-8 p-2 sm:p-4 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
+            <BriefcaseIcon className="h-8 w-8 text-barmlo-blue dark:text-blue-400" />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Projects</h1>
             {!isSalesAccounts && !isSeniorPM && (
-               <p className="mt-1 text-sm text-gray-600">
-                  {currentTab === 'unplanned' ? 'Projects waiting for schedule.' : 'Active projects.'}
+               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  {currentTab === 'unplanned' ? 'Projects waiting for schedule.' : 'Active projects overview.'}
                </p>
             )}
             {isSeniorPM && (
-               <p className="mt-1 text-sm text-gray-600">Manage all projects.</p>
+               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage and assign all projects.</p>
+            )}
+            {isSalesAccounts && (
+               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track payments and receivables.</p>
             )}
           </div>
-          <div className="flex flex-col sm:flex-row gap-4 items-end sm:items-center w-full sm:w-auto">
-             {!isSalesAccounts && !isSeniorPM && !isProjectManager && <ProjectsFilter />}
-             <div className="w-full sm:w-72">
-                <SearchInput placeholder="Search projects..." />
-             </div>
-          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+           <ProjectTableToolbar />
         </div>
 
-        {/* Table View */}
-        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-             <div className="overflow-x-auto">
-               <table className="min-w-full divide-y divide-gray-200">
-                 <thead className="bg-gray-50">
-                   {isSalesAccounts ? (
-                     <tr>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Type</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Due Amount</th>
-                       <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action(s)</th>
-                     </tr>
-                   ) : (
-                     <tr>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Location</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                       <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Start Date</th>
-                      {!isProjectManager && <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PM</th>}
-                      {!isSeniorPM && (
-                        <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                      )}
-                    </tr>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
+               {isSalesAccounts ? (
+                 <tr>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ref</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Location</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Type</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Due Amount</th>
+                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action(s)</th>
+                 </tr>
+               ) : (
+                 <tr>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ref</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Location</th>
+                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Start Date</th>
+                  {!isProjectManager && <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">PM</th>}
+                  {!isSeniorPM && (
+                    <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
                   )}
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {projects.length === 0 ? (
-                    <tr>
-                      <td colSpan={isSalesAccounts || isSeniorPM || isProjectManager ? 6 : 7} className="px-6 py-12 text-center text-sm text-gray-500">
-                        No projects found matching your criteria.
-                      </td>
-                    </tr>
-                   ) : (
-                     projects.map((project) => {
-                       if (isSalesAccounts) {
-                        const schedules = (project as any).paymentSchedules || [];
-                        let typeLabel = 'Installment';
-                        let dueAmount = 0n;
+                </tr>
+              )}
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+              {projects.length === 0 ? (
+                <tr>
+                  <td colSpan={isSalesAccounts || isSeniorPM || isProjectManager ? 6 : 7} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                       <BriefcaseIcon className="h-10 w-10 text-gray-300" />
+                       <p className="text-base font-medium">No projects found</p>
+                       <p className="text-sm">Try adjusting your filters.</p>
+                    </div>
+                  </td>
+                </tr>
+               ) : (
+                 projects.map((project) => {
+                   if (isSalesAccounts) {
+                    const schedules = (project as any).paymentSchedules || [];
+                    let typeLabel = 'Installment';
+                    let dueAmount = 0n;
 
-                        if (schedules.length > 0) {
-                          const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
-                          const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
-                          typeLabel = nextPayment?.label || 'Installment';
-                          dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
-                        } else {
-                           // Fallback: Smart logic for projects without generated schedules
-                           const deposit = BigInt((project as any).depositMinor ?? 0);
-                           const installment = BigInt((project as any).installmentMinor ?? 0);
-                           
-                           // Calculate total paid from client payments
-                           let totalPaid = ((project as any).clientPayments || []).reduce(
-                               (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
-                               0n
-                           );
+                    if (schedules.length > 0) {
+                      const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
+                      const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
+                      typeLabel = nextPayment?.label || 'Installment';
+                      dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
+                    } else {
+                       // Fallback
+                       const deposit = BigInt((project as any).depositMinor ?? 0);
+                       const installment = BigInt((project as any).installmentMinor ?? 0);
+                       let totalPaid = ((project as any).clientPayments || []).reduce(
+                           (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
+                           0n
+                       );
 
-                           if (deposit > 0n) {
-                               if (totalPaid < deposit) {
-                                   typeLabel = 'Deposit';
-                                   dueAmount = deposit - totalPaid;
+                       if (deposit > 0n) {
+                           if (totalPaid < deposit) {
+                               typeLabel = 'Deposit';
+                               dueAmount = deposit - totalPaid;
+                           } else {
+                               totalPaid -= deposit;
+                               if (installment > 0n) {
+                                   typeLabel = 'Installment';
+                                   const remainder = totalPaid % installment;
+                                   dueAmount = installment - remainder;
                                } else {
-                                   // Deposit fully paid
-                                   totalPaid -= deposit;
-                                   
-                                   if (installment > 0n) {
-                                       typeLabel = 'Installment';
-                                       // Calculate remaining due for the current installment cycle
-                                       const remainder = totalPaid % installment;
-                                       dueAmount = installment - remainder;
-                                   } else {
-                                       typeLabel = 'Completed';
-                                       dueAmount = 0n;
-                                   }
+                                   typeLabel = 'Completed';
+                                   dueAmount = 0n;
                                }
-                           } else if (installment > 0n) {
-                               typeLabel = 'Installment';
-                               const remainder = totalPaid % installment;
-                               dueAmount = installment - remainder;
                            }
-                        }
-
-                        return (
-                           <tr key={project.id} className="hover:bg-gray-50 transition-colors">
-                             <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                               {project.projectNumber || project.id.slice(0, 8)}
-                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                               {project.quote?.customer?.displayName || 'Unknown'}
-                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                               {project.quote?.customer?.city || '-'}
-                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                               {typeLabel}
-                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                               <Money minor={dueAmount} />
-                             </td>
-                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                               <Link
-                                 href={`/projects/${project.id}/payments`}
-                                 className="inline-flex items-center justify-center rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                               >
-                                 Receive Payment
-                               </Link>
-                             </td>
-                           </tr>
-                         );
+                       } else if (installment > 0n) {
+                           typeLabel = 'Installment';
+                           const remainder = totalPaid % installment;
+                           dueAmount = installment - remainder;
                        }
+                    }
 
-                       return (
-                         <tr key={project.id} className="hover:bg-gray-50 transition-colors">
-                           <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
-                             {project.projectNumber || project.id.slice(0, 8)}
-                           </td>
-                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-                             {project.quote?.customer?.displayName || 'Unknown'}
-                           </td>
-                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                             {project.quote?.customer?.city || '-'}
-                           </td>
-                           <td className="px-6 py-4 whitespace-nowrap">
-                             <WorkflowStatusBadge status={project.status} />
-                           </td>
-                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                             {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
-                           </td>
-                           {!isProjectManager && (
-                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {isSeniorPM ? (
-                               <ProjectAssigner 
-                                 projectId={project.id} 
-                                 initialAssigneeId={project.assignedTo?.id} 
-                                 projectManagers={projectManagers as any}
-                                 variant="table"
-                               />
+                    return (
+                       <tr key={project.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                         <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
+                           {project.projectNumber || project.id.slice(0, 8)}
+                         </td>
+                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                           {project.quote?.customer?.displayName || 'Unknown'}
+                         </td>
+                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                           {project.quote?.customer?.city || '-'}
+                         </td>
+                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
+                              {typeLabel}
+                            </span>
+                         </td>
+                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
+                            <Money amountMinor={dueAmount} />
+                         </td>
+                         <td className="px-6 py-4 text-center">
+                            <Link 
+                               href={`/projects/${project.id}`}
+                               className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                            >
+                               <EyeIcon className="h-3.5 w-3.5" />
+                               View
+                            </Link>
+                         </td>
+                       </tr>
+                    );
+                   }
+
+                   // Standard View
+                   return (
+                     <tr key={project.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                       <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
+                         {project.projectNumber || project.id.slice(0, 8)}
+                       </td>
+                       <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                         {project.quote?.customer?.displayName || 'Unknown'}
+                       </td>
+                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                         {project.quote?.customer?.city || '-'}
+                       </td>
+                       <td className="px-6 py-4 text-center">
+                         <div className="flex justify-center">
+                            <WorkflowStatusBadge status={project.status} />
+                         </div>
+                       </td>
+                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">
+                         {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
+                       </td>
+                       {!isProjectManager && (
+                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                            {isSeniorPM && currentTab === 'assignment' ? (
+                               <ProjectAssigner projectId={project.id} managers={projectManagers} />
                             ) : (
                                project.assignedTo?.name || '-'
                             )}
-                          </td>
-                          )}
-                          {!isSeniorPM && (
-                            <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                              {isProjectManager && currentTab === 'unplanned' ? (
-                                <Link
-                                  href={`/projects/${project.id}/schedule`}
-                                  className="inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-orange-500 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-orange-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                                 >
-                                   <CalendarIcon className="h-4 w-4" />
-                                   Create Schedule
-                                 </Link>
-                              ) : (
-                                <ProjectViewButton projectId={project.id} />
-                              )}
-                            </td>
-                          )}
-                        </tr>
-                      );
-                    })
-                   )}
-                 </tbody>
-               </table>
-             </div>
-             <div className="px-4 py-4 border-t border-gray-200">
-                <QuotePagination total={totalCount} currentPage={currentPage} pageSize={pageSize} />
-             </div>
+                         </td>
+                       )}
+                       {!isSeniorPM && (
+                         <td className="px-6 py-4 text-center">
+                            <div className="flex items-center justify-center gap-2">
+                                <Link 
+                                   href={`/projects/${project.id}`}
+                                   className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                                >
+                                   <EyeIcon className="h-3.5 w-3.5" />
+                                   View
+                                </Link>
+                            </div>
+                         </td>
+                       )}
+                     </tr>
+                   );
+                 })
+               )}
+            </tbody>
+          </table>
+        </div>
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+           <TablePagination total={totalCount} currentPage={currentPage} pageSize={pageSize} />
         </div>
       </div>
     </div>

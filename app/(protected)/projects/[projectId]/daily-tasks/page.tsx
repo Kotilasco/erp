@@ -1,9 +1,18 @@
-// app/(protected)/projects/[projectId]/daily-tasks/page.tsx
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { fromMinor } from '@/helpers/money';
+import { 
+  ClipboardDocumentCheckIcon, 
+  ArrowLeftIcon, 
+  DocumentChartBarIcon, 
+  CalendarIcon, 
+  UserGroupIcon, 
+  ChartBarIcon,
+  ClockIcon
+} from '@heroicons/react/24/outline';
+import { cn } from '@/lib/utils';
 
 export default async function DailyTasksPage({
   params,
@@ -22,7 +31,16 @@ export default async function DailyTasksPage({
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
-      quote: { select: { number: true } },
+      quote: { 
+        select: { 
+          number: true,
+          customer: {
+            select: {
+              displayName: true,
+            }
+          }
+        } 
+      },
     },
   });
 
@@ -60,46 +78,48 @@ export default async function DailyTasksPage({
             },
           },
         },
-        orderBy: { plannedStart: 'asc' },
+        orderBy: {
+          plannedStart: 'asc',
+        },
       },
     },
   });
 
-  if (!schedule || schedule.items.length === 0) {
+  if (!schedule) {
     return (
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">Daily Tasks</h1>
-            <p className="text-sm text-gray-600">
-              Project: {project.quote?.number ?? projectId}
-            </p>
+      <div className="p-6">
+        <div className="rounded-md bg-yellow-50 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-yellow-800">No schedule found</h3>
+              <div className="mt-2 text-sm text-yellow-700">
+                <p>This project doesn't have a schedule yet.</p>
+              </div>
+            </div>
           </div>
-          <Link
-            href={`/projects/${projectId}`}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            Back to Project
-          </Link>
-        </div>
-        <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4">
-          <p className="text-sm text-yellow-800">
-            No active tasks found. Tasks will appear here once they have started (plannedStart date has arrived) and are not yet completed.
-          </p>
         </div>
       </div>
     );
   }
 
-  // Group tasks by category
+  // Helper to determine category
   const getCategory = (item: any) => {
-    try {
-      const meta = item.quoteLine?.metaJson;
-      if (typeof meta === 'string') {
-        const parsed = JSON.parse(meta);
-        return parsed?.section || parsed?.category || 'Uncategorized';
+    // Try to get section from quote line metadata
+    if (item.quoteLine?.metaJson) {
+      try {
+        const meta = typeof item.quoteLine.metaJson === 'string' 
+          ? JSON.parse(item.quoteLine.metaJson) 
+          : item.quoteLine.metaJson;
+        if (meta.section) return meta.section;
+      } catch (e) {
+        // ignore
       }
-    } catch {}
+    }
     return 'Uncategorized';
   };
 
@@ -110,138 +130,141 @@ export default async function DailyTasksPage({
     return acc;
   }, {} as Record<string, typeof schedule.items>);
 
-  const today = new Date().toISOString().split('T')[0];
-
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-8 bg-gray-50 min-h-screen">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
         <div>
-          <h1 className="text-2xl font-semibold">Daily Tasks - End of Day Reporting</h1>
-          <p className="text-sm text-gray-600">
-            Project: {project.quote?.number ?? projectId} • {new Date().toLocaleDateString()}
-          </p>
+           <div className="flex items-center gap-2 mb-2">
+              <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10">
+                Active Project
+              </span>
+              <span className="text-sm text-gray-500">• {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+           </div>
+           <h1 className="flex items-center text-3xl font-bold tracking-tight text-gray-900">
+              <span className="text-gray-500 font-medium text-xl mr-2">Project:</span>
+              <span className="text-2xl font-bold text-gray-900">{project.quote?.customer?.displayName || project.name}</span>
+           </h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-3">
           <Link
             href={`/projects/${projectId}/reports`}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
-            View All Reports
+            <DocumentChartBarIcon className="h-4 w-4 text-gray-500" />
+            View Reports
           </Link>
           <Link
             href={`/projects/${projectId}`}
-            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
           >
+            <ArrowLeftIcon className="h-4 w-4" />
             Back to Project
           </Link>
         </div>
       </div>
 
-      <div className="rounded-md bg-blue-50 border border-blue-200 p-4">
-        <div className="flex">
-          <div className="flex-shrink-0">
-            <svg
-              className="h-5 w-5 text-blue-400"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
+      {/* Info Card */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <div className="flex items-start gap-4">
+          <div className="p-3 bg-blue-50 rounded-full flex-shrink-0">
+            <ClipboardDocumentCheckIcon className="h-6 w-6 text-blue-600" />
           </div>
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">End of Day Reporting</h3>
-            <div className="mt-2 text-sm text-blue-700">
-              <p>
-                Report progress on active tasks. Enter quantities completed, materials used, and update task status.
-                This helps track actual progress against planned work.
-              </p>
-            </div>
+          <div>
+            <h3 className="text-lg font-bold text-gray-900">End of Day Reporting</h3>
+            <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+              Report progress on active tasks below. Enter quantities completed, materials used, and update task status.
+              This ensures accurate tracking of actual progress against planned work.
+            </p>
           </div>
         </div>
       </div>
 
+      {/* Tasks Grid */}
       {Object.entries(grouped).map(([category, items]) => (
         <div key={category} className="space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900 uppercase tracking-wide">
-            {category}
-          </h2>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="flex items-center gap-3 px-1">
+             <div className="h-6 w-1 bg-blue-600 rounded-full"></div>
+             <h2 className="text-lg font-bold text-gray-900 uppercase tracking-wide">
+               {category}
+             </h2>
+          </div>
+          
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {items.map((item) => {
               const lastReport = item.reports[0];
-              const workers = item.assignees.map((a: any) =>
+              const workerNames = item.assignees.map((a: any) =>
                 [a.givenName, a.surname].filter(Boolean).join(' ')
               ).join(', ') || 'No workers assigned';
+              const workerCount = item.assignees.length;
 
               return (
                 <div
                   key={item.id}
-                  className="rounded-lg border bg-white p-4 shadow-sm hover:shadow-md transition-shadow"
+                  className="group flex flex-col justify-between overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md hover:border-blue-300"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900">{item.title}</h3>
-                      {item.description && (
-                        <p className="text-sm text-gray-600 mt-1">{item.description}</p>
-                      )}
-                    </div>
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                        item.status === 'ACTIVE'
-                          ? 'bg-green-100 text-green-800'
-                          : item.status === 'ON_HOLD'
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : 'bg-gray-100 text-gray-800'
-                      }`}
-                    >
-                      {item.status}
-                    </span>
-                  </div>
-
-                  <div className="mt-3 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Planned Quantity:</span>
-                      <span className="font-medium">
-                        {item.quantity} {item.unit}
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {item.title}
+                      </h3>
+                      <span
+                        className={cn(
+                          "inline-flex flex-shrink-0 items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide",
+                          item.status === 'DONE'
+                            ? "bg-green-100 text-green-800"
+                            : item.status === 'ACTIVE'
+                            ? "bg-green-100 text-green-800"
+                            : "bg-yellow-100 text-yellow-800"
+                        )}
+                      >
+                        {item.status}
                       </span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Workers:</span>
-                      <span className="font-medium text-xs">{workers}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Planned:</span>
-                      <span className="font-medium">
-                        {item.plannedStart ? new Date(item.plannedStart).toLocaleDateString() : '-'} →{' '}
-                        {item.plannedEnd ? new Date(item.plannedEnd).toLocaleDateString() : '-'}
-                      </span>
-                    </div>
-                  </div>
 
-                  {lastReport && (
-                    <div className="mt-3 rounded bg-gray-50 p-2 text-xs">
-                      <div className="font-medium text-gray-700">Last Report:</div>
-                      <div className="text-gray-600">
-                        {new Date(lastReport.reportedForDate).toLocaleDateString()} by{' '}
-                        {lastReport.reporter?.name || 'Unknown'}
-                      </div>
-                      {lastReport.usedQty && (
-                        <div className="text-gray-600">
-                          Completed: {lastReport.usedQty} {lastReport.usedUnit}
+                    {item.description && (
+                      <p className="text-sm text-gray-500 line-clamp-2">{item.description}</p>
+                    )}
+
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <ChartBarIcon className="h-4 w-4" />
+                          <span>Planned:</span>
                         </div>
-                      )}
-                    </div>
-                  )}
+                        <span className="font-semibold text-gray-900">
+                          {item.quantity} {item.unit}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <UserGroupIcon className="h-4 w-4" />
+                          <span>Workers:</span>
+                        </div>
+                        <span className="font-medium text-gray-900 text-right truncate max-w-[120px]" title={workerNames}>
+                          {workerCount} Assigned
+                        </span>
+                      </div>
 
-                  <div className="mt-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <CalendarIcon className="h-4 w-4" />
+                          <span>Timeline:</span>
+                        </div>
+                        <span className="font-medium text-gray-900">
+                           {new Date(item.plannedStart).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })} → {new Date(item.plannedEnd).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-gray-100 bg-gray-50/50 p-4">
                     <Link
                       href={`/projects/${projectId}/daily-tasks/${item.id}`}
-                      className="block w-full rounded-md bg-indigo-600 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-indigo-700"
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
+                      <ClockIcon className="h-4 w-4" />
                       Report Progress
                     </Link>
                   </div>
