@@ -1,5 +1,6 @@
 // app/(protected)/procurement/requisitions/[requisitionId]/page.tsx
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 import { prisma } from '@/lib/db';
 import { fromMinor } from '@/helpers/money';
 import { parseReviewFlagUpdates, parseUnitPriceUpdates } from '@/lib/requisition-form';
@@ -29,6 +30,17 @@ import { markAsPurchased, submitRequisition } from './actions';
 import { createPartialPOFromPurchases } from '@/app/(protected)/projects/actions';
 import PrintButton from '@/components/PrintButton';
 import PrintHeader from '@/components/PrintHeader';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  CheckBadgeIcon,
+  ClockIcon,
+  BanknotesIcon,
+  ExclamationTriangleIcon,
+  ShoppingBagIcon,
+  ListBulletIcon,
+  CurrencyDollarIcon,
+  TruckIcon
+} from '@heroicons/react/24/outline';
 
 export function assertRole(role: string | null | undefined): UserRole {
   if (!role) throw new Error('Unsupported user role');
@@ -55,12 +67,19 @@ export default async function RequisitionDetailPage({
           topups: { orderBy: { createdAt: 'desc' } },
         },
       },
-      project: { include: { quote: { select: { number: true } } } },
+      project: {
+        include: {
+          quote: {
+            include: { customer: { select: { displayName: true } } },
+          },
+        },
+      },
+      submittedBy: { select: { name: true } },
       reviewSubmittedBy: { select: { name: true } },
       funding: {
           orderBy: { createdAt: 'desc' },
           take: 1,
-          select: { id: true, status: true, amountMinor: true, createdAt: true },
+          select: { id: true, status: true, amountMinor: true, createdAt: true, decidedBy: { select: { name: true, email: true } }, decidedAt: true },
       },
     },
   });
@@ -298,11 +317,7 @@ export default async function RequisitionDetailPage({
     await sendRequisitionForReview(requisitionId);
   };
 
-  const funding = await prisma.fundingRequest.findFirst({
-    where: { requisitionId: requisitionId },
-    include: { decidedBy: { select: { name: true, email: true } } },
-    orderBy: { createdAt: 'desc' },
-  });
+  const funding = req.funding[0]; // Already included with take: 1
   const fundingLocked = funding?.status === 'REQUESTED' || funding?.status === 'APPROVED';
 
   const requisition = await prisma.procurementRequisition.findUnique({
@@ -326,28 +341,6 @@ export default async function RequisitionDetailPage({
   }
 
   const projectId = req.projectId;
-
-  /*   const approvedAgg = await prisma.fundingRequest.aggregate({
-    where: { status: 'APPROVED', requisitionId },
-    _sum: { amountMinor: true },
-  });
-
-  const usedAgg = await prisma.purchase.aggregate({
-    where: { requisitionId },
-    _sum: { priceMinor: true },
-  });
-
-  const approvedMinor = BigInt(approvedAgg._sum.amountMinor ?? 0);
-  const usedMinor = BigInt(usedAgg._sum.priceMinor ?? 0);
-  const remainingMinor = approvedMinor - usedMinor;
-
-  const remaining = fromMinor(remainingMinor);
-  const approved = fromMinor(approvedMinor);
-  const used = fromMinor(usedMinor);
-
-  const remainingClass =
-    remainingMinor >= 0n ? 'text-emerald-700 bg-emerald-100' : 'text-red-700 bg-red-100';
- */
 
   // existing:
   const approvedAgg = await prisma.fundingRequest.aggregate({
@@ -420,528 +413,469 @@ export default async function RequisitionDetailPage({
   const hideTopUpForm = Boolean(activeTopUp) || remainingMinor > 0n;
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="min-h-screen bg-slate-50/50 pb-20">
       <PrintHeader />
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            {funding?.status === 'APPROVED' ? 'Purchase Order' : 'Procurement Requisition'}
-          </h1>
-          <div className="text-sm text-gray-600">
-            <div>
-              <span className="font-medium">Requisition:</span> {req.id}
+      
+      {/* Standard Clean Header */}
+      <div className="bg-white border-b border-gray-200 shadow-sm print:hidden mb-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+          {/* Breadcrumbs */}
+          <nav className="flex items-center text-sm font-medium text-gray-500 mb-4">
+            <Link href="/projects" className="hover:text-gray-900 transition-colors">Projects</Link>
+            <span className="mx-2 text-gray-300">/</span>
+            <Link href={`/projects/${req.projectId}`} className="hover:text-gray-900 transition-colors">
+              {req.project.quote?.customer?.displayName || 'Project'}
+            </Link>
+            <span className="mx-2 text-gray-300">/</span>
+            <span className="text-gray-900">Requisitions</span>
+          </nav>
+
+          <div className="md:flex md:items-center md:justify-between">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+                <span className="text-orange-600/80 font-semibold text-lg uppercase tracking-wide mr-2">Project Name:</span>
+                {req.project.quote?.customer?.displayName || 'Project Name'}
+              </h2>
+              <div className="mt-2 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
+                <div className="mt-2 flex items-center text-sm text-gray-500">
+                  <span className="font-semibold text-gray-900 mr-1">Requisition:</span> #{req.id.slice(-6).toUpperCase()}
+                </div>
+                <div className="mt-2 flex items-center text-sm text-gray-500">
+                  <span className="font-semibold text-gray-900 mr-1">Status:</span> 
+                  <span className={cn(
+                    "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset shadow-sm",
+                    funding?.status === 'APPROVED' 
+                      ? "bg-emerald-50 text-emerald-700 ring-emerald-600/20"
+                      : funding?.status === 'REJECTED'
+                      ? "bg-red-50 text-red-700 ring-red-600/20"
+                      : "bg-blue-50 text-blue-700 ring-blue-700/10"
+                  )}>
+                    {funding?.status || req.status}
+                  </span>
+                </div>
+                 {req.submittedBy && (
+                   <div className="mt-2 flex items-center text-sm text-gray-500">
+                      <span className="font-semibold text-gray-900 mr-1">Submitted by:</span> {req.submittedBy.name}
+                   </div>
+                 )}
+              </div>
             </div>
-            <div>
-              <span className="font-medium">Project:</span> {req.projectId}
-            </div>
-            <div>
-              <span className="font-medium">Quote:</span> {req.project?.quote?.number ?? '-'}
+            
+            {/* Actions */}
+            <div className="mt-5 flex lg:ml-4 lg:mt-0 gap-3 items-center justify-end">
+               {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
+                <form action={submitRequisition.bind(null, req.id)}>
+                  <SubmitButton className="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 transition-all">
+                    Submit Requisition
+                  </SubmitButton>
+                </form>
+              )}
+              <div className="hidden sm:block">
+                 <PrintButton />
+              </div>
+              <Link
+                href={`/projects/${req.projectId}`}
+                className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-orange-50 hover:text-orange-700 hover:ring-orange-200 transition-all"
+              >
+                Back to Project
+              </Link>
             </div>
           </div>
-        </div>
-        {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
-          <form action={submitRequisition.bind(null, req.id)}>
-            <SubmitButton className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-              Submit Requisition
-            </SubmitButton>
-          </form>
-        )}
-        <div className="flex gap-3">
-          {/* {req.status === 'SUBMITTED' && ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'].includes(role) && (
-            <Link 
-              href={`/procurement/purchase-orders/create?requisitionId=${req.id}`}
-              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium inline-flex items-center"
-            >
-              Create direct PO
-            </Link>
-          )} */}
-          {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
-            <form action={submitRequisition.bind(null, req.id)}>
-              <SubmitButton className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                Submit Requisition
-              </SubmitButton>
-            </form>
-          )}
-          <PrintButton />
         </div>
       </div>
 
-        {/* Budget summary hidden as requested */}
-        {/* <div className="mt-2 text-sm space-x-2">
-        <span>
-          Approved:{' '}
-          <b>
-            <Money value={approved} />
-          </b>
-        </span>
-        <span>·</span>
-        <span>
-          Disbursed:{' '}
-          <b>
-            <Money value={disbursed} />
-          </b>
-        </span>
-        <span>·</span>
-        <span>
-          Spent:{' '}
-          <b>
-            <Money value={used} />
-          </b>
-        </span>
-        <span>·</span>
-        <span className={remainingClass}>
-          Remaining:{' '}
-          <b>
-            <Money value={remaining} />
-          </b>
-        </span>
-        <span>·</span>
-        <span className={cashGapClass}>
-          Cash remaining:{' '}
-          <b>
-            <Money value={cashGap} />
-          </b>
-        </span>
-      </div> */}
+      <main className="mx-auto max-w-7xl px-4 pb-12 sm:px-6 lg:px-8 space-y-8 print:mt-0 print:px-0">
+        
+        {/* Key Metrics / Summary */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
+              <CardContent className="p-6">
+                <dt className="truncate text-sm font-medium text-gray-500">Items in Review</dt>
+                <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900 flex items-center gap-2">
+                  {req.items.filter((it) => it.reviewRequested).length}
+                  {req.items.some(it => it.reviewRequested) && <ExclamationTriangleIcon className="h-6 w-6 text-amber-500" />}
+                </dd>
+              </CardContent>
+            </Card>
 
-      <section className="rounded border bg-white p-4 shadow-sm">
-        <div
-          className={clsx(
-            'grid gap-4 text-sm text-gray-700',
-            canViewVariance ? 'md:grid-cols-4' : 'md:grid-cols-3'
-          )}
-        >
-          {/* Quoted/Requested Budget cards hidden as requested */}
-          {/* <div>
-            <div className="text-xs uppercase text-gray-500">Quoted Budget</div>
-            <div className="text-xl font-semibold text-slate-900">
-              <Money value={totals.quoted} />
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase text-gray-500">Requested Budget</div>
-            <div className="text-xl font-semibold text-slate-900">
-              <Money value={totals.requested} />
-            </div>
-          </div> */}
-          {canViewVariance && (
-            <div>
-              <div className="text-xs uppercase text-gray-500">Variance</div>
-              <div
-                className={clsx(
-                  'text-xl font-semibold',
-                  varianceTotal > 0
-                    ? 'text-rose-600'
-                    : varianceTotal < 0
-                      ? 'text-emerald-600'
-                      : 'text-slate-900'
-                )}
-              >
-                <Money value={varianceTotal} />
-              </div>
-            </div>
-          )}
-          <div>
-            <div className="text-xs uppercase text-gray-500">Items in review</div>
-            <div className="text-xl font-semibold text-slate-900">
-              {req.items.filter((it) => it.reviewRequested).length}
-            </div>
-          </div>
-        </div>
-        <div className="mt-4 max-h-[60vh] overflow-y-auto scrollbar-y">
-          <ProcurementItemsTable
-            grouped={groupedForClient}
-            permissions={permissions}
-            currency={currency}
-            showTopUps={false} // Hidden as requested
-            showVariance={canViewVariance}
-            unitPriceFormIds={[fundingFormId, reviewFormId]}
-            reviewFlagFormIds={[reviewFormId]}
-            showReviewControls={showReviewControls && !fundingLocked}
-            readOnly={reviewSubmissionPending || fundingLocked}
-            hideFinancials={role === 'PROJECT_OPERATIONS_OFFICER' && !fundingLocked}
-          />
-        </div>
-      </section>
-
-      {/* Show Accounts Decision Amount if Funding is Approved */}
-      {funding?.status === 'APPROVED' && (
-        <section className="rounded border bg-emerald-50 border-emerald-200 p-4 shadow-sm">
-          <h3 className="text-lg font-semibold text-emerald-900">Accounts Decision</h3>
-          <div className="mt-2 text-sm text-emerald-800">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">Approved Amount:</span>
-              <span className="text-lg font-bold">
-                <Money value={Number(funding.amountMinor) / 100} />
-              </span>
-            </div>
-            <div className="mt-1">
-              <span className="font-medium">Decided by:</span> {funding.decidedBy?.name || funding.decidedBy?.email || 'Accounts'}
-            </div>
-            {funding.decidedAt && (
-              <div>
-                <span className="font-medium">Date:</span> {new Date(funding.decidedAt).toLocaleString()}
-              </div>
+            {canViewVariance && (
+              <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
+                <CardContent className="p-6">
+                  <dt className="truncate text-sm font-medium text-gray-500">Variance</dt>
+                  <dd className={cn("mt-1 text-3xl font-semibold tracking-tight", varianceTotal > 0 ? "text-rose-600" : varianceTotal < 0 ? "text-emerald-600" : "text-gray-900")}>
+                    <Money value={varianceTotal} />
+                  </dd>
+                </CardContent>
+              </Card>
             )}
-          </div>
-        </section>
-      )}
 
-      {isProcurement && hasPendingReviews && (
-        <div className="rounded border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-          {reviewSubmissionPending ? (
-            <p>
-              Sent to Senior Procurement on {reviewSubmittedLabel} by {reviewSubmittedByName}.
-              Awaiting approval.
-            </p>
-          ) : (
-            <ReviewActionsClient
-              reviewFormId={reviewFormId}
-              sendForReviewAction={sendForReviewAction}
-            />
-          )}
+            <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
+              <CardContent className="p-6">
+                <dt className="truncate text-sm font-medium text-gray-500">
+                  {funding?.status === 'APPROVED' ? 'Approved Funding' : 'Total Requested'}
+                </dt>
+                <dd className="mt-1 text-3xl font-semibold tracking-tight text-gray-900">
+                   <Money value={funding?.status === 'APPROVED' ? Number(funding.amountMinor)/100 : totals.requested} />
+                </dd>
+                {funding?.status === 'APPROVED' && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Authorized by {funding.decidedBy?.name || funding.decidedBy?.email || 'Accounts'}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
         </div>
-      )}
-
-      {user?.role === 'PROCUREMENT' && !fundingLocked && (
-        <FundingActionsClient
-          canRequestFunding
-          fundingPending={hasPendingReviews}
-          fundingAction={fundingAction}
-          reviewFormId={reviewFormId}
-        />
-      )}
-
-      {/* Accounts Approval UI */}
-      {(['ACCOUNTS', 'ACCOUNTING_OFFICER', 'ADMIN', 'MANAGING_DIRECTOR'].includes(role)) && isFundingRequested && req.funding?.[0] && (
-          <FundingApprovalClient
-            handleApproveFunding={async () => { 'use server'; await approveFunding(req.funding[0].id); }}
-            handleRejectFunding={async (fd) => { 'use server'; await rejectFunding(req.funding[0].id, String(fd.get('reason') || '')); }}
-            amount={Number(req.funding[0].amountMinor ?? 0) / 100}
-          />
-      )}
-
-      {isProcurement && funding?.status === 'APPROVED' && requisition.status !== 'PURCHASED' && (
-        <form
-          action={async () => {
-            'use server';
-            await markAsPurchased(requisitionId);
-          }}
-          className="mt-4"
-        >
-          {(() => {
-             const allPurchased = requisition.items.every(it => {
-               const bought = purchasedByItem.get(it.id)?.qty ?? 0;
-               return bought >= (it.qtyRequested ?? it.qty ?? 0);
-             });
-             const somePurchased = requisition.items.some(it => {
-               const bought = purchasedByItem.get(it.id)?.qty ?? 0;
-               return bought > 0;
-             });
-
-             let label = 'Purchase Materials';
-             let color = 'bg-indigo-600 hover:bg-indigo-700';
-
-             if (allPurchased) {
-               label = 'Complete & Close';
-               color = 'bg-emerald-600 hover:bg-emerald-700';
-             } else if (somePurchased) {
-               label = 'Purchase Remaining';
-               color = 'bg-orange-600 hover:bg-orange-700';
-             }
-
-             return (
-              <SubmitButton
-                loadingText={allPurchased ? 'Closing...' : 'Processing...'}
-                className={`rounded px-4 py-2 text-white font-medium ${color}`}
-              >
-                {label}
-              </SubmitButton>
-             );
-          })()}
-        </form>
-      )}
-
-      {/* Budget section hidden as requested */}
-      {/* <section className="rounded border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Budget</h2>
-        <div className="mt-3 grid gap-3 text-sm sm:grid-cols-3">
-          <div className="rounded border border-gray-200 p-3">
-            <div className="text-gray-500">Approved</div>
-            <div className="text-base font-semibold">
-              <Money value={approved} />
-            </div>
-          </div>
-          <div className="rounded border border-gray-200 p-3">
-            <div className="text-gray-500">Used (Purchases)</div>
-            <div className="text-base font-semibold">
-              <Money value={used} />
-            </div>
-          </div>
-          <div className={clsx('rounded p-3', remainingClass)}>
-            <div className="text-sm font-medium">Remaining</div>
-            <div className="text-base font-bold">
-              <Money value={Math.abs(remaining)} />
-              {remainingMinor < 0n && <span className="ml-2 text-xs font-semibold">(Over)</span>}
-            </div>
-          </div>
-        </div>
-      </section> */}
-
-      {/* Accounts Decision section removed as per user request */}
-
-      {activeTopUp && (
-        <div className="mt-3 rounded bg-amber-50 border border-amber-200 p-3 text-sm">
-          <div className="font-medium">Top-up in progress</div>
-          <div>Status: {activeTopUp.status}</div>
-          <div>
-            Amount: <Money value={Number(activeTopUp.amountMinor) / 100} />
-          </div>
-          <div>Requested: {new Date(activeTopUp.requestedAt!).toLocaleString()}</div>
-        </div>
-      )}
-
-      {/* Procurement: request surplus */}
-      {/* {(role === 'PROCUREMENT' || role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && (
-        <form
-          action={async (fd) => {
-            'use server';
-            await requestTopUp(requisition.id, {
-              amount: Number(fd.get('amount') || 0),
-              note: String(fd.get('note') || ''),
-            });
-          }}
-          className="mt-4 grid max-w-md grid-cols-3 gap-2 text-sm"
-        >
-          <input
-            name="amount"
-            type="number"
-            step="0.01"
-            required
-            placeholder="Top-up amount"
-            className="rounded border px-2 py-1 col-span-2"
-          />
-          <input
-            name="note"
-            placeholder="Reason (optional)"
-            className="rounded border px-2 py-1 col-span-3"
-          />
-          <button className="rounded bg-slate-900 px-3 py-1.5 text-white col-span-1">
-            Request Top-up
-          </button>
-        </form>
-      )} */}
-
-      {/* Procurement / PM / Admin can request a top-up, but we hide the form if funds remain or there is an active top-up */}
-      {/* Top-up form hidden as requested */}
-      {/* {(role === 'PROCUREMENT' || role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && (
-        <>
-          {!hideTopUpForm ? (
-            <form
-              action={async (fd) => {
-                'use server';
-                await requestTopUp(requisition.id, Number(fd.get('amount') || 0));
-                revalidatePath(`/procurement/requisitions/${requisitionId}`);
-              }}
-              className="mt-4 grid max-w-md grid-cols-3 gap-2 text-sm"
-            >
-              <input
-                name="amount"
-                type="number"
-                step="0.01"
-                min="0.01"
-                required
-                placeholder="Top-up amount"
-                className="rounded border px-2 py-1 col-span-2"
+        
+        {/* Main Items Table */}
+        <Card className="overflow-hidden border-0 shadow-md ring-1 ring-gray-900/5">
+          <CardHeader className="border-b border-gray-100 bg-gray-50/50 py-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
+              <ListBulletIcon className="h-5 w-5 text-orange-600" />
+              Requisition Items
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-[70vh] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent p-0">
+             <ProcurementItemsTable
+                grouped={groupedForClient}
+                permissions={permissions}
+                currency={currency}
+                showTopUps={false}
+                showVariance={canViewVariance}
+                unitPriceFormIds={[fundingFormId, reviewFormId]}
+                reviewFlagFormIds={[reviewFormId]}
+                showReviewControls={showReviewControls && !fundingLocked}
+                readOnly={reviewSubmissionPending || fundingLocked}
+                hideFinancials={role === 'PROJECT_OPERATIONS_OFFICER' && !fundingLocked}
               />
-              <input
-                name="note"
-                placeholder="Reason (optional)"
-                className="rounded border px-2 py-1 col-span-3"
-              />
-              <button className="rounded bg-slate-900 px-3 py-1.5 text-white col-span-1">
-                Request Top-up
-              </button>
-            </form>
-          ) : (
-            <p className="mt-3 text-xs text-gray-500">
-              {activeTopUp
-                ? 'A top-up is already active; new requests are hidden until it is decided or finished.'
-                : 'Funds remain from the current budget; a top-up becomes available after funds are exhausted.'}
-            </p>
-          )}
-        </>
-      )} */}
-
-      {isProcurement &&
-        (requisition.status === 'PURCHASED' ||
-          requisition.status === 'PARTIAL' ||
-          requisition.status === 'APPROVED') && (
-          <section className="rounded border bg-white p-4 shadow-sm">
-            <h3 className="text-lg font-semibold">Stage Purchases</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Enter items you have bought to <b>stage</b> them. Once you are ready, click &quot;Create PO&quot; to group them for Security.
-            </p>
-
-            {/* Staged Items List */}
-            {(() => {
-              const pendingPurchases = requisition.purchases.filter(p => !p.purchaseOrderId); // or status === 'PENDING'
-              if (pendingPurchases.length > 0) {
-               return (
-                 <div className="mb-6 rounded bg-amber-50 border border-amber-200 p-4">
-                   <div className="flex items-center justify-between mb-2">
-                     <h4 className="font-semibold text-amber-900">Staged Items ({pendingPurchases.length})</h4>
-                     <form action={createPartialPOFromPurchases.bind(null, requisitionId)}>
-                       <SubmitButton className="rounded bg-amber-600 px-3 py-1.5 text-white text-sm hover:bg-amber-700">
-                         Create PO from Staged Items
-                       </SubmitButton>
-                     </form>
-                   </div>
-                   <table className="w-full text-sm text-left">
-                     <thead>
-                       <tr className="text-gray-500 border-b border-amber-200">
-                         <th className="py-1 pl-2">Item Name</th>
-                         <th className="py-1 text-right">Qty</th>
-                         <th className="py-1 px-2">Vendor</th>
-                         <th className="py-1">Ref</th>
-                         <th className="py-1 text-right">Unit Price</th>
-                         <th className="py-1 text-right pr-2">Total</th>
-                       </tr>
-                     </thead>
-                     <tbody>
-                       {pendingPurchases.map(p => {
-                         const unitPrice = p.qty > 0 ? (Number(p.priceMinor) / 100) / p.qty : 0;
-                         const itemDesc = requisition.items.find(i => i.id === p.requisitionItemId)?.description ?? 'Unknown Item';
-                         return (
-                           <tr key={p.id} className="border-b border-amber-100 last:border-0 hover:bg-amber-100/50">
-                             <td className="py-1 pl-2 font-medium">{itemDesc}</td>
-                             <td className="py-1 text-right">{p.qty}</td>
-                             <td className="py-1 px-2">{p.vendor}</td>
-                             <td className="py-1">{p.taxInvoiceNo}</td>
-                             <td className="py-1 text-right"><Money value={unitPrice} /></td>
-                             <td className="py-1 text-right pr-2 font-semibold"><Money value={Number(p.priceMinor) / 100} /></td>
-                           </tr>
-                         );
-                       })}
-                     </tbody>
-                   </table>
-                 </div>
-               );
-              }
-              return null;
-            })()}
-
-            <h3 className="text-lg font-semibold mt-6">All Purchases</h3>
-            <div className="mt-3 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left">Item</th>
-                    <th className="px-3 py-2 text-right">Req. Qty</th>
-                    <th className="px-3 py-2 text-right">Purchased</th>
-                    <th className="px-3 py-2 text-right">Remaining</th>
-                    <th className="px-3 py-2 text-left">Add Purchase</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {requisition.items.map((it) => {
-                    const bought = purchasedByItem.get(it.id) ?? { qty: 0, totalMinor: 0n };
-                    const remaining = Math.max(0, Number(it.qtyRequested ?? 0) - bought.qty);
-
-                    return (
-                      <tr key={it.id} className="border-b last:border-b-0 align-top">
-                        <td className="px-3 py-2">
-                          <div className="font-medium">{it.description}</div>
-                          <div className="text-xs text-gray-600">{it.unit ?? '-'}</div>
-                          <div className="text-xs text-gray-500">
-                            Est: <Money value={Number(it.amountMinor) / 100} />
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-right">{Number(it.qtyRequested ?? 0)}</td>
-                        <td className="px-3 py-2 text-right">{bought.qty}</td>
-                        <td className="px-3 py-2 text-right">{remaining}</td>
-                        <td className="px-3 py-2">
-                          {remaining > 0 ? (
-                            <form
-                              action={async (fd) => {
-                                'use server';
-                                await createPurchase({
-                                  requisitionId: requisition.id,
-                                  requisitionItemId: it.id,
-                                  vendor: String(fd.get('vendor') || ''),
-                                  taxInvoiceNo: String(fd.get('taxInvoiceNo') || ''),
-                                  vendorPhone: String(fd.get('vendorPhone') || ''),
-                                  qty: Number(fd.get('qty') || 0),
-                                  unitPrice: Number(fd.get('unitPrice') || 0),
-                                  date: String(
-                                    fd.get('date') || new Date().toISOString().slice(0, 10)
-                                  ),
-                                  invoiceUrl: null,
-                                });
-                              }}
-                              className="grid grid-cols-2 gap-2"
-                            >
-                              <input
-                                name="vendor"
-                                placeholder="Vendor"
-                                className="rounded border px-2 py-1"
-                                required
-                              />
-                              <input
-                                name="vendorPhone"
-                                placeholder="Phone number (optional)"
-                                className="rounded border px-2 py-1"
-                              />
-                              <input
-                                name="taxInvoiceNo"
-                                placeholder="Tax Invoice No"
-                                className="rounded border px-2 py-1"
-                                required
-                              />
-
-                              {/* clamp qty on the client */}
-                              <QuantityInput
-                                name="qty"
-                                max={remaining}
-                                className="rounded border px-2 py-1"
-                              />
-
-                              <input
-                                name="unitPrice"
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                placeholder="Unit Price"
-                                className="rounded border px-2 py-1"
-                                required
-                              />
-                              <input
-                                name="date"
-                                type="date"
-                                className="rounded border px-2 py-1"
-                                defaultValue={new Date().toISOString().slice(0, 10)}
-                              />
-                              <SubmitButton
-                                loadingText="Staging..."
-                                className="col-span-2 rounded bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-800"
-                              >
-                                Stage for PO
-                              </SubmitButton>
-                            </form>
-                          ) : (
-                            <span className="inline-flex items-center rounded bg-emerald-100 px-2 py-1 text-xs font-semibold text-emerald-700">
-                              Fully purchased
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
             </div>
-          </section>
+          </CardContent>
+        </Card>
+
+        {/* Review Status Banner */}
+        {isProcurement && hasPendingReviews && (
+          <Card className="border-orange-100 bg-orange-50/50 shadow-sm">
+            <CardContent className="flex items-center gap-4 p-6">
+             <div className="rounded-full bg-orange-100 p-3 shadow-sm ring-1 ring-orange-500/10">
+                <ClockIcon className="h-6 w-6 text-orange-600" />
+             </div>
+             <div className="flex-1">
+                <h3 className="text-base font-bold text-orange-900">Review Status</h3>
+                <div className="mt-1 text-sm text-orange-700">
+                  {reviewSubmissionPending ? (
+                    <p>
+                      Sent to Senior Procurement on <span className="font-semibold">{reviewSubmittedLabel}</span> by <span className="font-semibold">{reviewSubmittedByName}</span>.
+                      Awaiting approval.
+                    </p>
+                  ) : (
+                    <ReviewActionsClient
+                      reviewFormId={reviewFormId}
+                      sendForReviewAction={sendForReviewAction}
+                    />
+                  )}
+                </div>
+             </div>
+            </CardContent>
+          </Card>
         )}
+
+        {/* Funding Actions */}
+        {user?.role === 'PROCUREMENT' && !fundingLocked && (
+           <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
+              <CardHeader className="border-b border-gray-100 bg-gray-50/50 py-4">
+                <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                  <BanknotesIcon className="h-5 w-5 text-emerald-600" />
+                  Request Funding
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <FundingActionsClient
+                  canRequestFunding
+                  fundingPending={hasPendingReviews}
+                  fundingAction={fundingAction}
+                  reviewFormId={reviewFormId}
+                />
+              </CardContent>
+           </Card>
+        )}
+
+        {/* Accounts Approval UI */}
+        {(['ACCOUNTS', 'ACCOUNTING_OFFICER', 'ADMIN', 'MANAGING_DIRECTOR'].includes(role)) && isFundingRequested && req.funding?.[0] && (
+          <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
+             <CardHeader className="border-b border-gray-100 bg-gray-50/50 py-4">
+               <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                 <CurrencyDollarIcon className="h-5 w-5 text-emerald-600" />
+                 Funding Approval
+               </CardTitle>
+             </CardHeader>
+             <CardContent className="p-6">
+                <FundingApprovalClient
+                  handleApproveFunding={async () => { 'use server'; await approveFunding(req.funding[0].id); }}
+                  handleRejectFunding={async (fd) => { 'use server'; await rejectFunding(req.funding[0].id, String(fd.get('reason') || '')); }}
+                  amount={Number(req.funding[0].amountMinor ?? 0) / 100}
+                />
+             </CardContent>
+          </Card>
+        )}
+
+        {/* Purchase Processing Actions */}
+        {isProcurement && funding?.status === 'APPROVED' && requisition.status !== 'PURCHASED' && (
+           <Card className="border-0 shadow-lg ring-1 ring-gray-900/5">
+             <CardContent className="flex flex-col items-center justify-center space-y-6 p-10 text-center">
+               <div className="rounded-full bg-blue-50 p-4 ring-1 ring-blue-500/10">
+                  <ShoppingBagIcon className="h-10 w-10 text-orange-600" />
+               </div>
+               <div className="max-w-md space-y-2">
+                 <h3 className="text-xl font-bold text-gray-900">Purchase Materials</h3>
+                 <p className="text-sm text-gray-500">
+                   Review items and mark them as purchased. Once all items are processed, you can close this requisition.
+                 </p>
+               </div>
+               <form
+                  action={async () => {
+                    'use server';
+                    await markAsPurchased(requisitionId);
+                  }}
+                >
+                  {(() => {
+                     const allPurchased = requisition.items.every(it => {
+                       const bought = purchasedByItem.get(it.id)?.qty ?? 0;
+                       return bought >= (it.qtyRequested ?? it.qty ?? 0);
+                     });
+                     const somePurchased = requisition.items.some(it => {
+                       const bought = purchasedByItem.get(it.id)?.qty ?? 0;
+                       return bought > 0;
+                     });
+
+                     let label = 'Purchase Materials';
+                     let colorClass = 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200';
+
+                     if (allPurchased) {
+                       label = 'Complete & Close';
+                       colorClass = 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200';
+                     } else if (somePurchased) {
+                       label = 'Purchase Remaining';
+                       colorClass = 'bg-orange-600 hover:bg-orange-700 shadow-orange-200';
+                     }
+
+                     return (
+                      <SubmitButton
+                        loadingText={allPurchased ? 'Closing...' : 'Processing...'}
+                        className={`rounded-xl px-8 py-3 text-white font-semibold shadow-lg transition-all active:scale-95 ${colorClass}`}
+                      >
+                        {label}
+                      </SubmitButton>
+                     );
+                  })()}
+                </form>
+             </CardContent>
+           </Card>
+        )}
+
+        {/* Top-up Status */}
+        {activeTopUp && (
+           <Card className="border-amber-200 bg-amber-50/50 shadow-sm">
+             <CardContent className="flex items-start gap-4 p-6">
+                <div className="rounded-lg bg-amber-100 p-2 text-amber-600 ring-1 ring-amber-600/10">
+                   <ExclamationTriangleIcon className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-amber-900">Top-up in progress</h3>
+                  <div className="mt-2 space-y-1 text-sm text-amber-800">
+                    <p>Status: <span className="font-semibold">{activeTopUp.status}</span></p>
+                    <p>Amount: <span className="font-semibold"><Money value={Number(activeTopUp.amountMinor) / 100} /></span></p>
+                    <p>Requested: {new Date(activeTopUp.requestedAt!).toLocaleString()}</p>
+                  </div>
+                </div>
+             </CardContent>
+           </Card>
+        )}
+
+        {/* Staging & Purchases Section */}
+        {isProcurement &&
+          (requisition.status === 'PURCHASED' ||
+            requisition.status === 'PARTIAL' ||
+            requisition.status === 'APPROVED') && (
+            <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
+              <CardHeader className="border-b border-gray-100 bg-gray-50/50 py-4">
+                 <CardTitle className="flex items-center gap-2 text-lg font-bold text-gray-900">
+                   <TruckIcon className="h-5 w-5 text-orange-600" />
+                   Stage Purchases
+                 </CardTitle>
+                 <CardDescription>
+                  Enter items you have bought to <b>stage</b> them. Once you are ready, click &quot;Create PO&quot; to group them for Security.
+                 </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="space-y-8 p-6">
+                {/* Staged Items List */}
+                {(() => {
+                  const pendingPurchases = requisition.purchases.filter(p => !p.purchaseOrderId);
+                  if (pendingPurchases.length > 0) {
+                   return (
+                     <div className="overflow-hidden rounded-xl border border-amber-200 bg-amber-50 shadow-sm">
+                       <div className="flex items-center justify-between border-b border-amber-200 bg-amber-100/50 px-4 py-3">
+                         <h4 className="flex items-center gap-2 font-semibold text-amber-900">
+                            <ClockIcon className="h-4 w-4" />
+                            Staged Items ({pendingPurchases.length})
+                         </h4>
+                         <form action={createPartialPOFromPurchases.bind(null, requisitionId)}>
+                           <SubmitButton className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-amber-700">
+                             Create PO from Staged Items
+                           </SubmitButton>
+                         </form>
+                       </div>
+                       <div className="overflow-x-auto">
+                         <table className="w-full text-sm text-left">
+                           <thead className="bg-amber-50/50 text-amber-900/70">
+                             <tr>
+                               <th className="py-2 pl-4 font-medium">Item Name</th>
+                               <th className="py-2 text-right font-medium">Qty</th>
+                               <th className="py-2 px-4 font-medium">Vendor</th>
+                               <th className="py-2 font-medium">Ref</th>
+                               <th className="py-2 text-right font-medium">Unit Price</th>
+                               <th className="py-2 text-right pr-4 font-medium">Total</th>
+                             </tr>
+                           </thead>
+                           <tbody className="divide-y divide-amber-200/50">
+                             {pendingPurchases.map(p => {
+                               const unitPrice = p.qty > 0 ? (Number(p.priceMinor) / 100) / p.qty : 0;
+                               const itemDesc = requisition.items.find(i => i.id === p.requisitionItemId)?.description ?? 'Unknown Item';
+                               return (
+                                 <tr key={p.id} className="transition-colors hover:bg-amber-100/30">
+                                   <td className="py-2 pl-4 font-medium text-amber-900">{itemDesc}</td>
+                                   <td className="py-2 text-right text-amber-800">{p.qty}</td>
+                                   <td className="py-2 px-4 text-amber-800">{p.vendor}</td>
+                                   <td className="py-2 text-amber-800">{p.taxInvoiceNo}</td>
+                                   <td className="py-2 text-right text-amber-800"><Money value={unitPrice} /></td>
+                                   <td className="py-2 pr-4 text-right font-bold text-amber-900"><Money value={Number(p.priceMinor) / 100} /></td>
+                                 </tr>
+                               );
+                             })}
+                           </tbody>
+                         </table>
+                       </div>
+                     </div>
+                   );
+                  }
+                  return null;
+                })()}
+
+                {/* All Purchases Table */}
+                <div>
+                  <h3 className="mb-4 text-base font-bold text-gray-900">Add New Purchase</h3>
+                  <div className="overflow-hidden rounded-lg border border-gray-200 shadow-sm">
+                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                      <thead className="bg-gray-50/50">
+                        <tr>
+                          <th className="px-4 py-3 text-left font-medium text-gray-500">Item</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-500">Req. Qty</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-500">Purchased</th>
+                          <th className="px-4 py-3 text-right font-medium text-gray-500">Remaining</th>
+                          <th className="w-[40%] px-4 py-3 text-left font-medium text-gray-500">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 bg-white">
+                        {requisition.items.map((it) => {
+                          const bought = purchasedByItem.get(it.id) ?? { qty: 0, totalMinor: 0n };
+                          const remaining = Math.max(0, Number(it.qtyRequested ?? 0) - bought.qty);
+
+                          return (
+                            <tr key={it.id} className="transition-colors hover:bg-gray-50">
+                              <td className="align-top px-4 py-3">
+                                <div className="font-medium text-gray-900">{it.description}</div>
+                                <div className="text-xs text-gray-500">{it.unit ?? '-'}</div>
+                                <div className="mt-1 text-xs text-gray-400">
+                                  Est: <Money value={Number(it.amountMinor) / 100} />
+                                </div>
+                              </td>
+                              <td className="align-top px-4 py-3 text-right text-gray-700">{Number(it.qtyRequested ?? 0)}</td>
+                              <td className="align-top px-4 py-3 text-right text-gray-700">{bought.qty}</td>
+                              <td className="align-top px-4 py-3 text-right font-medium text-gray-900">{remaining}</td>
+                              <td className="align-top px-4 py-3">
+                                {remaining > 0 ? (
+                                  <form
+                                    action={async (fd) => {
+                                      'use server';
+                                      await createPurchase({
+                                        requisitionId: requisition.id,
+                                        requisitionItemId: it.id,
+                                        vendor: String(fd.get('vendor') || ''),
+                                        taxInvoiceNo: String(fd.get('taxInvoiceNo') || ''),
+                                        vendorPhone: String(fd.get('vendorPhone') || ''),
+                                        qty: Number(fd.get('qty') || 0),
+                                        unitPrice: Number(fd.get('unitPrice') || 0),
+                                        date: String(
+                                          fd.get('date') || new Date().toISOString().slice(0, 10)
+                                        ),
+                                        invoiceUrl: null,
+                                      });
+                                    }}
+                                    className="grid grid-cols-1 gap-2 sm:grid-cols-2"
+                                  >
+                                    <input
+                                      name="vendor"
+                                      placeholder="Vendor"
+                                      className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                      required
+                                    />
+                                    <input
+                                      name="vendorPhone"
+                                      placeholder="Phone (opt)"
+                                      className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    />
+                                    <input
+                                      name="taxInvoiceNo"
+                                      placeholder="Inv No."
+                                      className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                      required
+                                    />
+                                    <QuantityInput
+                                      name="qty"
+                                      max={remaining}
+                                      className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    />
+                                    <input
+                                      name="unitPrice"
+                                      type="number"
+                                      step="0.01"
+                                      min="0"
+                                      placeholder="Unit Price"
+                                      className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                      required
+                                    />
+                                    <input
+                                      name="date"
+                                      type="date"
+                                      className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                      defaultValue={new Date().toISOString().slice(0, 10)}
+                                    />
+                                    <div className="mt-1 col-span-1 sm:col-span-2">
+                                      <SubmitButton
+                                        loadingText="Staging..."
+                                        className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+                                      >
+                                        Stage for PO
+                                      </SubmitButton>
+                                    </div>
+                                  </form>
+                                ) : (
+                                  <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                    <CheckBadgeIcon className="mr-1 h-3 w-3" />
+                                    Fully purchased
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+      </main>
     </div>
-  );
-}
+  );}

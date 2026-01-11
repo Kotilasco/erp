@@ -1,215 +1,151 @@
 import Link from 'next/link';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
-import { DispatchFilter } from './DispatchFilter';
-import { getPendingDispatchItems } from '@/lib/dispatch-logic';
-import ApproveDispatchButton from '@/components/ApproveDispatchButton';
+import { assertRoles } from '@/lib/workflow';
+import { redirect } from 'next/navigation';
+import { DispatchStatusBadge } from '@/components/ui/dispatch-status-badge';
+import TablePagination from '@/components/ui/table-pagination';
+import { DispatchStatus } from '@prisma/client';
+import DispatchTableToolbar from './components/DispatchTableToolbar';
+import { TruckIcon, EyeIcon } from '@heroicons/react/24/outline';
 
-export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-export default async function DispatchListPage({
+export default async function DispatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; search?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; status?: string; pageSize?: string }>;
 }) {
-  const user = await getCurrentUser();
-  if (!user) {
-    return <div>Please log in</div>;
+  const me = await getCurrentUser();
+  if (!me) redirect('/login');
+
+  try {
+    assertRoles(me.role as any, ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN', 'STORE_KEEPER'] as any);
+  } catch {
+    redirect('/projects');
   }
 
-  const isSecurity = user.role === 'SECURITY';
+  const { q, page, status, pageSize } = await searchParams;
+  const currentPage = Math.max(1, Number(page || '1'));
+  const size = Math.max(1, Number(pageSize || '20'));
 
-  // Default status logic
-  let defaultStatus = 'AWAITING';
-  if (isSecurity) defaultStatus = 'APPROVED';
+  const where: any = {};
+  
+  if (q) {
+    where.OR = [
+      { id: { contains: q, mode: 'insensitive' } },
+      { createdBy: { name: { contains: q, mode: 'insensitive' } } },
+      { project: { projectNumber: { contains: q, mode: 'insensitive' } } },
+      { project: { quote: { customer: { displayName: { contains: q, mode: 'insensitive' } } } } },
+    ];
+  }
 
-  const { status, search } = await searchParams;
-  const currentStatus = status || defaultStatus;
-  const searchTerm = search?.trim() || '';
-  const isProjectManager = user.role === 'PROJECT_OPERATIONS_OFFICER';
-  const isDriver = user.role === 'DRIVER';
+  if (status) {
+    where.status = status as DispatchStatus;
+  }
 
-  // State A: "Ready to Dispatch" (Calculated)
-  let pendingItems: any[] = [];
-  // State B: "Dispatch Records" (DB)
-  let dispatches: any[] = [];
-
-  // Security cannot see "AWAITING" items (creation flow)
-  // Strictly enforce that Security ONLY sees APPROVED/DISPATCHED/DELIVERED
-  if (currentStatus === 'AWAITING' && !searchTerm && !isSecurity && !isDriver) {
-    pendingItems = await getPendingDispatchItems(user.id, user.role ?? 'USER');
-  } else {
-    const where: any = {};
-    if (searchTerm) {
-      where.OR = [
-        { project: { projectNumber: { contains: searchTerm, mode: 'insensitive' } } },
-        { project: { quote: { customer: { displayName: { contains: searchTerm, mode: 'insensitive' } } } } },
-        { project: { quote: { customer: { city: { contains: searchTerm, mode: 'insensitive' } } } } },
-      ];
-    }
-    if (isProjectManager) {
-      where.project = { assignedToId: user.id };
-    }
-
-    if (user.role === 'DRIVER') {
-      where.assignedToDriverId = user.id;
-      // Driver sees: DISPATCHED (Open) or DELIVERED (History)
-      // They should NOT see 'APPROVED' (waiting for security) or 'AWAITING'.
-      if (currentStatus === 'ALL') {
-          where.status = { in: ['DISPATCHED', 'DELIVERED'] };
-      }
-    }
-
-    if (currentStatus !== 'ALL' && currentStatus !== 'AWAITING') {
-      where.status = currentStatus;
-    }
-
-    if (isSecurity) {
-       // Security can only see approved/dispatched/delivered.
-       // If they request ALL or an invalid status, fallback to the allowed list.
-       const allowedStats = ['APPROVED', 'DISPATCHED', 'DELIVERED'];
-       if (currentStatus === 'ALL' || !allowedStats.includes(currentStatus)) {
-          where.status = { in: allowedStats };
-       } else {
-          where.status = currentStatus;
-       }
-    }
-
-    dispatches = await prisma.dispatch.findMany({
+  const [dispatches, total] = await Promise.all([
+    prisma.dispatch.findMany({
       where,
       orderBy: { createdAt: 'desc' },
+      skip: (currentPage - 1) * size,
+      take: size,
       include: {
-        items: true,
+        createdBy: { select: { name: true } },
         project: {
-          include: {
+          select: {
+            projectNumber: true,
             quote: {
-              include: {
-                customer: true,
-              },
-            },
-          },
+              select: {
+                customer: { select: { displayName: true } }
+              }
+            }
+          }
         },
       },
-    });
-  }
+    }),
+    prisma.dispatch.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(total / size);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between bg-white p-4 rounded-lg border shadow-sm">
-        <h1 className="text-xl font-semibold text-gray-900">Dispatches</h1>
-        <DispatchFilter role={user.role ?? undefined} />
+    <div className="space-y-8 p-2 sm:p-4 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
+            <TruckIcon className="h-8 w-8 text-barmlo-blue dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Dispatches</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Manage inventory dispatches and requests.
+            </p>
+          </div>
+        </div>
       </div>
 
-      <div className="rounded-md border bg-white">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+           <DispatchTableToolbar />
+        </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse" style={{ minWidth: '1000px' }}>
-            <thead className="bg-muted/50 border-b bg-gray-50">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
               <tr>
-                {currentStatus === 'AWAITING' ? (
-                  <>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Project / Ref</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Customer</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Pending Items</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500 w-[150px]">Action</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 w-[120px]">Dispatch #</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Customer</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Location</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500 w-[120px]">Date</th>
-                    <th className="px-4 py-3 text-left font-medium text-gray-500">Driver</th>
-                    <th className="px-4 py-3 text-center font-medium text-gray-500 w-[120px]">Status</th>
-                    <th className="px-4 py-3 text-right font-medium text-gray-500 w-[150px]">Action</th>
-                  </>
-                )}
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ref #</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requester</th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
-              {currentStatus === 'AWAITING' ? (
-                pendingItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
-                      No items ready for dispatch.
-                    </td>
-                  </tr>
-                ) : (
-                  pendingItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-2 text-gray-900 font-medium">
-                        {item.projectNumber || item.id.slice(0, 8)}
-                      </td>
-                      <td className="px-4 py-2 text-gray-900">{item.customerName}</td>
-                      <td className="px-4 py-2 text-gray-500">
-                        {item.pendingCount} item{item.pendingCount !== 1 ? 's' : ''} ready
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        <Link
-                          href={`/projects/${item.id}/dispatches`}
-                          className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        >
-                          View Dispatches
-                        </Link>
-                      </td>
-                    </tr>
-                  ))
-                )
-              ) : dispatches.length === 0 ? (
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+              {dispatches.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    No dispatches found.
+                  <td className="px-6 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={6}>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                       <TruckIcon className="h-10 w-10 text-gray-300" />
+                       <p className="text-base font-medium">No dispatches found</p>
+                       <p className="text-sm">Try adjusting your filters.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                dispatches.map((dispatch) => (
-                  <tr key={dispatch.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-2 font-mono text-xs text-gray-500">
-                      {dispatch.id.slice(0, 8).toUpperCase()}
+                dispatches.map((d) => (
+                  <tr key={d.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100 font-mono">
+                      {d.id.slice(0, 8).toUpperCase()}
                     </td>
-                    <td className="px-4 py-2 text-gray-900">
-                      {dispatch.project?.quote?.customer?.displayName || 'Unknown'}
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                       <div className="flex flex-col">
+                          <span className="font-medium text-gray-900 dark:text-gray-200">{d.project?.projectNumber || 'N/A'}</span>
+                          <span className="text-xs text-gray-500">{d.project?.quote?.customer?.displayName}</span>
+                       </div>
                     </td>
-                    <td className="px-4 py-2 text-gray-500">
-                      {dispatch.project?.quote?.customer?.city || '-'}
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      {d.createdBy?.name || '-'}
                     </td>
-                    <td className="px-4 py-2 text-gray-500">
-                      {new Date(dispatch.createdAt).toLocaleDateString()}
+                    <td className="px-6 py-4 text-center">
+                       <div className="flex justify-center">
+                          <DispatchStatusBadge status={d.status} />
+                       </div>
                     </td>
-                    <td className="px-4 py-2 text-gray-500">
-                      {dispatch.driverName || '-'}
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">
+                      {new Date(d.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-2 text-center">
-                      <div className="flex justify-center">
-                         <WorkflowStatusBadge status={dispatch.status} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {dispatch.status === 'DRAFT' ? (
-                        <Link
-                          href={`/projects/${dispatch.projectId}/dispatches/${dispatch.id}`}
-                          className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        >
-                          Edit
-                        </Link>
-                      ) : dispatch.status === 'SUBMITTED' && (user.role === 'PROJECT_OPERATIONS_OFFICER' || user.role === 'ADMIN') ? (
-                        <div className="flex items-center justify-end gap-2">
-                           <ApproveDispatchButton dispatchId={dispatch.id} />
-                           <Link
-                              href={`/dispatches/${dispatch.id}`}
-                              className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                            >
-                              View
-                            </Link>
-                        </div>
-                      ) : (
-                        <Link
-                          href={`/dispatches/${dispatch.id}`}
-                          className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                        >
-                          View
-                        </Link>
-                      )}
+                    <td className="px-6 py-4 text-center">
+                      <Link 
+                        href={`/dispatches/${d.id}`}
+                        className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                      >
+                        <EyeIcon className="h-3.5 w-3.5" />
+                        View
+                      </Link>
                     </td>
                   </tr>
                 ))
@@ -217,6 +153,18 @@ export default async function DispatchListPage({
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={size}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

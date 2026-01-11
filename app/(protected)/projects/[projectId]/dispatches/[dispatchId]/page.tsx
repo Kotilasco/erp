@@ -3,17 +3,17 @@ import { prisma } from '@/lib/db';
 import {
   updateDispatchItems,
   submitDispatch,
-  approveDispatch,
-  markDispatchDelivered,
   markItemUsedOut,
 } from '@/app/(protected)/projects/actions';
 import { returnItemsToInventory } from '@/app/(protected)/projects/actions';
 import LoadingButton from '@/components/LoadingButton';
 import { revalidatePath } from 'next/cache';
-import { markItemHandedOut, returnLineItem } from '../action';
+import { markItemHandedOut } from '../action';
 import { redirect } from 'next/navigation';
 import ApproveDispatchButton from '@/components/ApproveDispatchButton';
-import { use } from 'react';
+import Link from 'next/link';
+import { ArrowLeftIcon, CalendarIcon, UserIcon, CheckIcon, ShieldCheckIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { cn } from '@/lib/utils';
 
 export const runtime = 'nodejs';
 
@@ -29,8 +29,20 @@ export default async function DispatchDetail({
   const { dispatchId } = await params;
   const dispatch = await prisma.dispatch.findUnique({
     where: { id: dispatchId },
-    include: { project: { select: { id: true } }, items: true },
+    include: { 
+        project: { 
+            select: { 
+                id: true, 
+                name: true,
+                projectNumber: true,
+                quote: { include: { customer: true } }
+            } 
+        }, 
+        items: { orderBy: { id: 'asc' } },
+        createdBy: { select: { name: true } }
+    },
   });
+  
   if (!dispatch) return <div className="p-6">Not found.</div>;
 
   const canEdit = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
@@ -41,6 +53,7 @@ export default async function DispatchDetail({
   const canReturn = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN') && dispatch.status === 'DELIVERED';
 
   // ---------- server actions ----------
+  
   // Save table edits (PM)
   const saveAction = async (fd: FormData) => {
     'use server';
@@ -70,52 +83,6 @@ export default async function DispatchDetail({
     // persist any current edits first
     await saveAction(fd);
     await submitDispatch(dispatchId);
-    revalidatePath(`/dispatches/${dispatchId}`);
-  };
-
-  // SECURITY: mark a single line handed out
-  const markHandedOut = async (fd: FormData) => {
-    'use server';
-    const me = await getCurrentUser();
-    if (!me) throw new Error('Auth required');
-    const role = (me as any).role as string | undefined;
-    if (!(role === 'SECURITY' || role === 'ADMIN')) throw new Error('Forbidden');
-
-    const itemId = String(fd.get('itemId') ?? '');
-    if (!itemId) throw new Error('Missing itemId');
-
-    // Only allowed when dispatch is APPROVED/READY
-    /*   const d = await prisma.dispatch.findUnique({
-      where: { id: dispatchId },
-      select: { status: true },
-    });
-    if (!d) throw new Error('Dispatch not found');
-    if (d.status !== 'APPROVED' && d.status !== 'IN_TRANSIT') {
-      throw new Error('Dispatch not ready for handout');
-    }
-
-    await prisma.dispatchItem.update({
-      where: { id: itemId },
-      data: {
-        handedOutAt: new Date(),
-        handedOutById: me.id!,
-      },
-    });
-
-    // If at least one is handed out, treat as IN_TRANSIT
-    if (d.status === 'APPROVED') {
-      await prisma.dispatch.update({
-        where: { id: dispatchId },
-        data: { status: 'IN_TRANSIT' },
-      });
-    } */
-
-    const qty = Number(fd.get('qty') ?? '');
-
-    //console.log({ fd, itemId, qty });
-    // await markItemHandedOut(itemId, qty);
-
-    console.log('Hshew wehwehj kkkkk eeee rrr www ffff');
     revalidatePath(`/dispatches/${dispatchId}`);
   };
 
@@ -159,48 +126,9 @@ export default async function DispatchDetail({
     revalidatePath(`/dispatches/${dispatchId}`);
   };
 
-  // RETURN: items back to inventory
-  /* const returnAction = async (fd: FormData) => {
-    'use server';
-    const rows: any[] = [];
-    // refresh items for stable iteration
-    const fresh = await prisma.dispatch.findUnique({
-      where: { id: dispatchId },
-      include: { items: true },
-    });
-    if (!fresh) throw new Error('Dispatch not found');
-    for (const it of fresh.items) {
-      const key = `return-${it.id}`;
-      const raw = fd.get(key);
-      if (!raw) continue;
-      const qty = Number(raw);
-      if (!Number.isFinite(qty) || qty <= 0) continue;
-      rows.push({
-        dispatchItemId: it.id,
-        inventoryItemId: it.inventoryItemId ?? null,
-        description: it.description,
-        unit: it.unit ?? null,
-        qty,
-        note: String(fd.get(`note-${it.id}`) || ''),
-      });
-    }
-    if (rows.length === 0) throw new Error('No items selected to return');
-
-    await returnItemsToInventory(
-      dispatch.id,
-      dispatch.projectId ?? null,
-      rows,
-      String(fd.get('globalNote') || '')
-    );
-    revalidatePath(`/dispatches/${dispatchId}`);
-  }; */
-  // inside your server component file where prisma is available
-  // server-side in the page/component file
   const returnAction = async (fd: FormData) => {
     'use server';
-    // ensure dispatchId is available in scope (use closure or pass-in)
-    // const dispatchId = ...;
-
+    
     // fetch fresh dispatch items
     const fresh = await prisma.dispatch.findUnique({
       where: { id: dispatchId },
@@ -208,7 +136,6 @@ export default async function DispatchDetail({
     });
     if (!fresh) throw new Error('Dispatch not found');
 
-    // typed row shape expected by returnItemsToInventory
     type ReturnRow = {
       dispatchItemId: string;
       inventoryItemId: string | null;
@@ -227,7 +154,6 @@ export default async function DispatchDetail({
       const note = String(fd.get(`note-${it.id}`) || '');
       const qty = raw ? Number(raw) : 0;
 
-      // try to include inventoryItemId and description/unit from DB row
       rows.push({
         dispatchItemId: it.id,
         inventoryItemId: it.inventoryItemId ?? null,
@@ -243,17 +169,14 @@ export default async function DispatchDetail({
     const toReturn = rows.filter((r) => r.qty > 0);
     const toUsedOut = rows
       .filter((r) => r.usedOut)
-      // If user checked usedOut and also provided qty to return, we will mark usedOut for the remainder later.
       .map((r) => ({
         dispatchItemId: r.dispatchItemId,
         qty: r.qty,
         inventoryItemId: r.inventoryItemId,
       }));
 
-    // Now orchestrate in one logical flow:
     // 1) apply actual returns (if any)
     if (toReturn.length > 0) {
-      // call your server action to process returns
       await returnItemsToInventory(
         dispatchId,
         fresh.projectId ?? null,
@@ -269,8 +192,7 @@ export default async function DispatchDetail({
       );
     }
 
-    // 2) handle used-out marks: note that some usedOut rows might have provided qty for return as well.
-    // We must compute leftover available-to-mark-used per item: fetch fresh state again
+    // 2) handle used-out marks
     const refreshed = await prisma.dispatch.findUnique({
       where: { id: dispatchId },
       include: { items: true },
@@ -285,396 +207,285 @@ export default async function DispatchDetail({
       const alreadyUsed = Number(it.usedOutQty ?? 0);
       const available = Math.max(0, alreadyHanded - alreadyReturned - alreadyUsed);
 
-      // If user provided qty to return (u.qty), then used-out should apply to remaining after the return.
-      // If u.qty === 0, user only ticked usedOut -> mark all available as used
       const markQty = u.qty > 0 ? Math.max(0, available - u.qty) : available;
       if (markQty > 0) {
-        // call markItemUsedOut action
         await markItemUsedOut(u.dispatchItemId, markQty);
       }
     }
 
-    // Revalidate and redirect if needed
     revalidatePath(`/dispatches/${dispatchId}`);
     revalidatePath('/dispatches');
-    return redirect(`/dispatches/${dispatchId}`); // or return { ok:true, dispatchId } if you prefer
+    return redirect(`/projects/${dispatch.project.id}/dispatches/${dispatchId}`);
   };
-
-  // Use your existing helper if present (keeps logic centralized)
-  // returnItemsToInventory(dispatch.id, dispatch.projectId ?? null, rows, globalNote);
-  // If you have returnItemsToInventory, call it:
-  /*  if (typeof returnItemsToInventory === 'function') {
-      await returnItemsToInventory(fresh.id, fresh.projectId ?? null, rows, globalNote);
-    } else {
-      // Inline fallback implementation (transactional): create InventoryReturn + InventoryReturnItem rows
-      // and increment inventory quantities. Adjust field names to match your schema.
-      await prisma.$transaction(
-        async (tx) => {
-          // create return record
-          const invReturn = await tx.inventoryReturn.create({
-            data: {
-              dispatchId: fresh.id,
-              projectId: fresh.projectId ?? null,
-              createdById: (await getCurrentUser())?.id ?? null,
-              note: globalNote || null,
-              items: {
-                create: rows
-                  .filter((r) => r.qty > 0) // only create items for positive qty
-                  .map((r) => ({
-                    dispatchItemId: r.dispatchItemId,
-                    inventoryItemId: r.inventoryItemId ?? undefined,
-                    description: r.description,
-                    qty: r.qty,
-                    unit: r.unit ?? undefined,
-                    note: r.note ?? undefined,
-                  })),
-              },
-            },
-            include: { items: true },
-          });
-
-          // increment inventory quantities for each item that had qty > 0
-          for (const r of rows) {
-            if (!r.inventoryItemId) {
-              // try to resolve via purchaseId (if dispatch item references a purchase)
-              const di = await tx.dispatchItem.findUnique({
-                where: { id: r.dispatchItemId },
-                select: { purchaseId: true },
-              });
-              if (di?.purchaseId) {
-                const inv = await tx.inventoryItem.findFirst({
-                  where: { purchaseId: di.purchaseId },
-                  select: { id: true },
-                });
-                if (inv) {
-                  r.inventoryItemId = inv.id;
-                }
-              }
-            }
-
-            if (r.qty > 0 && r.inventoryItemId) {
-              // increment quantity
-              await tx.inventoryItem.update({
-                where: { id: r.inventoryItemId },
-                data: { quantity: { increment: r.qty }, qty: { increment: r.qty } },
-              });
-            }
-          }
-
-          // mark usedOut flags on dispatch items if requested (and/or increment returnedQty if you have field)
-          for (const r of rows) {
-            if (r.usedOut) {
-              await tx.dispatchItem.update({
-                where: { id: r.dispatchItemId },
-                data: {
-                  usedOut: true,
-                  usedOutAt: new Date(),
-                  usedOutById: (await getCurrentUser())?.id ?? null,
-                },
-              });
-            } else if (r.qty > 0) {
-              // if you have returnedQty column
-              const hasReturnedQty = Object.prototype.hasOwnProperty.call(r, 'returnedQty');
-              if (hasReturnedQty) {
-                // @ts-ignore
-                await tx.dispatchItem.update({
-                  where: { id: r.dispatchItemId },
-                  data: { returnedQty: { increment: r.qty } },
-                });
-              }
-            }
-          }
-        },
-        { maxWait: 5000 }
-      );
-    }
-
-    // revalidate pages
-    revalidatePath(`/dispatches/${dispatchId}`);
-    revalidatePath(`/projects/${fresh.projectId}`);
-    revalidatePath('/inventory');
-  }; */
 
   // ---------- end actions ----------
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">
-        Dispatch {dispatch.id.slice(0, 8)} — {dispatch.status}
-      </h1>
-
-      {/* TABLE (no outer form!) */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-gray-50 text-left">
-              <th className="px-3 py-2">Description</th>
-              <th className="px-3 py-2">Qty</th>
-              <th className="px-3 py-2">Unit</th>
-              <th className="px-3 py-2">Handed Out</th>
-              <th className="px-3 py-2">Received</th>
-              <th className="px-3 py-2">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {dispatch.items.map((it) => (
-              <tr key={it.id} className="border-b">
-                <td className="px-3 py-2">{it.description}</td>
-                <td className="px-3 py-2">
-                  {/* <— points to the bottom form */}
-                  {canEdit ? (
-                    <input
-                      name={`qty-${it.id}`}
-                      form="editForm"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      defaultValue={Number(it.qty)}
-                      className="w-24 rounded border px-2 py-1"
-                    />
-                  ) : (
-                    Number(it.qty)
-                  )}
-                </td>
-                <td className="px-3 py-2">{it.unit ?? '-'}</td>
-                <td className="px-3 py-2">
-                  {it.handedOutAt ? new Date(it.handedOutAt).toLocaleString() : '—'}
-                </td>
-                <td className="px-3 py-2">
-                  {it.receivedAt ? new Date(it.receivedAt).toLocaleString() : '—'}
-                </td>
-                <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-2">
-                    {isSecurity &&
-                      (dispatch.status === 'APPROVED' || dispatch.status === 'IN_TRANSIT') &&
-                      !it.handedOutAt && (
-                        <form action={markItemHandedOut}>
-                          <input type="hidden" name="itemId" value={it.id} />
-                          <input type="hidden" name="qty" value={it.qty} />
-                          {/* <button className="rounded border px-2 py-1 text-xs">
-                            Mark handed out
-                          </button> */}
-                          <LoadingButton
-                            type="submit"
-                            className="rounded border px-2 py-1 text-xs"
-                            loadingText="Handing out..."
-                          >
-                            Mark handed out
-                          </LoadingButton>
-                        </form>
-                      )}
-                    {isDriver &&
-                      (dispatch.status === 'IN_TRANSIT' ||
-                        dispatch.status === 'APPROVED' ||
-                        dispatch.status === 'DELIVERED') &&
-                      it.handedOutAt &&
-                      !it.receivedAt && (
-                        <form action={acknowledgeReceived}>
-                          <input type="hidden" name="itemId" value={it.id} />
-                          <button className="rounded border px-2 py-1 text-xs">
-                            Acknowledge received
-                          </button>
-                        </form>
-                      )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="flex flex-wrap gap-3 text-sm">
-        {canApprove && dispatch.status === 'SUBMITTED' && (
-           <ApproveDispatchButton dispatchId={dispatch.id} />
-        )}
-        {/*  {['APPROVED', 'OUT_FOR_DELIVERY'].includes(dispatch.status) && (
-          <form
-            action={async () => {
-              'use server';
-              await markDispatchDelivered(dispatch.id);
-              revalidatePath('/security');
-            }}
-          >
-            <LoadingButton type="submit">Mark Delivered</LoadingButton>
-          </form>
-        )} */}
-      </div>
-
-      {canEdit && (
-        <div className="mt-4 flex flex-wrap gap-2">
-            <form id="editForm" action={saveAction} className="flex gap-2">
-            <LoadingButton type="submit">Save changes</LoadingButton>
-            <LoadingButton
-                formAction={submitAction}
-                className="bg-indigo-600 text-white hover:bg-indigo-700"
-            >
-                Submit for Security
-            </LoadingButton>
-            </form>
-            
-            <form action={async () => {
-                'use server';
-                const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
-                await deleteDispatch(dispatchId);
-            }}>
-                 <LoadingButton 
-                    type="submit" 
-                    className="bg-red-600 text-white hover:bg-red-700"
-                    loadingText="Deleting..."
-                 >
-                    Delete Draft
-                 </LoadingButton>
-            </form>
+    <div className="space-y-6 max-w-7xl mx-auto pt-6">
+      {/* Header Section */}
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-4">
+          <h1 className="flex items-center text-3xl font-bold tracking-tight text-gray-900">
+            <span className="text-black font-semibold text-xl tracking-wide mr-2">Project Name:</span>
+            <span className="text-xl font-bold text-gray-900">{dispatch.project.quote?.customer?.displayName || dispatch.project.name}</span>
+          </h1>
+          
+           <Link href={`/projects/${dispatch.project.id}/dispatches`} className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700 transition-colors">
+              <ArrowLeftIcon className="h-4 w-4" />
+              Back to Dispatches
+           </Link>
         </div>
-      )}
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-gray-800 dark:border-gray-700">
+             <div className="flex items-start gap-4 mb-8 border-b border-gray-100 pb-6">
+                <div className="p-3 bg-blue-50 rounded-full">
+                    <DocumentTextIcon className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dispatch Details</h2>
+                    <p className="text-sm text-gray-500 mt-1">View and manage dispatch information</p>
+                </div>
+             </div>
+
+             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                <div>
+                    <div className="flex items-center gap-4">
+                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Dispatch #</span>
+                        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                            {dispatch.dispatchNumber || dispatch.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <span className={cn(
+                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide",
+                            dispatch.status === 'APPROVED' ? "bg-green-100 text-green-800" :
+                            dispatch.status === 'SUBMITTED' ? "bg-blue-100 text-blue-800" :
+                            dispatch.status === 'DELIVERED' ? "bg-purple-100 text-purple-800" :
+                            "bg-gray-100 text-gray-800"
+                        )}>
+                            {dispatch.status}
+                        </span>
+                    </div>
+                    <div className="mt-4 flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-5 w-5 text-gray-400" />
+                            <span className="font-medium">Created:</span>
+                            {new Date(dispatch.createdAt).toLocaleDateString()}
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <UserIcon className="h-5 w-5 text-gray-400" />
+                             <span className="font-medium">By:</span>
+                             {dispatch.createdBy?.name || 'Unknown'}
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="flex gap-2">
+                     {/* Action Buttons Placeholder */}
+                </div>
+             </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+         <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 bg-white">
+            <div className="flex items-center gap-3">
+                 <div className="h-6 w-1.5 bg-blue-600 rounded-full"></div>
+                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Dispatch Items</h3>
+            </div>
+         </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Description</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Handed Out</th>
+                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Received</th>
+                <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+              {dispatch.items.map((it) => (
+                <tr key={it.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{it.description}</td>
+                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
+                    {/* <— points to the bottom form */}
+                    {canEdit ? (
+                      <input
+                        name={`qty-${it.id}`}
+                        form="editForm"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        defaultValue={Number(it.qty)}
+                        className="w-28 rounded-md border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-orange-500 focus:bg-white focus:ring-orange-500 transition-all"
+                      />
+                    ) : (
+                      <span className="font-mono">{Number(it.qty)}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{it.unit ?? '-'}</td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {it.handedOutAt ? new Date(it.handedOutAt).toLocaleString() : '—'}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                    {it.receivedAt ? new Date(it.receivedAt).toLocaleString() : '—'}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    <div className="flex justify-center gap-2">
+                      {isSecurity &&
+                        (dispatch.status === 'APPROVED' || dispatch.status === 'IN_TRANSIT') &&
+                        !it.handedOutAt && (
+                          <form action={markItemHandedOut}>
+                            <input type="hidden" name="itemId" value={it.id} />
+                            <input type="hidden" name="qty" value={it.qty} />
+                            <LoadingButton
+                              type="submit"
+                              className="inline-flex items-center rounded border border-transparent bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                              loadingText="Handing out..."
+                            >
+                              Mark Handed Out
+                            </LoadingButton>
+                          </form>
+                        )}
+                      {isDriver &&
+                        (dispatch.status === 'IN_TRANSIT' ||
+                          dispatch.status === 'APPROVED' ||
+                          dispatch.status === 'DELIVERED') &&
+                        it.handedOutAt &&
+                        !it.receivedAt && (
+                          <form action={acknowledgeReceived}>
+                            <input type="hidden" name="itemId" value={it.id} />
+                            <button className="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                              Acknowledge Received
+                            </button>
+                          </form>
+                        )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
+         <div className="flex gap-3">
+            {canApprove && dispatch.status === 'SUBMITTED' && (
+                <ApproveDispatchButton dispatchId={dispatch.id} />
+            )}
+         </div>
+
+         {canEdit && (
+            <div className="flex flex-wrap gap-3">
+                <form id="editForm" action={saveAction} className="flex gap-2">
+                    <LoadingButton 
+                        type="submit"
+                        className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-green-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                    >
+                        <CheckIcon className="h-4 w-4" />
+                        Save Changes
+                    </LoadingButton>
+                    <LoadingButton
+                        formAction={submitAction}
+                        className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-blue-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        <ShieldCheckIcon className="h-4 w-4" />
+                        Submit for Security
+                    </LoadingButton>
+                </form>
+                
+                <form action={async () => {
+                    'use server';
+                    const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
+                    await deleteDispatch(dispatchId);
+                }}>
+                     <LoadingButton 
+                        type="submit" 
+                        className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-red-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        loadingText="Deleting..."
+                     >
+                        <TrashIcon className="h-4 w-4" />
+                        Delete Draft
+                     </LoadingButton>
+                </form>
+            </div>
+          )}
+      </div>
 
       {canReturn && (
-        <>
-          {/* <form action={returnAction} className="mt-6 border rounded p-4 bg-white">
-          <h3 className="font-semibold">Return items to inventory</h3>
-          <p className="text-sm text-gray-600">Enter quantities to return (positive numbers)</p>
-
-          <div className="mt-2 space-y-2">
-            {dispatch.items
-              .filter((it) => Number(it.qty) > 0)
-              .map((it) => (
-                <div key={it.id} className="flex items-center gap-2">
-                  <label className="flex-1">
-                    <div className="text-sm font-medium">{it.description}</div>
-                    <div className="text-xs text-gray-500">
-                      Dispatched: {Number(it.qty)} {it.unit ?? ''}
-                    </div>
-                  </label>
-
-                  <input
-                    name={`return-${it.id}`}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="Qty to return"
-                    className="w-28 rounded border px-2 py-1"
-                  />
-                  <input
-                    name={`note-${it.id}`}
-                    placeholder="Note (optional)"
-                    className="w-56 rounded border px-2 py-1"
-                  />
-                </div>
-              ))}
-          </div>
-
-          <label className="block mt-3 text-sm">
-            <span className="text-xs text-gray-500">Global note</span>
-            <input
-              name="globalNote"
-              className="w-full rounded border px-2 py-1 mt-1"
-              placeholder="Reason for return (optional)"
-            />
-          </label>
-
-          <div className="mt-3">
-            <button className="rounded bg-emerald-600 px-3 py-1.5 text-white">
-              Return to inventory
-            </button>
-          </div>
-        </form> */}
-          <div className="mt-6 border rounded p-4 bg-white">
-            <h3 className="font-semibold">Return items to inventory</h3>
-            <p className="text-sm text-gray-600">
-              Return individual items or mark them used out. Each line has its own Return button.
-            </p>
-
-            <div className="mt-4 space-y-4">
-              {dispatch.items.map((it) => {
-                // compute alreadyReturned here if you have a dispatched-side value; otherwise server will re-check.
-                const returned = it.returnedQty ?? 0; // prefer explicit field if present
-                const handedOut = it.handedOutQty ?? Number(it.qty ?? 0); // prefer stored handedOutQty if available
-                const available = Math.max(0, handedOut - Number(returned ?? 0));
-                const usedOut = it.usedOut ?? false;
-
-                return (
-                  <form
-                    key={it.id}
-                    action={async (fd) => {
-                      'use server';
-                      const rawQty = fd.get('qty');
-                      const qty = rawQty ? Number(rawQty) : 0;
-                      const note = String(fd.get('note') || '');
-                      const used = fd.get('used') === 'on';
-                      await returnLineItem(dispatch.id, it.id, qty, note, used);
-                    }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="flex-1">
-                      <div className="text-sm font-medium">{it.description}</div>
-                      <div className="text-xs text-gray-500">
-                        Handed out: <b>{handedOut}</b> · Available to return:{' '}
-                        <span className={available > 0 ? 'text-emerald-700' : 'text-gray-500'}>
-                          {available}
-                        </span>
-                        {it.usedOut && (
-                          <span className="ml-2 inline-block rounded bg-yellow-100 px-2 py-0.5 text-xs font-semibold text-yellow-800">
-                            USED OUT
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {!usedOut && (
-                      <>
-                        <input
-                          name="qty"
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          max={available}
-                          placeholder="Qty to return"
-                          className="w-28 rounded border px-2 py-1"
-                          disabled={available <= 0 && !!it.usedOut}
-                        />
-
-                        <input
-                          name="note"
-                          placeholder="Note (optional)"
-                          className="w-56 rounded border px-2 py-1"
-                          disabled={available <= 0 && !!it.usedOut}
-                        />
-
-                        <label className="flex items-center gap-2 text-xs">
-                          <input
-                            type="checkbox"
-                            name="used"
-                            className="h-4 w-4"
-                            defaultChecked={false}
-                            disabled={!!it.usedOut}
-                          />
-                          <span>Mark used out</span>
-                        </label>
-
-                        <LoadingButton
-                          type="submit"
-                          className="rounded bg-emerald-600 px-3 py-1.5 text-white"
-                          loadingText="Returning ..."
-                        >
-                          Return
-                        </LoadingButton>
-                      </>
-                    )}
-
-                    {/* <button
-                      type="submit"
-                      className="rounded bg-emerald-600 px-3 py-1.5 text-white"
-                      title="Return this line"
-                    >
-                      Return
-                    </button> */}
-                  </form>
-                );
-              })}
+        <div className="mt-8 rounded-xl border border-gray-200 bg-white shadow-sm p-6 dark:border-gray-700 dark:bg-gray-800">
+          <form action={returnAction}>
+            <div className="border-b border-gray-200 pb-4 mb-4">
+                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Return / Mark Used Out</h3>
+                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Enter quantities to return to inventory or mark as used out (consumed).
+                 </p>
             </div>
-          </div>
-        </>
+
+            <div className="space-y-4">
+                <div className="grid grid-cols-12 gap-4 border-b border-gray-100 pb-2 text-xs font-semibold uppercase text-gray-500">
+                    <div className="col-span-4">Item</div>
+                    <div className="col-span-2">Return Qty</div>
+                    <div className="col-span-2">Mark Used</div>
+                    <div className="col-span-4">Note</div>
+                </div>
+                
+                {dispatch.items
+                .filter((it) => Number(it.qty) > 0)
+                .map((it) => (
+                    <div key={it.id} className="grid grid-cols-12 gap-4 items-center py-2 border-b border-gray-50 last:border-0">
+                        <div className="col-span-4">
+                            <div className="text-sm font-medium text-gray-900">{it.description}</div>
+                            <div className="text-xs text-gray-500">
+                                Dispatched: {Number(it.qty)} {it.unit ?? ''}
+                            </div>
+                        </div>
+
+                        <div className="col-span-2">
+                            <input
+                                name={`return-${it.id}`}
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0"
+                                className="w-full rounded border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"
+                            />
+                        </div>
+
+                        <div className="col-span-2 flex items-center justify-center">
+                            <input
+                                name={`usedout-${it.id}`}
+                                type="checkbox"
+                                className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                            />
+                        </div>
+
+                        <div className="col-span-4">
+                            <input
+                                name={`note-${it.id}`}
+                                type="text"
+                                placeholder="Reason / Note"
+                                className="w-full rounded border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"
+                            />
+                        </div>
+                    </div>
+                ))}
+            </div>
+            
+            <div className="mt-6 flex justify-end">
+                 <LoadingButton 
+                    type="submit"
+                    className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                 >
+                    Process Return / Used Out
+                 </LoadingButton>
+            </div>
+          </form>
+        </div>
       )}
     </div>
   );

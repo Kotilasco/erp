@@ -279,26 +279,31 @@ export default function ProcurementItemsTableClient({
         </div>
       )}
       {grouped.map((group) => (
-        <div key={group.section} className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-base font-semibold text-gray-800">{group.section}</h4>
+        <div key={group.section} className="space-y-4">
+           <div className="flex items-center justify-between px-1">
+            <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+              <span className="w-1 h-6 bg-orange-500 rounded-full"></span>
+              {group.section}
+            </h4>
           </div>
+          <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
           <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
                 <tr>
-                  <th className="px-3 py-2 text-left">Item</th>
-                  <th className="px-3 py-2 text-right">Quoted Qty</th>
-                  <th className="px-3 py-2 text-right">Requested</th>
-                  {showVariance && <th className="px-3 py-2 text-right">Variance</th>}
-                  {!hideFinancials && <th className="px-3 py-2 text-left">Unit Price</th>}
-                  {showTopUps && <th className="px-3 py-2 text-left">Top-up</th>}
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Item</th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Quoted Qty</th>
+                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requested</th>
+                  {showVariance && <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Variance</th>}
+                  {!hideFinancials && <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit Price</th>}
+                  {showTopUps && <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Top-up</th>}
                   {!hideFinancials && (showReviewControls || Object.values(reviewFlags).some(Boolean)) && (
-                    <th className="px-3 py-2 text-left">Review</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Review</th>
                   )}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
                 {group.items.map((item) => {
                   const enteredUnit = Number(unitPriceInputs[item.id] ?? '0');
                   const variance = item.quotedUnitMajor - enteredUnit;
@@ -308,10 +313,9 @@ export default function ProcurementItemsTableClient({
                   const showReviewColumn = !hideFinancials && (showReviewControls || Object.values(reviewFlags).some(Boolean));
 
                   return (
-                    <tr key={item.id} className="border-b last:border-b-0 align-top">
-                      <td className="px-3 py-2">
+                    <tr key={item.id} className="group hover:bg-orange-50/30 transition-colors dark:hover:bg-gray-700/50 border-b last:border-b-0 align-top">
+                      <td className="px-6 py-4">
                         <div className="font-medium text-gray-900">{item.description}</div>
-                        <div className="text-xs text-gray-500">Unit: {item.unit ?? '-'}</div>
                         {item.topups.length > 0 && (
                           <div className="mt-1 text-xs text-gray-500">
                             Top-ups:{' '}
@@ -335,20 +339,21 @@ export default function ProcurementItemsTableClient({
                           </div>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-right">{item.quotedQty.toLocaleString()}</td>
-                      <td className="px-3 py-2 text-right">
+                      <td className="px-6 py-4 text-sm text-gray-600">{item.unit ?? '-'}</td>
+                      <td className="px-6 py-4 text-right text-sm text-gray-600">{item.quotedQty.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
                         <div>{item.requestedQty.toLocaleString()}</div>
                         {item.extraQty > 0 && (
                           <div className="text-xs text-amber-600">+{item.extraQty} pending</div>
                         )}
                       </td>
                       {showVariance && (
-                        <td className={`px-3 py-2 text-right font-semibold ${varianceClass}`}>
+                        <td className={`px-6 py-4 text-right font-semibold text-sm ${varianceClass}`}>
                           {formatter.format(variance)}
                         </td>
                       )}
                       {!hideFinancials && (
-                        <td className="px-3 py-2">
+                        <td className="px-6 py-4">
                           {readOnly ? (
                             <span className="font-medium text-gray-900">
                               {formatter.format(Number(unitPriceInputs[item.id] ?? 0))}
@@ -365,7 +370,7 @@ export default function ProcurementItemsTableClient({
                               }}
                               onBlur={() => handleUnitPriceBlur(item)}
                               disabled={!permissions.canEditUnitPrice}
-                              className="w-24 text-right"
+                              className="w-24 text-right rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                             />
                           )}
                           {unitPriceFormIds.map((formId) => (
@@ -389,7 +394,7 @@ export default function ProcurementItemsTableClient({
                         </td>
                       )}
                       {showTopUps && (
-                        <td className="px-3 py-2">
+                        <td className="px-6 py-4">
                           {permissions.canRequestTopUp ? (
                             <div className="space-y-2">
                               <ClearableNumberInput
@@ -402,7 +407,7 @@ export default function ProcurementItemsTableClient({
                                     [item.id]: e.currentTarget.value,
                                   }))
                                 }
-                                className="w-24"
+                                className="w-24 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                                 disabled={readOnly}
                               />
                               <input
@@ -415,13 +420,13 @@ export default function ProcurementItemsTableClient({
                                     [item.id]: e.currentTarget.value,
                                   }))
                                 }
-                                className="w-full rounded border px-2 py-1 text-xs"
+                                className="w-full rounded-md border-gray-300 px-2 py-1 text-xs focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
                                 disabled={readOnly}
                               />
                               <button
                                 type="button"
                                 onClick={() => handleTopUpRequest(item.id)}
-                                className="rounded bg-slate-900 px-3 py-1 text-xs font-medium text-white disabled:opacity-60"
+                                className="rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-500 disabled:opacity-60"
                                 disabled={isPending || readOnly}
                               >
                                 Request more
@@ -449,7 +454,7 @@ export default function ProcurementItemsTableClient({
                         </td>
                       )}
                       {showReviewColumn && (
-                        <td className="px-3 py-2">
+                        <td className="px-6 py-4">
                           {showReviewControls && (
                             <label className="flex items-center gap-2 text-sm text-gray-800">
                               <input
@@ -457,6 +462,7 @@ export default function ProcurementItemsTableClient({
                                 checked={reviewFlags[item.id] ?? false}
                                 disabled={!permissions.canToggleReview || isPending || readOnly}
                                 onChange={(e) => handleToggleReview(item, e.target.checked)}
+                                className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-600"
                               />
                               <span className={reviewFlags[item.id] ? 'text-rose-600' : ''}>
                                 Request review
@@ -499,6 +505,7 @@ export default function ProcurementItemsTableClient({
               </tbody>
             </table>
           </div>
+        </div>
         </div>
       ))}
 

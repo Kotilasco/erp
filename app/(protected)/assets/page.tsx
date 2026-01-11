@@ -2,22 +2,30 @@ import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { assertRoles } from '@/lib/workflow';
-
-const PAGE_SIZE = 30;
+import AssetsTableToolbar from './components/AssetsTableToolbar';
+import TablePagination from '@/components/ui/table-pagination';
+import { 
+  CubeIcon, 
+  TagIcon, 
+  ScaleIcon, 
+  CalculatorIcon, 
+  PlusIcon,
+  ArchiveBoxIcon
+} from '@heroicons/react/24/outline';
 
 type SearchParamsShape = {
   q?: string;
   page?: string;
+  pageSize?: string;
 };
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export default async function AssetsPage({
-  searchParams,
-}: {
+export default async function AssetsPage(props: {
   searchParams: Promise<SearchParamsShape>;
 }) {
+  const searchParams = await props.searchParams;
   const me = await getCurrentUser();
   if (!me) {
     redirect('/login');
@@ -28,9 +36,9 @@ export default async function AssetsPage({
     redirect('/projects');
   }
 
-  const resolved = await searchParams;
-  const q = (resolved.q ?? '').trim();
-  const page = Math.max(1, Number(resolved.page ?? '1'));
+  const q = (searchParams.q ?? '').trim();
+  const page = Math.max(1, Number(searchParams.page ?? '1'));
+  const pageSize = Math.max(1, Number(searchParams.pageSize ?? '30'));
 
   const where: any = { category: 'MULTIPURPOSE' };
   if (q) where.name = { contains: q, mode: 'insensitive' };
@@ -39,112 +47,188 @@ export default async function AssetsPage({
     prisma.inventoryItem.findMany({
       where,
       orderBy: { name: 'asc' },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
     prisma.inventoryItem.count({ where }),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Assets</h1>
-          <p className="text-sm text-gray-600">Add and manage multipurpose materials.</p>
+    <div className="space-y-8 p-2 sm:p-4 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
+            <CubeIcon className="h-8 w-8 text-barmlo-blue dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Assets Management</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Add and manage multipurpose materials and tools inventory.
+            </p>
+          </div>
         </div>
       </div>
 
-      <form action={addMultipurposeAsset} className="grid gap-2 md:grid-cols-4 items-end max-w-3xl">
-        <label className="text-sm">
-          <div className="text-gray-600 mb-1">Name</div>
-          <input name="name" placeholder="Name" className="w-full rounded border px-3 py-1" required />
-        </label>
-        <label className="text-sm">
-          <div className="text-gray-600 mb-1">Unit</div>
-          <input name="unit" placeholder="Unit" className="w-full rounded border px-3 py-1" />
-        </label>
-        <label className="text-sm">
-          <div className="text-gray-600 mb-1">Qty</div>
-          <input
-            name="qty"
-            type="number"
-            min={0}
-            step="0.01"
-            placeholder="Qty"
-            className="w-full rounded border px-3 py-1"
-            required
-          />
-        </label>
-        <button className="rounded bg-slate-900 px-3 py-2 text-white text-sm md:self-end">
-          Add asset
-        </button>
-      </form>
+      {/* Add New Asset Card */}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:shadow-md dark:border-gray-700 dark:bg-gray-800 overflow-hidden">
+        <div className="border-b border-gray-100 bg-gray-50/50 px-6 py-4 dark:border-gray-700 dark:bg-gray-800/50">
+          <div className="flex items-center gap-2">
+            <PlusIcon className="h-5 w-5 text-barmlo-blue" />
+            <h2 className="text-base font-semibold text-gray-900 dark:text-gray-100">Add New Asset</h2>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          <form action={addMultipurposeAsset} className="grid gap-6 md:grid-cols-12 items-end">
+              <div className="md:col-span-5 space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ml-1">Asset Name</label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <TagIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input 
+                        name="name" 
+                        placeholder="e.g. Heavy Duty Hammer" 
+                        className="block w-full rounded-lg border-gray-300 pl-10 py-3 text-sm shadow-sm transition-colors focus:border-barmlo-blue focus:ring-barmlo-blue dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
+                        required 
+                    />
+                  </div>
+              </div>
+              
+              <div className="md:col-span-3 space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ml-1">Unit</label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <ScaleIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input 
+                        name="unit" 
+                        placeholder="e.g. pcs, kg" 
+                        className="block w-full rounded-lg border-gray-300 pl-10 py-3 text-sm shadow-sm transition-colors focus:border-barmlo-blue focus:ring-barmlo-blue dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400" 
+                    />
+                  </div>
+              </div>
+              
+              <div className="md:col-span-2 space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 ml-1">Initial Qty</label>
+                  <div className="relative">
+                    <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                      <CalculatorIcon className="h-4 w-4 text-gray-400" />
+                    </div>
+                    <input
+                        name="qty"
+                        type="number"
+                        min={0}
+                        step="0.01"
+                        placeholder="0"
+                        className="block w-full rounded-lg border-gray-300 pl-10 py-3 text-sm shadow-sm transition-colors focus:border-barmlo-blue focus:ring-barmlo-blue dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
+                        required
+                    />
+                  </div>
+              </div>
+              
+              <div className="md:col-span-2">
+                  <button className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-orange-500 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 active:scale-95">
+                      <PlusIcon className="h-4 w-4 stroke-2" />
+                      Add Asset
+                  </button>
+              </div>
+          </form>
+        </div>
+      </div>
 
-      <form className="flex gap-2 items-center" action="/assets" method="get">
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name..."
-          className="rounded border px-3 py-1"
-        />
-        <input type="hidden" name="page" value="1" />
-        <button className="rounded border px-3 py-1 text-sm">Filter</button>
-      </form>
+      {/* Table Section */}
+      <div className="space-y-4">
+        <AssetsTableToolbar />
 
-      <div className="rounded-md border bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Name</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Unit</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500">Qty</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {items.length === 0 ? (
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:bg-gray-800 dark:border-gray-700">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
                 <tr>
-                  <td className="px-4 py-8 text-center text-gray-500" colSpan={3}>
-                    No multipurpose assets found.
-                  </td>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Asset Details
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Unit
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Quantity On Hand
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    Status
+                  </th>
                 </tr>
-              ) : (
-                items.map((it) => (
-                  <tr key={it.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">{it.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{it.unit ?? '-'}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">{it.qty}</td>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                {items.length === 0 ? (
+                  <tr>
+                    <td className="px-6 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={4}>
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <ArchiveBoxIcon className="h-10 w-10 text-gray-300" />
+                        <p className="text-base font-medium">No assets found</p>
+                        <p className="text-sm">Try adjusting your search or add a new asset above.</p>
+                      </div>
+                    </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                ) : (
+                  items.map((it) => (
+                    <tr key={it.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center">
+                            <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 mr-3 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                <CubeIcon className="h-4 w-4" />
+                            </div>
+                            <div>
+                                <div className="font-semibold text-gray-900 dark:text-gray-100">{it.name}</div>
+                                {it.description && it.description !== it.name && (
+                                    <div className="text-xs text-gray-500">{it.description}</div>
+                                )}
+                            </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                            {it.unit ?? 'N/A'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <span className={`font-mono font-medium ${Number(it.qty) > 0 ? 'text-gray-900 dark:text-gray-100' : 'text-red-500'}`}>
+                            {it.qty}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                         {Number(it.qty) > 0 ? (
+                             <span className="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                In Stock
+                             </span>
+                         ) : (
+                             <span className="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+                                Out of Stock
+                             </span>
+                         )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-500">
-          Page {page} of {totalPages} ({total} items)
-        </span>
-        <div className="flex gap-2">
-          {page > 1 ? (
-            <a
-              href={`/assets?${new URLSearchParams({ q, page: String(page - 1) }).toString()}`}
-              className="rounded border px-3 py-1 text-sm"
-            >
-              Prev
-            </a>
-          ) : null}
-          {page < totalPages ? (
-            <a
-              href={`/assets?${new URLSearchParams({ q, page: String(page + 1) }).toString()}`}
-              className="rounded border px-3 py-1 text-sm"
-            >
-              Next
-            </a>
-          ) : null}
+          {/* Pagination */}
+          {total > 0 && (
+            <div className="border-t border-gray-200 bg-gray-50/50 dark:border-gray-700 dark:bg-gray-800">
+              <TablePagination
+                currentPage={page}
+                totalPages={totalPages}
+                totalItems={total}
+                pageSize={pageSize}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>

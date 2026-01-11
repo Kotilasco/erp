@@ -2,12 +2,14 @@ import { prisma } from '@/lib/db';
 import { redirect } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { assertRoles } from '@/lib/workflow';
-
-const PAGE_SIZE = 20;
+import InventoryTableToolbar from './components/InventoryTableToolbar';
+import TablePagination from '@/components/ui/table-pagination';
+import { CubeIcon } from '@heroicons/react/24/outline';
 
 type SearchParamsShape = {
   q?: string;
   page?: string;
+  pageSize?: string;
 };
 
 export const dynamic = 'force-dynamic';
@@ -23,7 +25,6 @@ export default async function InventoryPage({
   if (!me) {
     redirect('/login');
   }
-  // if (!me) return <div className="p-6">Auth required.</div>;
   try {
     assertRoles(me.role as any, ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN'] as any);
   } catch {
@@ -35,6 +36,7 @@ export default async function InventoryPage({
   const resolved = await searchParams;
   const q = (resolved.q ?? '').trim();
   const page = Math.max(1, Number(resolved.page ?? '1'));
+  const pageSize = Math.max(1, Number(resolved.pageSize ?? '20'));
 
   const where: any = { category: 'MATERIAL' };
   if (q) where.name = { contains: q, mode: 'insensitive' };
@@ -43,84 +45,86 @@ export default async function InventoryPage({
     prisma.inventoryItem.findMany({
       where,
       orderBy: { name: 'asc' },
-      skip: (page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
+      skip: (page - 1) * pageSize,
+      take: pageSize,
     }),
     prisma.inventoryItem.count({ where }),
   ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
-    <div className="p-6 space-y-5">
-      <h1 className="text-2xl font-semibold">Inventory</h1>
+    <div className="space-y-8 p-2 sm:p-4 max-w-7xl mx-auto">
+      {/* Header Section */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
+            <CubeIcon className="h-8 w-8 text-barmlo-blue dark:text-blue-400" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Inventory</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Manage stock items and quantities.
+            </p>
+          </div>
+        </div>
+      </div>
 
-      <form className="flex gap-2 items-center" action="/inventory" method="get">
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="Search by name..."
-          className="rounded border px-3 py-1"
-        />
-        <input type="hidden" name="page" value="1" />
-        <button className="rounded bg-slate-900 px-3 py-1 text-white">Filter</button>
-      </form>
-
-      <div className="rounded-md border bg-white">
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+           <InventoryTableToolbar />
+        </div>
+        
         <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse">
-            <thead className="bg-gray-50 border-b">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
               <tr>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Name</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Unit</th>
-                <th className="px-4 py-3 text-right font-medium text-gray-500">Qty</th>
-                <th className="px-4 py-3 text-left font-medium text-gray-500">Category</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Name</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit</th>
+                <th scope="col" className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Category</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
               {items.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-8 text-center text-gray-500" colSpan={4}>
-                    No inventory items found.
+                  <td className="px-6 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={4}>
+                    <div className="flex flex-col items-center justify-center gap-2">
+                       <CubeIcon className="h-10 w-10 text-gray-300" />
+                       <p className="text-base font-medium">No inventory items found</p>
+                       <p className="text-sm">Adjust your search or add items.</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 items.map((it) => (
-                  <tr key={it.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-gray-900">{it.name}</td>
-                    <td className="px-4 py-3 text-gray-500">{it.unit ?? '-'}</td>
-                    <td className="px-4 py-3 text-right text-gray-900">{it.qty}</td>
-                    <td className="px-4 py-3 text-gray-500">{it.category ?? '-'}</td>
+                  <tr key={it.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100">{it.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">{it.unit ?? '-'}</td>
+                    <td className="px-6 py-4 text-sm text-right font-medium text-gray-900 dark:text-gray-100">{it.qty}</td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                            {it.category ?? '-'}
+                        </span>
+                    </td>
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
-
-      <div className="flex items-center gap-3">
-        <span className="text-sm text-gray-500">
-          Page {page} of {totalPages} ({total} items)
-        </span>
-        <div className="flex gap-2">
-          {page > 1 ? (
-            <a
-              href={`/inventory?${new URLSearchParams({ q, page: String(page - 1) }).toString()}`}
-              className="rounded border px-3 py-1 text-sm"
-            >
-              Prev
-            </a>
-          ) : null}
-          {page < totalPages ? (
-            <a
-              href={`/inventory?${new URLSearchParams({ q, page: String(page + 1) }).toString()}`}
-              className="rounded border px-3 py-1 text-sm"
-            >
-              Next
-            </a>
-          ) : null}
-        </div>
+        
+        {/* Pagination */}
+        {total > 0 && (
+          <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+            <TablePagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={pageSize}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

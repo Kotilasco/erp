@@ -1,4 +1,3 @@
-
 import { prisma } from '@/lib/db';
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -7,22 +6,62 @@ import { ButtonWithLoading as SubmitButton } from '@/components/ui/button-with-l
 import { createDispatchFromSelectedInventory } from '@/app/(protected)/projects/actions';
 import DispatchTableClient from '@/components/DispatchTableClient';
 import { cn } from '@/lib/utils';
+import { EyeIcon } from '@heroicons/react/24/outline';
+import DispatchFilter from './DispatchFilter';
+import QuotePagination from '@/app/(protected)/quotes/components/QuotePagination';
 
-export default async function ProjectDispatchesPage({ params }: { params: { projectId: string } }) {
+export default async function ProjectDispatchesPage(props: { 
+  params: Promise<{ projectId: string }>, 
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }> 
+}) {
   const user = await getCurrentUser();
   if (!user) return redirect('/sign-in');
 
-  const { projectId } = params;
+  const { projectId } = await props.params;
+  const searchParams = await props.searchParams;
+  
+  const statusFilter = typeof searchParams.status === 'string' ? searchParams.status : undefined;
+  const searchQuery = typeof searchParams.q === 'string' ? searchParams.q : undefined;
+  const pageSize = typeof searchParams.pageSize === 'string' ? parseInt(searchParams.pageSize) : (typeof searchParams.show === 'string' ? parseInt(searchParams.show) : 20);
+  const page = typeof searchParams.page === 'string' ? parseInt(searchParams.page) : 1;
+  const skip = (page - 1) * pageSize;
+
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
-      dispatches: { orderBy: { createdAt: 'desc' }, include: { items: true } },
       schedules: { include: { items: true } },
       requisitions: { include: { items: true } },
+      quote: { include: { customer: true } },
     },
   });
 
   if (!project) return notFound();
+
+  // Fetch Dispatches with Pagination
+  const where: any = {
+    projectId,
+    AND: [
+        statusFilter && statusFilter !== 'All' ? { status: statusFilter as any } : {},
+        searchQuery ? {
+            OR: [
+                { id: { contains: searchQuery, mode: 'insensitive' } },
+                { dispatchNumber: { contains: searchQuery, mode: 'insensitive' } },
+                { driverName: { contains: searchQuery, mode: 'insensitive' } },
+            ]
+        } : {}
+    ]
+  };
+
+  const [dispatches, totalDispatches] = await Promise.all([
+      prisma.dispatch.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip,
+          take: pageSize,
+          include: { items: true }
+      }),
+      prisma.dispatch.count({ where })
+  ]);
 
   // Role checks
   const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role ?? '');
@@ -69,107 +108,125 @@ export default async function ProjectDispatchesPage({ params }: { params: { proj
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between border-b pb-4">
-        <div>
-           <h1 className="text-2xl font-bold text-gray-900">Dispatches</h1>
-           <p className="text-sm text-gray-500">Manage material movements.</p>
+      {/* Header Section */}
+      <div className="space-y-6">
+        <div className="border-b border-gray-200 pb-4">
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <span className="text-black font-semibold text-lg tracking-wide mr-2">Project Name:</span>
+            {project.quote?.customer?.displayName || project.name}
+          </h1>
         </div>
 
-        <div className="flex gap-2">
-            <Link
-                href={`/projects/${projectId}`}
-                className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
-            >
-                Back to Dashboard
-            </Link>
-             
-             {/* Floating Action Buttons for Dispatch Creation */}
-             {isPM && !opsLocked && (
-                <div className="flex gap-2">
-                    {/* 1. Standard Dispatch (Requisitions) */}
-                    {(dispatchableItems.length > 0) && (
-                        <form action={async () => {
-                            'use server';
-                            const { createAndRedirectDispatch } = await import('@/app/(protected)/dashboard/actions');
-                            await createAndRedirectDispatch(projectId);
-                        }}>
-                             <SubmitButton 
-                                className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700"
-                             >
-                                Create Dispatch
-                             </SubmitButton>
-                        </form>
-                    )}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-end">
+            <div className="flex flex-wrap items-center gap-2">
+                <Link
+                    href={`/projects/${projectId}`}
+                    className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
+                >
+                    Back to Dashboard
+                </Link>
+                 
+                 {/* Floating Action Buttons for Dispatch Creation */}
+                 {isPM && !opsLocked && (
+                    <div className="flex gap-2">
+                        {/* 1. Standard Dispatch (Requisitions) */}
+                        {(dispatchableItems.length > 0) && (
+                            <form action={async () => {
+                                'use server';
+                                const { createAndRedirectDispatch } = await import('@/app/(protected)/dashboard/actions');
+                                await createAndRedirectDispatch(projectId);
+                            }}>
+                                 <SubmitButton 
+                                    className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
+                                 >
+                                    Create Dispatch
+                                 </SubmitButton>
+                            </form>
+                        )}
 
-                    {/* 2. Stock Dispatch */}
-                    {(multipurposeInventory.length > 0) && (
-                        <form action={async () => {
-                            'use server';
-                            const { createAndRedirectStockDispatch } = await import('@/app/(protected)/projects/actions');
-                            await createAndRedirectStockDispatch(projectId);
-                        }}>
-                            <SubmitButton className="rounded-md bg-cyan-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-cyan-700">
-                                Dispatch from Stock
-                            </SubmitButton>
-                        </form>
-                    )}
+                        {/* 2. Stock Dispatch */}
+                        {(multipurposeInventory.length > 0) && (
+                            <form action={async () => {
+                                'use server';
+                                const { createAndRedirectStockDispatch } = await import('@/app/(protected)/projects/actions');
+                                await createAndRedirectStockDispatch(projectId);
+                            }}>
+                                <SubmitButton className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700">
+                                    Dispatch from Stock
+                                </SubmitButton>
+                            </form>
+                        )}
 
-                    {/* 2. Assets Dispatch */}
-                     {/* We need to check if assets exist. We can do a quick check here or just assume button validity 
-                         if we want strictly "active if items in assets".
-                         Let's do a server-side check. 
-                     */}
-                     {(await prisma.inventoryItem.count({ where: { category: 'ASSET', qty: { gt: 0 } } })) > 0 && (
-                          <form action={async () => {
-                            'use server';
-                            const { createDispatchFromAssets } = await import('@/app/(protected)/projects/actions');
-                            const res = await createDispatchFromAssets(projectId);
-                             if (!res.ok) throw new Error(res.error);
-                             redirect(`/projects/${projectId}/dispatches/${res.dispatchId}`);
-                        }}>
-                             <SubmitButton className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700">
-                                Create Dispatch from Assets
-                             </SubmitButton>
-                        </form>
-                     )}
-                </div>
-            )}
+                        {/* 2. Assets Dispatch */}
+                         {(await prisma.inventoryItem.count({ where: { category: 'ASSET', qty: { gt: 0 } } })) > 0 && (
+                              <form action={async () => {
+                                'use server';
+                                const { createDispatchFromAssets } = await import('@/app/(protected)/projects/actions');
+                                const res = await createDispatchFromAssets(projectId);
+                                 if (!res.ok) throw new Error(res.error);
+                                 redirect(`/projects/${projectId}/dispatches/${res.dispatchId}`);
+                            }}>
+                                 <SubmitButton className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700">
+                                    Create Dispatch from Assets
+                                 </SubmitButton>
+                            </form>
+                         )}
+                    </div>
+                )}
+            </div>
         </div>
       </div>
 
-      <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-lg">
-        <table className="min-w-full divide-y divide-gray-300">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Dispatch ID</th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Date</th>
-              <th className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Status</th>
-              <th className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {project.dispatches.length === 0 ? (
-                <tr><td colSpan={4} className="py-8 text-center text-sm text-gray-500">No dispatches found.</td></tr>
-            ) : (
-                project.dispatches.map((d: any) => (
-                <tr key={d.id}>
-                    <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">#{d.id.slice(0, 8)}</td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">{new Date(d.createdAt).toLocaleString()}</td>
-                    <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                      <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10">
-                        {d.status}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-4 text-right text-sm font-medium">
-                    <Link href={`/projects/${d.projectId}/dispatches/${d.id}`} className="text-indigo-600 hover:text-indigo-900">Open</Link>
-                    </td>
-                </tr>
-                ))
-            )}
+      <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
+        {/* Filter Bar */}
+        <DispatchFilter />
+
+        <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-900/50">
+              <tr>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Dispatch ID</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+              {dispatches.length === 0 ? (
+                  <tr><td colSpan={4} className="py-8 text-center text-sm text-gray-500 dark:text-gray-400">No dispatches found.</td></tr>
+              ) : (
+                  dispatches.map((d) => (
+                  <tr key={d.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-gray-100">#{d.id.slice(0, 8)}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">{new Date(d.createdAt).toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm">
+                        <span className={cn(
+                          "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide",
+                          d.status === 'APPROVED' ? "bg-green-100 text-green-800" :
+                          d.status === 'SUBMITTED' ? "bg-blue-100 text-blue-800" :
+                          "bg-gray-100 text-gray-800"
+                        )}>
+                          {d.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <Link 
+                            href={`/projects/${projectId}/dispatches/${d.id}`} 
+                            className="inline-flex items-center gap-1 rounded border border-orange-500 px-2 py-1 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50 dark:border-orange-400 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                        >
+                            <EyeIcon className="h-3.5 w-3.5" />
+                            View
+                        </Link>
+                      </td>
+                  </tr>
+                  ))
+              )}
             </tbody>
-        </table>
+          </table>
+        </div>
+
+        <QuotePagination total={totalDispatches} currentPage={page} pageSize={pageSize} />
       </div>
     </div>
   );
 }
-

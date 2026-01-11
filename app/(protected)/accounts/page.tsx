@@ -8,6 +8,7 @@ import { fromMinor } from '@/lib/accounting';
 import SubmitButton from '@/components/SubmitButton';
 import { revalidatePath } from 'next/cache';
 import { SearchInput } from '@/components/ui/search-input';
+import { EyeIcon, CheckIcon, ClipboardDocumentCheckIcon } from '@heroicons/react/24/outline';
 
 export default async function AccountsPage({
   searchParams,
@@ -94,24 +95,24 @@ export default async function AccountsPage({
           </div>
         </div>
 
-        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Ref / Project</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Customer</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Submitted By</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ref / Project</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
+                  <th scope="col" className="px-4 py-3 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Amount</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Submitted By</th>
+                  <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
                 {fundings.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <td colSpan={7} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                       No funding requests found.
                     </td>
                   </tr>
@@ -120,51 +121,66 @@ export default async function AccountsPage({
                     const req = f.requisition!;
                     const proj = req.project!;
                     return (
-                      <tr key={f.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      <tr key={f.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                            <div className="flex flex-col">
                              <span>{proj.projectNumber || proj.quote?.number || proj.id.slice(0, 8)}</span>
-                             <span className="text-xs text-gray-500 font-normal">Req: {req.id.slice(0,8)}</span>
+                             <span className="text-xs text-gray-500 dark:text-gray-400 font-normal">Req: {req.id.slice(0,8)}</span>
                            </div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                           {proj.quote?.customer?.displayName || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900 font-medium">
+                        <td className="px-4 py-3 text-sm text-right text-gray-900 dark:text-white font-medium">
                           {fromMinor(f.amountMinor).toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <td className="px-4 py-3 text-center">
                            <span
                             className={clsx(
-                              'inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-medium',
-                              f.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' : 
-                              f.status === 'REJECTED' ? 'bg-rose-100 text-rose-800' :
-                              f.status === 'DISBURSED' ? 'bg-purple-100 text-purple-800' :
-                              'bg-amber-100 text-amber-800'
+                              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide',
+                              f.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300' : 
+                              f.status === 'REJECTED' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300' :
+                              f.status === 'DISBURSED' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300' :
+                              'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
                             )}
                           >
                             {f.status}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                           {f.submittedBy?.name || f.submittedBy?.email || '-'}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
                           {new Date(f.createdAt).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <div className="flex items-center justify-end gap-2">
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-2">
                              {/* Quick Actions for Pending */}
                              {canApprove && (f.status === 'PENDING' || f.status === 'REQUESTED') ? (
                               <div className="flex items-center gap-2">
                                 {/* Inline approval form - simple */}
                                 <form action={async () => { 'use server'; await approveFunding(f.id); }}>
-                                  <SubmitButton className="text-emerald-600 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-2 py-1 rounded">Approve</SubmitButton>
+                                  <SubmitButton className="flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20">
+                                    <CheckIcon className="h-3.5 w-3.5" />
+                                    Approve
+                                  </SubmitButton>
                                 </form>
-                                <Link href={`/accounts/funding/${f.id}`} className="text-indigo-600 hover:text-indigo-900">Review</Link>
+                                <Link
+                                    href={`/accounts/funding/${f.id}`}
+                                    className="flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                                >
+                                    <EyeIcon className="h-3.5 w-3.5" />
+                                    Review
+                                </Link>
                               </div>
                              ) : (
-                                <Link href={`/accounts/funding/${f.id}`} className="text-indigo-600 hover:text-indigo-900">Details</Link>
+                                <Link
+                                    href={`/accounts/funding/${f.id}`}
+                                    className="flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                                >
+                                    <EyeIcon className="h-3.5 w-3.5" />
+                                    Details
+                                </Link>
                              )}
                           </div>
                         </td>
@@ -230,22 +246,22 @@ export default async function AccountsPage({
           </div>
         </div>
 
-        <div className="bg-white shadow-sm rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+        <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-900/50">
                 <tr>
-                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Project</th>
-                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">PO #</th>
-                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Pending GRNs</th>
-                   <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Received</th>
-                   <th className="px-6 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Action</th>
+                   <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
+                   <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">PO #</th>
+                   <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                   <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Last Received</th>
+                   <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
                 </tr>
               </thead>
-               <tbody className="bg-white divide-y divide-gray-200">
+               <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
                 {pendingGrnPos.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
                       No pending receipts found.
                     </td>
                   </tr>
@@ -254,27 +270,32 @@ export default async function AccountsPage({
                      const pendingCount = po.goodsReceivedNotes.filter(g => g.status === 'PENDING').length;
                      const lastReceived = new Date(Math.max(...po.goodsReceivedNotes.map(g => g.createdAt.getTime()))).toLocaleString();
                      return (
-                      <tr key={po.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                      <tr key={po.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white">
                             {po.project?.projectNumber || 'N/A'}
-                            <div className="text-xs text-gray-500 font-normal">{po.project?.quote?.customer?.displayName}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 font-normal">{po.project?.quote?.customer?.displayName}</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                            {po.id.slice(0, 8)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                           {pendingCount} Pending Note{pendingCount !== 1 ? 's' : ''}
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                           <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                             {pendingCount} Pending Note{pendingCount !== 1 ? 's' : ''}
+                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
                            {lastReceived}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                           <Link
-                             href={`/procurement/purchase-orders/${po.id}`}
-                             className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500"
-                           >
-                             Verify / Acknowledge
-                           </Link>
+                        <td className="px-4 py-3 text-center">
+                           <div className="flex items-center justify-center">
+                             <Link
+                               href={`/procurement/purchase-orders/${po.id}`}
+                               className="flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                             >
+                               <ClipboardDocumentCheckIcon className="h-3.5 w-3.5" />
+                               Verify
+                             </Link>
+                           </div>
                         </td>
                       </tr>
                      );
