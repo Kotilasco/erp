@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-import { EyeIcon, BriefcaseIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -394,8 +394,17 @@ export default async function ProjectsPage({
                          </td>
                        )}
                        {!isSeniorPM && (
-                         <td className="px-6 py-4 text-center">
+                          <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
+                              {isProjectManager && currentTab === 'unplanned' ? (
+                                <Link 
+                                   href={`/projects/${project.id}/schedule`}
+                                   className="inline-flex items-center gap-1 rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-blue-500 shadow-sm"
+                                >
+                                   <CalendarIcon className="h-3.5 w-3.5" />
+                                   Create Schedule
+                                </Link>
+                              ) : (
                                 <Link 
                                    href={`/projects/${project.id}`}
                                    className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
@@ -403,8 +412,9 @@ export default async function ProjectsPage({
                                    <EyeIcon className="h-3.5 w-3.5" />
                                    View
                                 </Link>
+                              )}
                             </div>
-                         </td>
+                          </td>
                        )}
                      </tr>
                    );
