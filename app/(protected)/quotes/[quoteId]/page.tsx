@@ -270,11 +270,15 @@ function buildLineGroups(
 
     const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
 
-    const rate = fromMinor(line.unitPriceMinor);
-
-    const amount = fromMinor(line.lineTotalMinor);
-
     const negotiation = negotiationByLine.get(line.id) ?? null;
+
+    let rate = fromMinor(line.unitPriceMinor);
+    let amount = fromMinor(line.lineTotalMinor);
+
+    if (negotiation && negotiation.status === 'PENDING') {
+      rate = negotiation.proposedRate;
+      amount = negotiation.proposedTotal;
+    }
 
     if (!groups.has(section)) {
       groups.set(section, { section, rows: [], subtotal: 0 });
@@ -315,7 +319,29 @@ function buildLineGroups(
     group.subtotal += amount;
   });
 
-  return Array.from(groups.values());
+  // Sort rows within groups: PENDING items first
+  groups.forEach((group) => {
+    group.rows.sort((a, b) => {
+      const aPending = a.negotiation?.status === 'PENDING';
+      const bPending = b.negotiation?.status === 'PENDING';
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+      return 0; // maintain relative order otherwise
+    });
+  });
+
+  const sortedGroups = Array.from(groups.values());
+  
+  // Sort groups: those with PENDING items first
+  sortedGroups.sort((a, b) => {
+    const aHasPending = a.rows.some((r) => r.negotiation?.status === 'PENDING');
+    const bHasPending = b.rows.some((r) => r.negotiation?.status === 'PENDING');
+    if (aHasPending && !bHasPending) return -1;
+    if (!aHasPending && bHasPending) return 1;
+    return 0;
+  });
+
+  return sortedGroups;
 }
 
 function computeLineTotals(lines: QuoteLine[]): QuoteTotals {
@@ -565,7 +591,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
     const result = await assignProjectManager(quote.id, managerId);
 
     if (!result?.ok) {
-      setFlashMessage({ type: 'error', message: result?.error ?? 'Unable to assign manager.' });
+      setFlashMessage({ type: 'error', message: (result as any)?.error ?? 'Unable to assign manager.' });
     } else {
       setFlashMessage({ type: 'success', message: 'Manager assigned successfully.' });
     }
@@ -580,7 +606,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
 
     const result = await closeNegotiation(negotiationId);
     if (!result?.ok) {
-      setFlashMessage({ type: 'error', message: result?.error ?? 'Unable to close negotiation.' });
+      setFlashMessage({ type: 'error', message: (result as any)?.error ?? 'Unable to close negotiation.' });
     } else {
       setFlashMessage({ type: 'success', message: 'Negotiation closed.' });
     }
@@ -1272,6 +1298,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
                               lineId={row.id}
                               defaultRate={row.rate}
                               defaultQuantity={row.qty}
+                              isNegotiationPending={row.negotiation?.status === 'PENDING'}
                             />
                           </div>
                         ) : (

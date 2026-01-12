@@ -311,8 +311,8 @@ export async function finalizeQuote(quoteId: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
-  if (role !== 'SALES' && role !== 'ADMIN') {
-    throw new Error('Only Sales or Admin users can finalize a quote');
+  if (role !== 'SALES' && role !== 'ADMIN' && role !== 'SENIOR_QS') {
+    throw new Error('Only Sales, Admin, or Senior QS users can finalize a quote');
   }
   const userOffice = resolveOfficeForRole(role, user.office ?? null);
 
@@ -331,7 +331,7 @@ export async function finalizeQuote(quoteId: string) {
       where: { id: quoteId },
       data: {
         number,
-        status: 'FINALIZED',
+        status: 'REVIEWED',
         metaJson: JSON.stringify({ ...existingMeta, totals }),
         ...officePatch,
       },
@@ -351,8 +351,8 @@ export async function finalizeQuote(quoteId: string) {
       data: {
         quoteId,
         version: nextVersion,
-        label: 'Status change: FINALIZED',
-        status: 'FINALIZED',
+        label: 'Status change: REVIEWED',
+        status: 'REVIEWED',
         byRole: role,
         snapshotJson: JSON.stringify(snapshotAfter),
       },
