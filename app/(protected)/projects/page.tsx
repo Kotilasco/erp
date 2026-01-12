@@ -9,11 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-<<<<<<< HEAD
 import { EyeIcon, BriefcaseIcon, BanknotesIcon } from '@heroicons/react/24/outline';
-=======
-import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
->>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -201,11 +197,7 @@ export default async function ProjectsPage({
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-<<<<<<< HEAD
            <ProjectTableToolbar showDateFilter={!isSalesAccounts} />
-=======
-           <ProjectTableToolbar />
->>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
         </div>
 
         <div className="overflow-x-auto">
@@ -253,7 +245,6 @@ export default async function ProjectsPage({
                     let dueAmount = 0n;
 
                     if (schedules.length > 0) {
-<<<<<<< HEAD
                       const sorted = [...schedules].sort((a: any, b: any) => {
                         const da = new Date(a.dueOn).getTime();
                         const db = new Date(b.dueOn).getTime();
@@ -281,12 +272,6 @@ export default async function ProjectsPage({
                         typeLabel = 'Completed';
                         dueAmount = 0n;
                       }
-=======
-                      const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
-                      const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
-                      typeLabel = nextPayment?.label || 'Installment';
-                      dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
->>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
                     } else {
                        // Fallback
                        const deposit = BigInt((project as any).depositMinor ?? 0);
@@ -335,7 +320,6 @@ export default async function ProjectsPage({
                             </span>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
-<<<<<<< HEAD
                             <Money minor={dueAmount} />
                          </td>
                          <td className="px-6 py-4 text-center">
@@ -348,18 +332,6 @@ export default async function ProjectsPage({
                                  Receive Payment
                               </Link>
                             </div>
-=======
-                            <Money amountMinor={dueAmount} />
-                         </td>
-                         <td className="px-6 py-4 text-center">
-                            <Link 
-                               href={`/projects/${project.id}`}
-                               className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-                            >
-                               <EyeIcon className="h-3.5 w-3.5" />
-                               View
-                            </Link>
->>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
                          </td>
                        </tr>
                     );

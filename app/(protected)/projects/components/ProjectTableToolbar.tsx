@@ -4,11 +4,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useTransition, useEffect } from 'react';
 import { MagnifyingGlassIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
-<<<<<<< HEAD
 export default function ProjectTableToolbar({ showDateFilter = true }: { showDateFilter?: boolean }) {
-=======
-export default function ProjectTableToolbar() {
->>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -105,7 +101,6 @@ export default function ProjectTableToolbar() {
          </select>
       </div>
 
-<<<<<<< HEAD
       {showDateFilter && (
         <div className="flex items-center gap-2">
            <span className="bg-barmlo-blue text-white px-2 py-1 rounded text-xs font-bold shadow-sm">From</span>
@@ -117,17 +112,6 @@ export default function ProjectTableToolbar() {
            />
         </div>
       )}
-=======
-      <div className="flex items-center gap-2">
-         <span className="bg-barmlo-blue text-white px-2 py-1 rounded text-xs font-bold shadow-sm">From</span>
-         <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="rounded border-gray-300 py-1 text-sm focus:border-barmlo-blue focus:ring-barmlo-blue dark:bg-gray-700 dark:border-gray-600 shadow-sm"
-         />
-      </div>
->>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
 
       <div className="flex flex-1 items-center gap-2 min-w-[200px]">
         <div className="relative flex-1">
