@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, BriefcaseIcon, BanknotesIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -158,7 +158,7 @@ export default async function ProjectsPage({
         },
         assignedTo: { select: { id: true, name: true, email: true } },
         // For Sales
-        paymentSchedules: isSalesAccounts ? { select: { amountMinor: true, paidMinor: true, status: true, dueOn: true, label: true } } : false,
+        paymentSchedules: isSalesAccounts ? { select: { amountMinor: true, paidMinor: true, status: true, dueOn: true, label: true, seq: true } } : false,
         clientPayments: isSalesAccounts ? { select: { amountMinor: true, type: true } } : false,
       },
       take: pageSize,
@@ -197,7 +197,7 @@ export default async function ProjectsPage({
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-           <ProjectTableToolbar />
+           <ProjectTableToolbar showDateFilter={!isSalesAccounts} />
         </div>
 
         <div className="overflow-x-auto">
@@ -245,10 +245,33 @@ export default async function ProjectsPage({
                     let dueAmount = 0n;
 
                     if (schedules.length > 0) {
-                      const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
-                      const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
-                      typeLabel = nextPayment?.label || 'Installment';
-                      dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
+                      const sorted = [...schedules].sort((a: any, b: any) => {
+                        const da = new Date(a.dueOn).getTime();
+                        const db = new Date(b.dueOn).getTime();
+                        if (da !== db) return da - db;
+                        return (a.seq ?? 0) - (b.seq ?? 0);
+                      });
+                      const totalPaid = ((project as any).clientPayments || []).reduce(
+                        (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
+                        0n
+                      );
+                      let cumulativeDue = 0n;
+                      let currentItem: any = null;
+                      for (const s of sorted) {
+                        cumulativeDue += BigInt(s.amountMinor ?? 0);
+                        if (cumulativeDue > totalPaid) {
+                          currentItem = s;
+                          break;
+                        }
+                      }
+                      if (currentItem) {
+                        const lbl = String(currentItem.label || '').toLowerCase();
+                        typeLabel = lbl.includes('deposit') ? 'Deposit' : (currentItem.label || 'Installment');
+                        dueAmount = cumulativeDue - totalPaid;
+                      } else {
+                        typeLabel = 'Completed';
+                        dueAmount = 0n;
+                      }
                     } else {
                        // Fallback
                        const deposit = BigInt((project as any).depositMinor ?? 0);
@@ -297,16 +320,18 @@ export default async function ProjectsPage({
                             </span>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
-                            <Money amountMinor={dueAmount} />
+                            <Money minor={dueAmount} />
                          </td>
                          <td className="px-6 py-4 text-center">
-                            <Link 
-                               href={`/projects/${project.id}`}
-                               className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-                            >
-                               <EyeIcon className="h-3.5 w-3.5" />
-                               View
-                            </Link>
+                            <div className="flex items-center justify-center gap-2">
+                              <Link 
+                                 href={`/projects/${project.id}/payments`}
+                                 className="inline-flex items-center justify-center gap-1 rounded border border-orange-600 bg-orange-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-500 hover:border-orange-500 shadow-sm"
+                              >
+                                 <BanknotesIcon className="h-3.5 w-3.5" />
+                                 Receive Payment
+                              </Link>
+                            </div>
                          </td>
                        </tr>
                     );
