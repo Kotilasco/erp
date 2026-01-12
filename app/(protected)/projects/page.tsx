@@ -176,7 +176,7 @@ export default async function ProjectsPage({
     }),
     prisma.project.count({ where }),
     isSeniorPM
-      ? prisma.user.findMany({ where: { role: 'PROJECT_OPERATIONS_OFFICER' }, select: { id: true, name: true } })
+      ? prisma.user.findMany({ where: { role: 'PROJECT_OPERATIONS_OFFICER' }, select: { id: true, name: true, email: true } })
       : Promise.resolve([]),
   ]);
 
@@ -387,7 +387,7 @@ export default async function ProjectsPage({
                        {!isProjectManager && (
                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                             {isSeniorPM && currentTab === 'assignment' ? (
-                               <ProjectAssigner projectId={project.id} managers={projectManagers} />
+                               <ProjectAssigner projectId={project.id} projectManagers={projectManagers} />
                             ) : (
                                project.assignedTo?.name || '-'
                             )}
