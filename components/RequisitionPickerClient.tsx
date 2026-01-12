@@ -427,7 +427,11 @@ export default function RequisitionPickerClient({
                 {extraModal.request.reason && (
                     <div className="pt-1">
                         <span className="block text-xs text-gray-500 mb-1">Reason provided:</span>
+<<<<<<< HEAD
                         <p className="text-gray-800 italic">&quot;{extraModal.request.reason}&quot;</p>
+=======
+                        <p className="text-gray-800 italic">"{extraModal.request.reason}"</p>
+>>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
                     </div>
                 )}
               </div>

@@ -98,7 +98,11 @@ export default async function DailyTasksPage({
             <div className="ml-3">
               <h3 className="text-sm font-medium text-yellow-800">No schedule found</h3>
               <div className="mt-2 text-sm text-yellow-700">
+<<<<<<< HEAD
                 <p>This project doesn&apos;t have a schedule yet.</p>
+=======
+                <p>This project doesn't have a schedule yet.</p>
+>>>>>>> 6ceb169f31dd33949aef05a222ac753c3611dd87
               </div>
             </div>
           </div>
