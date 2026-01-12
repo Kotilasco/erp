@@ -1205,8 +1205,10 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
         </section>
       )}
 
-      <div className="space-y-8">
-        {groups.map((group) => (
+      {!canSalesEndorse && (
+        <>
+          <div className="space-y-8">
+            {groups.map((group) => (
           <div key={group.section} className="space-y-4">
             <div className="rounded-xl bg-blue-50 p-4 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 flex items-center gap-3">
               {group.section === 'MATERIALS' ? (
@@ -1425,6 +1427,8 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
       <div className="flex gap-2">
         <PrintButton />
       </div>
+        </>
+      )}
     </div>
   );
 }
