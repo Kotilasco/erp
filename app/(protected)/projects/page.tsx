@@ -102,20 +102,30 @@ export default async function ProjectsPage({
   if (isSalesAccounts && currentTab === 'due_today') {
     where = {
       ...where,
-      paymentSchedules: {
-        some: {
-          OR: [
-            {
-              status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
-              dueOn: { lte: new Date() },
+      OR: [
+        {
+          paymentSchedules: {
+            some: {
+              OR: [
+                {
+                  status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+                  dueOn: { lte: new Date() },
+                },
+                {
+                  status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+                  label: { contains: 'Deposit', mode: 'insensitive' },
+                },
+              ],
             },
-            {
-              status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
-              label: { contains: 'Deposit', mode: 'insensitive' },
-            },
-          ],
+          },
         },
-      },
+        // Fallback for legacy projects with no generated schedule but having a deposit
+        {
+          paymentSchedules: { none: {} },
+          depositMinor: { gt: 0 },
+          status: { notIn: ['COMPLETED', 'CLOSED'] },
+        },
+      ],
     };
   }
 
@@ -276,6 +286,9 @@ export default async function ProjectsPage({
                        // Fallback
                        const deposit = BigInt((project as any).depositMinor ?? 0);
                        const installment = BigInt((project as any).installmentMinor ?? 0);
+                       const installmentDueOn = (project as any).installmentDueOn ? new Date((project as any).installmentDueOn) : null;
+                       const isInstallmentDue = installmentDueOn ? installmentDueOn.getTime() <= Date.now() : true; // Default to true if no date for legacy
+
                        let totalPaid = ((project as any).clientPayments || []).reduce(
                            (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
                            0n
@@ -288,19 +301,33 @@ export default async function ProjectsPage({
                            } else {
                                totalPaid -= deposit;
                                if (installment > 0n) {
-                                   typeLabel = 'Installment';
-                                   const remainder = totalPaid % installment;
-                                   dueAmount = installment - remainder;
+                                   if (isInstallmentDue) {
+                                      typeLabel = 'Installment';
+                                      const remainder = totalPaid % installment;
+                                      dueAmount = installment - remainder;
+                                   } else {
+                                      typeLabel = 'Future Installment';
+                                      dueAmount = 0n;
+                                   }
                                } else {
                                    typeLabel = 'Completed';
                                    dueAmount = 0n;
                                }
                            }
                        } else if (installment > 0n) {
-                           typeLabel = 'Installment';
-                           const remainder = totalPaid % installment;
-                           dueAmount = installment - remainder;
+                           if (isInstallmentDue) {
+                              typeLabel = 'Installment';
+                              const remainder = totalPaid % installment;
+                              dueAmount = installment - remainder;
+                           } else {
+                              typeLabel = 'Future Installment';
+                              dueAmount = 0n;
+                           }
                        }
+                    }
+
+                    if (isSalesAccounts && currentTab === 'due_today' && dueAmount <= 0n) {
+                        return null;
                     }
 
                     return (
