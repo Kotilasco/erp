@@ -241,38 +241,38 @@ export default async function ProjectsPage({
                  projects.map((project) => {
                    if (isSalesAccounts) {
                     const schedules = (project as any).paymentSchedules || [];
-                    let typeLabel = 'Installment';
-                    let dueAmount = 0n;
+                   let typeLabel = 'Installment';
+                   let dueAmount = 0n;
 
-                    if (schedules.length > 0) {
-                      const sorted = [...schedules].sort((a: any, b: any) => {
-                        const da = new Date(a.dueOn).getTime();
-                        const db = new Date(b.dueOn).getTime();
-                        if (da !== db) return da - db;
-                        return (a.seq ?? 0) - (b.seq ?? 0);
-                      });
-                      const totalPaid = ((project as any).clientPayments || []).reduce(
-                        (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
-                        0n
-                      );
-                      let cumulativeDue = 0n;
-                      let currentItem: any = null;
-                      for (const s of sorted) {
-                        cumulativeDue += BigInt(s.amountMinor ?? 0);
-                        if (cumulativeDue > totalPaid) {
-                          currentItem = s;
-                          break;
+                   if (schedules.length > 0) {
+                      const nowTs = Date.now();
+                      let depositRemaining = 0n;
+                      let pastDueRemaining = 0n;
+                      for (const s of schedules as any[]) {
+                        const remaining = BigInt(s.amountMinor ?? 0) - BigInt(s.paidMinor ?? 0);
+                        if (remaining <= 0n) continue;
+                        const isDeposit = String(s.label || '').toLowerCase().includes('deposit');
+                        if (isDeposit) {
+                          depositRemaining += remaining;
+                        } else {
+                          const dueTs = new Date(s.dueOn).getTime();
+                          if (Number.isFinite(dueTs) && dueTs <= nowTs) {
+                            pastDueRemaining += remaining;
+                          }
                         }
                       }
-                      if (currentItem) {
-                        const lbl = String(currentItem.label || '').toLowerCase();
-                        typeLabel = lbl.includes('deposit') ? 'Deposit' : (currentItem.label || 'Installment');
-                        dueAmount = cumulativeDue - totalPaid;
+                      dueAmount = depositRemaining + pastDueRemaining;
+                      if (depositRemaining > 0n && pastDueRemaining > 0n) {
+                        typeLabel = 'Deposit + Installment';
+                      } else if (depositRemaining > 0n) {
+                        typeLabel = 'Deposit';
+                      } else if (pastDueRemaining > 0n) {
+                        typeLabel = 'Installment';
                       } else {
                         typeLabel = 'Completed';
                         dueAmount = 0n;
                       }
-                    } else {
+                   } else {
                        // Fallback
                        const deposit = BigInt((project as any).depositMinor ?? 0);
                        const installment = BigInt((project as any).installmentMinor ?? 0);
