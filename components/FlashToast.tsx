@@ -18,11 +18,9 @@ export default function FlashToast({ flash }: { flash: FlashMessage | null }) {
 
   useEffect(() => {
     if (!message) return;
-    const controller = new AbortController();
-    fetch('/api/flash/clear', { method: 'POST', signal: controller.signal }).catch(() => {});
+    fetch('/api/flash/clear', { method: 'POST' }).catch(() => {});
     const timer = setTimeout(() => setMessage(null), 4000);
     return () => {
-      controller.abort();
       clearTimeout(timer);
     };
   }, [message]);
