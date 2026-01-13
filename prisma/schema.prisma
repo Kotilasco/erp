@@ -659,6 +659,7 @@ model Employee {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   office        String?
+  status        String         @default("ACTIVE") // ACTIVE, LEAVE, SUSPENDED, DISABLED
   user          User?          @relation(fields: [userId], references: [id])
   scheduleItems ScheduleItem[] @relation("ScheduleItemAssignees")
 }
