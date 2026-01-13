@@ -8,12 +8,14 @@ import LoadingButton from '@/components/LoadingButton';
 
 export default function AssignDriverForm({ 
   dispatchId, 
-  drivers 
+  drivers,
+  currentDriverId
 }: { 
   dispatchId: string; 
-  drivers: { id: string; name: string | null; email: string | null }[] 
+  drivers: { id: string; name: string | null; email: string | null }[];
+  currentDriverId?: string | null;
 }) {
-  const [selectedDriver, setSelectedDriver] = useState('');
+  const [selectedDriver, setSelectedDriver] = useState(currentDriverId ?? '');
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -24,6 +26,8 @@ export default function AssignDriverForm({
       router.refresh();
     });
   };
+
+  const isReassign = !!currentDriverId;
 
   return (
     <div className="flex items-center gap-2">
@@ -42,12 +46,12 @@ export default function AssignDriverForm({
         </select>
         <button
            onClick={handleAssign}
-           disabled={!selectedDriver || isPending}
+           disabled={!selectedDriver || isPending || (isReassign && selectedDriver === currentDriverId)}
            className={clsx(
              "inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
            )}
         >
-          {isPending ? 'Assigning...' : 'Assign & Hand Over'}
+          {isPending ? 'Assigning...' : isReassign ? 'Reassign & Hand Over' : 'Assign & Hand Over'}
         </button>
     </div>
   );

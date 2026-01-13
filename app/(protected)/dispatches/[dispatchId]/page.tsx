@@ -2,7 +2,6 @@
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { updateDispatchItems, submitDispatch, markDispatchItemHandedOut } from '@/app/(protected)/projects/actions';
-import SignGatePassButton from '@/components/SignGatePassButton';
 import LoadingButton from '@/components/LoadingButton';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -19,6 +18,7 @@ import MarkHandedOutButton from '@/components/MarkHandedOutButton';
 import DriverAcknowledgeButton from '@/components/DriverAcknowledgeButton';
 import AssignDriverForm from '@/components/AssignDriverForm';
 import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
+import DispatchAcknowledgment from '@/components/dispatch-acknowledgment';
 
 const STATUS_BADGE: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
@@ -147,18 +147,18 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
              <TableContent dispatch={dispatch} canEdit={false} isSecurity={isSecurity} />
           </div>
           
-          {/* Security Action: Mark Sent (Gate Pass) */}
-          {role === 'SECURITY' && !dispatch.securitySignedAt && (
-             <div className="flex justify-center p-4 bg-blue-50 border border-blue-100 rounded-xl dark:bg-blue-900/20 dark:border-blue-800">
-                <SignGatePassButton dispatchId={dispatch.id} />
-             </div>
-          )}
 
-          {role === 'DRIVER' && dispatch.status === 'DISPATCHED' && !dispatch.driverSignedAt && (
-            <div className="flex justify-end p-4 bg-yellow-50 border border-yellow-100 rounded-xl dark:bg-yellow-900/20 dark:border-yellow-800">
-              <DriverAcknowledgeButton dispatchId={dispatch.id} />
-            </div>
-          )}
+
+
+
+          {/* Replaced DriverAcknowledgeButton with unified DispatchAcknowledgment */}
+          <div className="mt-6">
+             <DispatchAcknowledgment 
+                dispatch={dispatch} 
+                userId={me.id!} 
+                userRole={role ?? ''} 
+             />
+          </div>
         </div>
       )}
     </div>
@@ -169,8 +169,7 @@ async function TableContent({ dispatch, canEdit, isSecurity }: { dispatch: any, 
   let drivers: any[] = [];
   
   const showAssign = isSecurity && 
-    dispatch.status === 'DISPATCHED' && 
-    !dispatch.assignedToDriverId;
+    dispatch.status === 'DISPATCHED';
 
   if (showAssign) {
       try { drivers = await getDrivers(); } catch (e) {}
@@ -238,7 +237,11 @@ async function TableContent({ dispatch, canEdit, isSecurity }: { dispatch: any, 
                     <TruckIcon className="h-5 w-5" />
                     Assign to Driver for Pickup
                 </h3>
-                <AssignDriverForm dispatchId={dispatch.id} drivers={drivers} />
+                <AssignDriverForm 
+                    dispatchId={dispatch.id} 
+                    drivers={drivers} 
+                    currentDriverId={dispatch.assignedToDriverId}
+                />
             </div>
         )}
     </div>

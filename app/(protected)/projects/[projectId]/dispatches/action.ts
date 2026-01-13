@@ -36,7 +36,7 @@ type ActionResult<T = unknown> = { ok: true; data?: T } | { ok: false; error: st
 } */
 
 
-  // working correctly
+// working correctly
 /* export async function markItemHandedOut(formData: any) {
   const itemId = formData.get('itemId');
 
@@ -381,7 +381,7 @@ export async function markItemHandedOut(formData: FormData) {
     // Atomic stock decrement guarded by gte
     const updated = await tx.inventoryItem.updateMany({
       where: { id: inventoryId!, quantity: { gte: qtyToHand } },
-      data: { quantity: { decrement: qtyToHand }, qty: { decrement: qtyToHand } },
+      data: { quantity: { decrement: qtyToHand } },
     });
     if (updated.count === 0) {
       throw new Error("Insufficient stock to hand out the requested quantity");
@@ -423,6 +423,36 @@ export async function markItemHandedOut(formData: FormData) {
   if (it.dispatch?.id) revalidatePath(`/dispatches/${it.dispatch.id}`);
   revalidatePath("/dispatches");
   revalidatePath("/inventory");
+
+  // ---- 6) Check if ALL items are handed out, then update dispatch status to DISPATCHED ----
+  // We do this after the main transaction to avoid locking too much, or we could do it inside.
+  // Doing it here is safer for concurrency (eventual consistency for status is fine).
+  if (it.dispatch?.id) {
+    const incompleteItems = await prisma.dispatchItem.count({
+      where: {
+        dispatchId: it.dispatch.id,
+        // item is incomplete if handedOutQty < qty
+        // We can't compare columns directly in standard prisma without raw query, so we might need a findMany or just assume "handing out means generally done".
+        // Actually, we can check if there are any items where handedOutQty < qty.
+        // Since we don't have a computed column, we might have to fetch all items.
+      }
+    });
+
+    const allItems = await prisma.dispatchItem.findMany({
+      where: { dispatchId: it.dispatch.id },
+      select: { qty: true, handedOutQty: true }
+    });
+
+    const userIsDone = allItems.every(i => (i.handedOutQty ?? 0) >= i.qty);
+
+    if (userIsDone && it.dispatch.status !== 'DISPATCHED') {
+      await prisma.dispatch.update({
+        where: { id: it.dispatch.id },
+        data: { status: 'DISPATCHED' }
+      });
+      revalidatePath(`/dispatches/${it.dispatch.id}`);
+    }
+  }
 
   return {
     ok: true,
@@ -564,7 +594,7 @@ export async function returnLineItem(
           returnedQty: { increment: rawQty },
         },
       });
-    }else {
+    } else {
       await tx.dispatchItem.update({
         where: { id: item.id },
         data: {

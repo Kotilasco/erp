@@ -19,7 +19,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ dispat
     <div className="space-y-6 p-6">
       <header className="flex items-center justify-between bg-white p-6 rounded-lg shadow-sm border">
         <div>
-           <h1 className="text-2xl font-bold text-gray-900">Dispatch Receipt #{dispatch.dispatchNumber || dispatchId.slice(0,8)}</h1>
+           <h1 className="text-2xl font-bold text-gray-900">Dispatch Receipt #{(dispatch as any).dispatchNumber || dispatchId.slice(0,8)}</h1>
            <p className="text-gray-500">Status: {dispatch.status}</p>
         </div>
         <div className="flex gap-2">
@@ -34,19 +34,7 @@ export default async function ReceiptPage({ params }: { params: Promise<{ dispat
 
       <div className="flex flex-wrap gap-4 mt-8">
         {/* Security Action: Mark Sent (Gate Pass) */}
-        {user.role === 'SECURITY' && !dispatch.securitySignedAt && (
-            <form action={markDispatchSent.bind(null, dispatchId)}>
-            <button
-                type="submit"
-                className="flex items-center gap-3 rounded-xl bg-orange-600 px-8 py-4 text-lg font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Sign Gate Pass (Mark Sent)
-            </button>
-            </form>
-        )}
+
 
         {/* Driver/Recipient Action: Mark Received */}
         {(user.role === 'DRIVER' || user.role === 'ADMIN') && dispatch.status === 'DISPATCHED' && !dispatch.driverSignedAt && (
