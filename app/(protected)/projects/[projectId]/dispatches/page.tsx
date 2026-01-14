@@ -70,10 +70,13 @@ export default async function ProjectDispatchesPage(props: {
   const opsLocked = project.status === 'DEPOSIT_PENDING' || !schedule;
 
   // Calculate dispatchable items (logic from main page)
-  // 1. Get all approved requisition items
+  // 1. Get all approved/ordered requisition items
   const approvedReqItems = await prisma.procurementRequisitionItem.findMany({
     where: {
-      requisition: { projectId: projectId, status: 'APPROVED' },
+      requisition: { 
+        projectId: projectId, 
+        status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED', 'COMPLETED'] }
+      },
     },
   });
 
@@ -85,13 +88,51 @@ export default async function ProjectDispatchesPage(props: {
     },
   });
 
-  // 3. Map to find remaining qty
+  // NEW: Get all VERIFIED GRN items to calculate what has actually been received
+  const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
+    where: {
+      grn: { 
+        status: 'VERIFIED',
+        purchaseOrder: { requisition: { projectId } }
+      }
+    },
+    include: {
+      poItem: true
+    }
+  });
+
+  // Helper map: RequisitionItemId -> Total Received Qty
+  const receivedQtyByReqItem = new Map<string, number>();
+  for (const grnItem of verifiedGrnItems) {
+    if (grnItem.poItem?.requisitionItemId) {
+        const rid = grnItem.poItem.requisitionItemId;
+        const current = receivedQtyByReqItem.get(rid) ?? 0;
+        receivedQtyByReqItem.set(rid, current + grnItem.qtyAccepted);
+    }
+  }
+
+  // 3. Map to find remaining qty (Available = Received - Dispatched)
   const dispatchableItems = approvedReqItems
     .map((ri) => {
       const dispatched = dispatchedItems
         .filter((di) => di.requisitionItemId === ri.id)
         .reduce((sum, di) => sum + Number(di.qty), 0);
-      const remaining = Number(ri.qty) - dispatched;
+      
+      // Calculate received quantity for this item
+      // If status is APPROVED (no PO yet), received is 0. 
+      // If ORDERED/PARTIAL/etc, we look at Verified GRNs.
+      // Exception: If the status is 'PURCHASED' directly via "Mark as Purchased", we might assume available?
+      // But user rule "don't dispatch if ordered/not good" implies strict physical check.
+      // Let's rely on GRNs. If "Mark as Purchased" bypasses GRN, this might block it.
+      // "Mark as Purchased" creates a PO with status 'PURCHASED'.
+      // If we want to support that, we'd check if PO status == 'PURCHASED' and items match.
+      // But for now, safe bet is GRN.
+      
+      const received = receivedQtyByReqItem.get(ri.id) ?? 0;
+
+      // Available to dispatch is what we received minus what we already sent
+      const remaining = received - dispatched;
+      
       if (remaining <= 0) return null;
       return {
         ...ri,

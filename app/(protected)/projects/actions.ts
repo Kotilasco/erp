@@ -488,46 +488,87 @@ export async function createDispatchFromPurchases(projectId: string) {
   if (!user) throw new Error('Auth required');
   await ensureProjectIsPlanned(projectId);
 
-  // 1) real purchases for this project
-  const purchases = await prisma.purchase.findMany({
+  console.log(`[CreateDispatch] Starting for Project ${projectId}`);
+
+  // 1) Fetch verified GRNs to calculate RECEIVED limits
+  const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
+    where: {
+      grn: {
+        status: 'VERIFIED',
+        purchaseOrder: { requisition: { projectId } }
+      }
+    },
+    include: { poItem: true }
+  });
+
+  console.log(`[CreateDispatch] Found ${verifiedGrnItems.length} verified GRN items`);
+
+  const receivedQtyByReqItem = new Map<string, number>();
+  for (const grnItem of verifiedGrnItems) {
+    if (grnItem.poItem?.requisitionItemId) {
+      const rid = grnItem.poItem.requisitionItemId;
+      const current = receivedQtyByReqItem.get(rid) ?? 0;
+      receivedQtyByReqItem.set(rid, current + grnItem.qtyAccepted);
+    }
+  }
+
+  // 2) Fetch Requisition Items (APPROVED/ORDERED/PARTIAL/RECEIVED/PURCHASED) for this project
+  const reqItems = await prisma.procurementRequisitionItem.findMany({
     where: {
       requisition: {
         projectId,
-      },
-      qty: { gt: 0 },
+        status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED'] }
+      }
     },
     include: {
-      requisitionItem: true,
-    },
+      requisition: { select: { status: true } },
+      purchases: { select: { id: true, qty: true }, where: { qty: { gt: 0 } } } // Try to link purchase if exists
+    }
   });
+
+  console.log(`[CreateDispatch] Found ${reqItems.length} potential Requisition Items`);
 
   const itemsToCreate: any[] = [];
 
-  // build from purchases with remaining balance
-  for (const p of purchases) {
+  // 3) Filter and Create
+  for (const ri of reqItems) {
+    // Check already dispatched amount for this Requisition Item
     const used = await prisma.dispatchItem.aggregate({
-      where: { purchaseId: p.id },
+      where: { requisitionItemId: ri.id, dispatch: { projectId } },
       _sum: { qty: true },
     });
     const already = Number(used._sum.qty ?? 0);
-    const remaining = Math.max(0, Number(p.qty) - already);
+
+    // Determine the LIMIT (What is physically available)
+    // Strictly enforce GRN limits for ALL items. 
+    // Even "Direct Purchases" must be received (Verified GRN) before dispatching to ensure inventory exists.
+    let limit = receivedQtyByReqItem.get(ri.id) ?? 0;
+
+    const remaining = Math.max(0, limit - already);
+
+    console.log(`[CreateDispatch] ReqItem ${ri.id}: Status=${ri.requisition.status}, Limit=${limit}, Already=${already}, Remaining=${remaining}`);
+
     if (remaining <= 0) continue;
 
-    const description =
-      p.requisitionItem?.description?.trim() ||
-      `Purchase ${p.taxInvoiceNo || p.vendor || p.id}`;
-    const unit = p.requisitionItem?.unit ?? null;
+    const description = ri.description?.trim() || 'Unknown Item';
+    const unit = ri.unit ?? null;
+
+    // Attempt to link to a Purchase ID if we can find a matching one
+    // Logic: Grab the first purchase linked to this item, or none.
+    const purchaseId = ri.purchases?.[0]?.id ?? undefined;
 
     itemsToCreate.push({
       description,
       qty: remaining,
       unit,
       selected: true,
-      purchase: { connect: { id: p.id } }, // ✅ relation connect
+      requisitionItem: { connect: { id: ri.id } }, // ✅ Link directly to ReqItem
+      purchase: purchaseId ? { connect: { id: purchaseId } } : undefined, // Optional link
     });
   }
 
   if (itemsToCreate.length === 0) {
+    console.error('No items to dispatch. Throwing error.');
     throw new Error('No purchased or available inventory items to dispatch for this project.');
   }
 
@@ -542,6 +583,8 @@ export async function createDispatchFromPurchases(projectId: string) {
     },
     include: { items: true },
   });
+
+  console.log(`[CreateDispatch] Successfully created Dispatch ${dispatch.id} with ${itemsToCreate.length} items`);
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/dispatches/${dispatch.id}`);
