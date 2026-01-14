@@ -1,12 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { addEmployee, updateEmployeeStatus } from './actions';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { updateEmployeeStatus } from './actions';
 
 export default function ClientEmployeeList({ employees }: { employees: any[] }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const router = useRouter();
 
   const handleStatusChange = async (id: string, status: string) => {
     await updateEmployeeStatus(id, status);
@@ -15,12 +12,12 @@ export default function ClientEmployeeList({ employees }: { employees: any[] }) 
   return (
     <>
       <div className="mb-4">
-        <button 
-           onClick={() => setIsModalOpen(true)}
-           className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
+        <Link
+          href="/employees/add"
+          className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600"
         >
           Add Employee
-        </button>
+        </Link>
       </div>
 
       <div className="bg-white shadow rounded-lg overflow-hidden">
@@ -69,49 +66,7 @@ export default function ClientEmployeeList({ employees }: { employees: any[] }) 
         </table>
       </div>
 
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-           <div className="bg-white p-6 rounded-lg w-full max-w-md">
-              <h2 className="text-xl font-bold mb-4">Add New Employee</h2>
-              <form action={async (fd) => {
-                  const res = await addEmployee(fd);
-                  if(res.ok) {
-                      setIsModalOpen(false);
-                      router.refresh(); // Refresh to show new employee
-                  } else {
-                      alert(res.error);
-                  }
-              }}>
-                  <div className="space-y-4">
-                      <div>
-                          <label className="block text-sm font-medium">Given Name</label>
-                          <input name="givenName" required className="w-full border p-2 rounded" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">Surname</label>
-                          <input name="surname" className="w-full border p-2 rounded" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">Role</label>
-                          <input name="role" required className="w-full border p-2 rounded" placeholder="e.g. Electrician" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">EC Number</label>
-                          <input name="ecNumber" className="w-full border p-2 rounded" />
-                      </div>
-                      <div>
-                          <label className="block text-sm font-medium">Email</label>
-                          <input name="email" type="email" className="w-full border p-2 rounded" />
-                      </div>
-                      <div className="flex justify-end gap-2 mt-4">
-                          <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
-                          <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded">Save</button>
-                      </div>
-                  </div>
-              </form>
-           </div>
-        </div>
-      )}
+      {/* Full-page Add Employee form is available at /employees/add */}
     </>
   );
 }
