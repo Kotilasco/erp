@@ -14,6 +14,7 @@ import ApproveDispatchButton from '@/components/ApproveDispatchButton';
 import Link from 'next/link';
 import { ArrowLeftIcon, CalendarIcon, UserIcon, CheckIcon, ShieldCheckIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
+import DispatchAcknowledgment from '@/components/dispatch-acknowledgment';
 
 export const runtime = 'nodejs';
 
@@ -126,6 +127,7 @@ export default async function DispatchDetail({
     revalidatePath(`/dispatches/${dispatchId}`);
   };
 
+
   const returnAction = async (fd: FormData) => {
     'use server';
     
@@ -218,8 +220,6 @@ export default async function DispatchDetail({
     return redirect(`/projects/${dispatch.project.id}/dispatches/${dispatchId}`);
   };
 
-  // ---------- end actions ----------
-
   return (
     <div className="space-y-6 max-w-7xl mx-auto pt-6">
       {/* Header Section */}
@@ -248,11 +248,8 @@ export default async function DispatchDetail({
              </div>
 
              <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                <div>
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Dispatch #</span>
                         <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            {dispatch.dispatchNumber || dispatch.id.slice(0, 8).toUpperCase()}
+                            {(dispatch as any).dispatchNumber || dispatch.id.slice(0, 8).toUpperCase()}
                         </span>
                         <span className={cn(
                             "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide",
@@ -276,14 +273,30 @@ export default async function DispatchDetail({
                              {dispatch.createdBy?.name || 'Unknown'}
                         </div>
                     </div>
-                </div>
                 
                 <div className="flex gap-2">
-                     {/* Action Buttons Placeholder */}
+                     <DispatchAcknowledgment 
+                        dispatch={dispatch} 
+                        userId={me.id!} 
+                        userRole={role ?? ''} 
+                     />
+                     {canApprove && !isSecurity && (
+                        <ApproveDispatchButton dispatchId={dispatch.id} />
+                     )}
+                     {canEdit && (
+                        <div className="flex gap-2">
+                             {/* Edit actions handled in form normally */}
+                        </div>
+                     )}
+                     {!canEdit && !canApprove && (
+                        /* Only show print/etc if not editing */
+                        <></>
+                     )}
                 </div>
              </div>
         </div>
-      </div>
+
+
 
       {/* Main Content */}
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
@@ -488,5 +501,6 @@ export default async function DispatchDetail({
         </div>
       )}
     </div>
+
   );
 }

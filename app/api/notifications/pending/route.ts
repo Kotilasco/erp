@@ -38,55 +38,56 @@ export async function GET() {
     SENIOR_QS: ['SUBMITTED_REVIEW'],
     SALES: ['REVIEWED', 'SENT_TO_SALES', 'NEGOTIATION'],
     PROJECT_OPERATIONS_OFFICER: QUOTE_STATUSES.filter((status) => status !== 'FINALIZED' && status !== 'ARCHIVED'),
-    PROJECT_TEAM: QUOTE_STATUSES.filter((status) => status !== 'FINALIZED' && status !== 'ARCHIVED'),
     ADMIN: ['SUBMITTED_REVIEW', 'REVIEWED', 'SENT_TO_SALES', 'NEGOTIATION'],
-  } as Record<UserRole, QuoteStatus[]>;
+  } as unknown as Partial<Record<UserRole, QuoteStatus[]>>;
 
-  if (role === 'ADMIN') {
-    where.status = { in: statusesFor.ADMIN };
-  } else if (role === 'QS') {
-    if (!currentUserId) {
+  try {
+    if (role === 'ADMIN') {
+      where.status = { in: statusesFor.ADMIN };
+    } else if (role === 'QS') {
+      if (!currentUserId) {
+        return NextResponse.json({ total: 0, items: [] });
+      }
+      where.createdById = currentUserId;
+      where.status = { in: statusesFor.QS };
+      if (officeFilter) where.office = officeFilter;
+    } else if (role === 'SENIOR_QS') {
+      where.status = { in: statusesFor.SENIOR_QS };
+      if (officeFilter) where.office = officeFilter;
+    } else if (role === 'SALES') {
+      where.status = { in: statusesFor.SALES };
+      if (officeFilter) where.office = officeFilter;
+    } else if (role === 'PROJECT_OPERATIONS_OFFICER') {
+      if (!currentUserId) {
+        return NextResponse.json({ total: 0, items: [] });
+      }
+      where.projectManagerId = currentUserId;
+      where.status = { in: statusesFor.PROJECT_OPERATIONS_OFFICER };
+    } else {
       return NextResponse.json({ total: 0, items: [] });
     }
-    where.createdById = currentUserId;
-    where.status = { in: statusesFor.QS };
-    if (officeFilter) where.office = officeFilter;
-  } else if (role === 'SENIOR_QS') {
-    where.status = { in: statusesFor.SENIOR_QS };
-    if (officeFilter) where.office = officeFilter;
-  } else if (role === 'SALES') {
-    where.status = { in: statusesFor.SALES };
-    if (officeFilter) where.office = officeFilter;
-  } else if (role === 'PROJECT_OPERATIONS_OFFICER') {
-    if (!currentUserId) {
-      return NextResponse.json({ total: 0, items: [] });
-    }
-    where.projectManagerId = currentUserId;
-    where.status = { in: statusesFor.PROJECT_OPERATIONS_OFFICER };
-  } else if (role === 'PROJECT_TEAM') {
-    if (!currentUserId) {
-      return NextResponse.json({ total: 0, items: [] });
-    }
-    where.projectTasks = { some: { assigneeId: currentUserId } };
-    where.status = { in: statusesFor.PROJECT_TEAM };
-    if (officeFilter) where.office = officeFilter;
-  } else {
-    return NextResponse.json({ total: 0, items: [] });
+
+    const quotes = await prisma.quote.findMany({
+      where,
+      include: { customer: { select: { displayName: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 10,
+    });
+
+    const items = quotes.map((quote) => ({
+      id: quote.id,
+      number: quote.number,
+      status: quote.status as QuoteStatus,
+      client: quote.customer?.displayName ?? null,
+    }));
+
+    return NextResponse.json({ total: items.length, items });
+  } catch (error: any) {
+    console.error('[notifications][pending] ERROR:', error);
+    return NextResponse.json({
+      error: 'Internal Server Error',
+      details: error?.message || String(error),
+      stack: error?.stack
+    }, { status: 500 });
   }
-
-  const quotes = await prisma.quote.findMany({
-    where,
-    include: { customer: { select: { displayName: true } } },
-    orderBy: { updatedAt: 'desc' },
-    take: 10,
-  });
-
-  const items = quotes.map((quote) => ({
-    id: quote.id,
-    number: quote.number,
-    status: quote.status as QuoteStatus,
-    client: quote.customer?.displayName ?? null,
-  }));
-
-  return NextResponse.json({ total: items.length, items });
 }

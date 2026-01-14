@@ -259,8 +259,9 @@ async function PendingTasks({
     driverTasks = await prisma.dispatch.findMany({
       where: {
         status: 'DISPATCHED', // Items handed out, waiting for driver pickup
-        driverSignedAt: null,
-        OR: [{ assignedToDriverId: userId }, { assignedToDriverId: null }],
+
+
+        assignedToDriverId: userId,
       },
       include: {
         project: {
@@ -300,27 +301,40 @@ async function PendingTasks({
   // Logic for Project Manager (Unplanned Count and Active Count)
   let pmUnplannedCount = 0;
   let pmActiveCount = 0;
+  let awaitingDeliveryCount = 0;
   if (roles.PM) {
-    // Unplanned: No schedule OR Draft schedule
-    pmUnplannedCount = await prisma.project.count({
-      where: {
-        assignedToId: userId,
-        status: { notIn: ['COMPLETED', 'CLOSED'] },
-        OR: [
+    const [unplanned, active, awaiting] = await Promise.all([
+      // Unplanned: No schedule OR Draft schedule
+      prisma.project.count({
+        where: {
+          assignedToId: userId,
+          status: { notIn: ['COMPLETED', 'CLOSED'] },
+          OR: [
             { schedules: { is: null } },
             { schedules: { status: 'DRAFT' } }
-        ]
-      },
-    });
+          ]
+        },
+      }),
+      // Active: Active schedule
+      prisma.project.count({
+        where: {
+          assignedToId: userId,
+          status: { notIn: ['COMPLETED', 'CLOSED'] },
+          schedules: { status: 'ACTIVE' }
+        },
+      }),
+      // Awaiting Delivery: Driver has Arrived, waiting for Site Acceptance
+      prisma.dispatch.count({
+        where: {
+          status: 'ARRIVED',
+          project: { assignedToId: userId }
+        }
+      })
+    ]);
 
-    // Active: Active schedule
-    pmActiveCount = await prisma.project.count({
-      where: {
-        assignedToId: userId,
-        status: { notIn: ['COMPLETED', 'CLOSED'] },
-        schedules: { status: 'ACTIVE' }
-      },
-    });
+    pmUnplannedCount = unplanned;
+    pmActiveCount = active;
+    awaitingDeliveryCount = awaiting;
   }
 
   // Logic for Project Manager (My Assigned Projects)
@@ -517,9 +531,9 @@ async function PendingTasks({
   if (role === 'DRIVER') {
     return (
       <div className="flex flex-col items-center justify-center py-6 mb-8">
-        <div className="grid grid-cols-1 w-full max-w-md">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
           <Link
-            href="/dispatches?status=ALL"
+            href="/dispatches?status=DISPATCHED&driver=me"
             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -531,6 +545,17 @@ async function PendingTasks({
                 {driverTasks.length}
               </span>
             )}
+          </Link>
+          
+          <Link
+            href="/dispatches?status=IN_TRANSIT&driver=me"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
+          >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+            </svg>
+            Deliveries
+            {/* We could add a count here too if we fetched IN_TRANSIT tasks */}
           </Link>
         </div>
       </div>
@@ -599,6 +624,26 @@ async function PendingTasks({
           </Link>
         </div>
       </div>
+    );
+  }
+  // Logic for Human Resource
+  if (role === 'HUMAN_RESOURCE') {
+    return (
+        <div className="flex flex-col items-center justify-center py-6 mb-8">
+            <div className="w-full max-w-xl">
+            <Link
+                href="/employees"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+            >
+                <div className="p-2 bg-white/20 rounded-full">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </div>
+                Manage Employees
+            </Link>
+            </div>
+        </div>
     );
   }
 
@@ -678,12 +723,7 @@ async function PendingTasks({
             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v8m-4-4h8M4 6h16M4 18h16"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m-4-4h8M4 6h16M4 18h16" />
             </svg>
             Unplanned
             {pmUnplannedCount > 0 && (
@@ -711,12 +751,7 @@ async function PendingTasks({
             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 10h11M9 21V3m5 6l7 7-7 7"
-              />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h11M9 21V3m5 6l7 7-7 7" />
             </svg>
             Dispatches
             {dispatchTasks.length > 0 && (
@@ -725,6 +760,24 @@ async function PendingTasks({
               </span>
             )}
           </Link>
+        </div>
+
+        {/* Row 2 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl mt-6">
+           <Link
+             href="/dispatches?status=ARRIVED"
+             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+           >
+             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+             </svg>
+             Awaiting Delivery
+             {awaitingDeliveryCount > 0 && (
+               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600 border border-indigo-200">
+                 {awaitingDeliveryCount}
+               </span>
+             )}
+           </Link>
         </div>
       </div>
     );
@@ -788,6 +841,23 @@ async function PendingTasks({
               )}
             </Link>
           </div>
+           {/* Row 2 */}
+           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl mt-6">
+                <Link
+                href="/dispatches?status=ARRIVED"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  </svg>
+                  Awaiting Delivery
+                  {awaitingDeliveryCount > 0 && (
+                    <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600 border border-indigo-200">
+                      {awaitingDeliveryCount}
+                    </span>
+                  )}
+                </Link>
+           </div>
         </div>
       )}
 
@@ -1804,7 +1874,8 @@ export default async function DashboardPage({
     user.role === 'ACCOUNTS' ||
     user.role === 'ACCOUNTING_OFFICER' ||
     user.role === 'SECURITY' ||
-    user.role === 'DRIVER'
+    user.role === 'DRIVER' ||
+    user.role === 'HUMAN_RESOURCE'
   ) {
     return (
       <div className="space-y-6">
