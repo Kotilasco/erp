@@ -9,6 +9,7 @@ type Employee = {
   givenName: string;
   surname?: string | null;
   role: string;
+  status?: string;
 };
 
 export default function EmployeeAssignmentModal({
@@ -49,8 +50,6 @@ export default function EmployeeAssignmentModal({
     if (!startDate || !endDate) return;
     setChecking(true);
     try {
-      // Check availability for ALL employees to show who is busy
-      // Optimization: We could only check for selected or visible, but checking all is safer for UX
       const allIds = employees.map(e => e.id);
       const result = await checkEmployeeAvailability(allIds, startDate, endDate, scheduleItemId ?? undefined);
       setBusyEmployees(result.busy);
@@ -95,6 +94,9 @@ export default function EmployeeAssignmentModal({
   const grouped: Record<string, Employee[]> = {};
   categories.forEach((c) => (grouped[c] = []));
   employees.forEach((e) => {
+    // Only show ACTIVE employees (unless they are already selected, we might want to keep showing them to unselect?)
+    if (e.status && e.status !== 'ACTIVE' && !selectedIds.includes(e.id)) return;
+    
     const c = roleToCategory(e.role);
     (grouped[c] ||= []).push(e);
   });

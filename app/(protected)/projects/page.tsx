@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-import { EyeIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -102,20 +102,30 @@ export default async function ProjectsPage({
   if (isSalesAccounts && currentTab === 'due_today') {
     where = {
       ...where,
-      paymentSchedules: {
-        some: {
-          OR: [
-            {
-              status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
-              dueOn: { lte: new Date() },
+      OR: [
+        {
+          paymentSchedules: {
+            some: {
+              OR: [
+                {
+                  status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+                  dueOn: { lte: new Date() },
+                },
+                {
+                  status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
+                  label: { contains: 'Deposit', mode: 'insensitive' },
+                },
+              ],
             },
-            {
-              status: { in: [PaymentScheduleStatus.DUE, PaymentScheduleStatus.PARTIAL, PaymentScheduleStatus.OVERDUE] },
-              label: { contains: 'Deposit', mode: 'insensitive' },
-            },
-          ],
+          },
         },
-      },
+        // Fallback for legacy projects with no generated schedule but having a deposit
+        {
+          paymentSchedules: { none: {} },
+          depositMinor: { gt: 0 },
+          status: { notIn: ['COMPLETED', 'CLOSED'] },
+        },
+      ],
     };
   }
 
@@ -158,7 +168,7 @@ export default async function ProjectsPage({
         },
         assignedTo: { select: { id: true, name: true, email: true } },
         // For Sales
-        paymentSchedules: isSalesAccounts ? { select: { amountMinor: true, paidMinor: true, status: true, dueOn: true, label: true } } : false,
+        paymentSchedules: isSalesAccounts ? { select: { amountMinor: true, paidMinor: true, status: true, dueOn: true, label: true, seq: true } } : false,
         clientPayments: isSalesAccounts ? { select: { amountMinor: true, type: true } } : false,
       },
       take: pageSize,
@@ -166,7 +176,7 @@ export default async function ProjectsPage({
     }),
     prisma.project.count({ where }),
     isSeniorPM
-      ? prisma.user.findMany({ where: { role: 'PROJECT_OPERATIONS_OFFICER' }, select: { id: true, name: true } })
+      ? prisma.user.findMany({ where: { role: 'PROJECT_OPERATIONS_OFFICER' }, select: { id: true, name: true, email: true } })
       : Promise.resolve([]),
   ]);
 
@@ -197,7 +207,7 @@ export default async function ProjectsPage({
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-           <ProjectTableToolbar />
+           <ProjectTableToolbar showDateFilter={!isSalesAccounts} />
         </div>
 
         <div className="overflow-x-auto">
@@ -241,18 +251,44 @@ export default async function ProjectsPage({
                  projects.map((project) => {
                    if (isSalesAccounts) {
                     const schedules = (project as any).paymentSchedules || [];
-                    let typeLabel = 'Installment';
-                    let dueAmount = 0n;
+                   let typeLabel = 'Installment';
+                   let dueAmount = 0n;
 
-                    if (schedules.length > 0) {
-                      const sorted = [...schedules].sort((a: any, b: any) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime());
-                      const nextPayment = sorted.find((s: any) => s.status !== 'PAID') || sorted[sorted.length - 1];
-                      typeLabel = nextPayment?.label || 'Installment';
-                      dueAmount = nextPayment ? (BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor || 0)) : 0n;
-                    } else {
+                   if (schedules.length > 0) {
+                      const nowTs = Date.now();
+                      let depositRemaining = 0n;
+                      let pastDueRemaining = 0n;
+                      for (const s of schedules as any[]) {
+                        const remaining = BigInt(s.amountMinor ?? 0) - BigInt(s.paidMinor ?? 0);
+                        if (remaining <= 0n) continue;
+                        const isDeposit = String(s.label || '').toLowerCase().includes('deposit');
+                        if (isDeposit) {
+                          depositRemaining += remaining;
+                        } else {
+                          const dueTs = new Date(s.dueOn).getTime();
+                          if (Number.isFinite(dueTs) && dueTs <= nowTs) {
+                            pastDueRemaining += remaining;
+                          }
+                        }
+                      }
+                      dueAmount = depositRemaining + pastDueRemaining;
+                      if (depositRemaining > 0n && pastDueRemaining > 0n) {
+                        typeLabel = 'Deposit + Installment';
+                      } else if (depositRemaining > 0n) {
+                        typeLabel = 'Deposit';
+                      } else if (pastDueRemaining > 0n) {
+                        typeLabel = 'Installment';
+                      } else {
+                        typeLabel = 'Completed';
+                        dueAmount = 0n;
+                      }
+                   } else {
                        // Fallback
                        const deposit = BigInt((project as any).depositMinor ?? 0);
                        const installment = BigInt((project as any).installmentMinor ?? 0);
+                       const installmentDueOn = (project as any).installmentDueOn ? new Date((project as any).installmentDueOn) : null;
+                       const isInstallmentDue = installmentDueOn ? installmentDueOn.getTime() <= Date.now() : true; // Default to true if no date for legacy
+
                        let totalPaid = ((project as any).clientPayments || []).reduce(
                            (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
                            0n
@@ -265,19 +301,33 @@ export default async function ProjectsPage({
                            } else {
                                totalPaid -= deposit;
                                if (installment > 0n) {
-                                   typeLabel = 'Installment';
-                                   const remainder = totalPaid % installment;
-                                   dueAmount = installment - remainder;
+                                   if (isInstallmentDue) {
+                                      typeLabel = 'Installment';
+                                      const remainder = totalPaid % installment;
+                                      dueAmount = installment - remainder;
+                                   } else {
+                                      typeLabel = 'Future Installment';
+                                      dueAmount = 0n;
+                                   }
                                } else {
                                    typeLabel = 'Completed';
                                    dueAmount = 0n;
                                }
                            }
                        } else if (installment > 0n) {
-                           typeLabel = 'Installment';
-                           const remainder = totalPaid % installment;
-                           dueAmount = installment - remainder;
+                           if (isInstallmentDue) {
+                              typeLabel = 'Installment';
+                              const remainder = totalPaid % installment;
+                              dueAmount = installment - remainder;
+                           } else {
+                              typeLabel = 'Future Installment';
+                              dueAmount = 0n;
+                           }
                        }
+                    }
+
+                    if (isSalesAccounts && currentTab === 'due_today' && dueAmount <= 0n) {
+                        return null;
                     }
 
                     return (
@@ -297,16 +347,18 @@ export default async function ProjectsPage({
                             </span>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
-                            <Money amountMinor={dueAmount} />
+                            <Money minor={dueAmount} />
                          </td>
                          <td className="px-6 py-4 text-center">
-                            <Link 
-                               href={`/projects/${project.id}`}
-                               className="inline-flex items-center justify-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
-                            >
-                               <EyeIcon className="h-3.5 w-3.5" />
-                               View
-                            </Link>
+                            <div className="flex items-center justify-center gap-2">
+                              <Link 
+                                 href={`/projects/${project.id}/payments`}
+                                 className="inline-flex items-center justify-center gap-1 rounded border border-orange-600 bg-orange-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-500 hover:border-orange-500 shadow-sm"
+                              >
+                                 <BanknotesIcon className="h-3.5 w-3.5" />
+                                 Receive Payment
+                              </Link>
+                            </div>
                          </td>
                        </tr>
                     );
@@ -335,15 +387,24 @@ export default async function ProjectsPage({
                        {!isProjectManager && (
                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                             {isSeniorPM && currentTab === 'assignment' ? (
-                               <ProjectAssigner projectId={project.id} managers={projectManagers} />
+                               <ProjectAssigner projectId={project.id} projectManagers={projectManagers} />
                             ) : (
                                project.assignedTo?.name || '-'
                             )}
                          </td>
                        )}
                        {!isSeniorPM && (
-                         <td className="px-6 py-4 text-center">
+                          <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
+                              {isProjectManager && currentTab === 'unplanned' ? (
+                                <Link 
+                                   href={`/projects/${project.id}/schedule`}
+                                   className="inline-flex items-center gap-1 rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-blue-500 shadow-sm"
+                                >
+                                   <CalendarIcon className="h-3.5 w-3.5" />
+                                   Create Schedule
+                                </Link>
+                              ) : (
                                 <Link 
                                    href={`/projects/${project.id}`}
                                    className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
@@ -351,8 +412,9 @@ export default async function ProjectsPage({
                                    <EyeIcon className="h-3.5 w-3.5" />
                                    View
                                 </Link>
+                              )}
                             </div>
-                         </td>
+                          </td>
                        )}
                      </tr>
                    );

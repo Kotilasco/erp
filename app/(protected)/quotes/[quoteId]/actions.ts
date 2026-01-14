@@ -1304,6 +1304,8 @@ export async function endorseQuoteToProject(
     finalInstallmentDueDate = rawDueDate;
   }
 
+  let projectId: string | undefined;
+
   await prisma.$transaction(async (tx) => {
     const q = await tx.quote.findUnique({
       where: { id: quoteId },
@@ -1319,6 +1321,7 @@ export async function endorseQuoteToProject(
         where: { quoteId },
         data: { commenceOn, depositMinor, installmentMinor, installmentDueOn: finalInstallmentDueDate },
       });
+      projectId = existing.id;
     } else {
       // Build unique project name from Customer-Location
       const custName = (q as any).customer?.displayName?.trim?.() || '';
@@ -1354,7 +1357,7 @@ export async function endorseQuoteToProject(
         finalName = `${baseName}-${n}`;
       }
 
-      await tx.project.create({
+      const created = await tx.project.create({
         data: {
           name: finalName,
           quoteId,
@@ -1366,8 +1369,17 @@ export async function endorseQuoteToProject(
           projectNumber: await generateProjectNumberInTransaction(tx, commenceOn),
         },
       });
+      projectId = created.id;
     }
   }, { maxWait: 5000, timeout: 10000 });
+
+  if (projectId) {
+    try {
+      await generatePaymentSchedule(projectId);
+    } catch (err) {
+      console.error('Failed to generate payment schedule:', err);
+    }
+  }
 
   return { ok: true };
 }

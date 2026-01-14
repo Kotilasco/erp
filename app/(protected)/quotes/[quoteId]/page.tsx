@@ -1,3 +1,4 @@
+
 import clsx from 'clsx';
 
 import Link from 'next/link';
@@ -269,11 +270,15 @@ function buildLineGroups(
 
     const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
 
-    const rate = fromMinor(line.unitPriceMinor);
-
-    const amount = fromMinor(line.lineTotalMinor);
-
     const negotiation = negotiationByLine.get(line.id) ?? null;
+
+    let rate = fromMinor(line.unitPriceMinor);
+    let amount = fromMinor(line.lineTotalMinor);
+
+    if (negotiation && negotiation.status === 'PENDING') {
+      rate = negotiation.proposedRate;
+      amount = negotiation.proposedTotal;
+    }
 
     if (!groups.has(section)) {
       groups.set(section, { section, rows: [], subtotal: 0 });
@@ -314,7 +319,29 @@ function buildLineGroups(
     group.subtotal += amount;
   });
 
-  return Array.from(groups.values());
+  // Sort rows within groups: PENDING items first
+  groups.forEach((group) => {
+    group.rows.sort((a, b) => {
+      const aPending = a.negotiation?.status === 'PENDING';
+      const bPending = b.negotiation?.status === 'PENDING';
+      if (aPending && !bPending) return -1;
+      if (!aPending && bPending) return 1;
+      return 0; // maintain relative order otherwise
+    });
+  });
+
+  const sortedGroups = Array.from(groups.values());
+  
+  // Sort groups: those with PENDING items first
+  sortedGroups.sort((a, b) => {
+    const aHasPending = a.rows.some((r) => r.negotiation?.status === 'PENDING');
+    const bHasPending = b.rows.some((r) => r.negotiation?.status === 'PENDING');
+    if (aHasPending && !bHasPending) return -1;
+    if (!aHasPending && bHasPending) return 1;
+    return 0;
+  });
+
+  return sortedGroups;
 }
 
 function computeLineTotals(lines: QuoteLine[]): QuoteTotals {
@@ -564,7 +591,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
     const result = await assignProjectManager(quote.id, managerId);
 
     if (!result?.ok) {
-      setFlashMessage({ type: 'error', message: result?.error ?? 'Unable to assign manager.' });
+      setFlashMessage({ type: 'error', message: (result as any)?.error ?? 'Unable to assign manager.' });
     } else {
       setFlashMessage({ type: 'success', message: 'Manager assigned successfully.' });
     }
@@ -579,7 +606,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
 
     const result = await closeNegotiation(negotiationId);
     if (!result?.ok) {
-      setFlashMessage({ type: 'error', message: result?.error ?? 'Unable to close negotiation.' });
+      setFlashMessage({ type: 'error', message: (result as any)?.error ?? 'Unable to close negotiation.' });
     } else {
       setFlashMessage({ type: 'success', message: 'Negotiation closed.' });
     }
@@ -933,196 +960,20 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
 
       {/* Summary section hidden as per request */}
       {/* <section className="rounded border bg-white p-4 shadow-sm dark:bg-gray-800 dark:border-gray-700">
-        <div className="grid gap-2 text-sm md:grid-cols-2 text-gray-700 dark:text-gray-300">
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Customer:</span> {quote.customer?.displayName ?? '-'}
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Currency:</span> {quote.currency}
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">VAT:</span> {vatPercent.toFixed(2)}%
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Created:</span>{' '}
-            {new Date(quote.createdAt).toLocaleString()}
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-2 text-sm md:grid-cols-3 text-gray-700 dark:text-gray-300">
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Subtotal:</span> <Money value={totals.subtotal} />
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Discount:</span> <Money value={totals.discount} />
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Net:</span> <Money value={totals.net} />
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Tax:</span> <Money value={totals.tax} />
-          </div>
-
-          <div>
-            <span className="font-semibold text-gray-900 dark:text-white">Grand Total:</span> <Money value={totals.grandTotal} />
-          </div>
-        </div>
+        ...
       </section> */}
       {/* {isSales && (
-        <section className="rounded border bg-white p-4 shadow-sm">
-          <h3 className="text-lg font-semibold">Sales Endorsement</h3>
-          <form action={endorseAction} className="mt-3 grid gap-3 max-w-md">
-            <label className="flex flex-col text-sm">
-              <span>Expected Commencement Date</span>
-              <input name="commenceOn" type="date" required className="rounded border px-2 py-1" />
-            </label>
-            <label className="flex flex-col text-sm">
-              <span>Deposit Amount</span>
-              <input
-                name="deposit"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue="0"
-                className="rounded border px-2 py-1"
-              />
-            </label>
-            <label className="flex flex-col text-sm">
-              <span>Expected Monthly Installment</span>
-              <input
-                name="installment"
-                type="number"
-                step="0.01"
-                min="0"
-                defaultValue="0"
-                className="rounded border px-2 py-1"
-              />
-            </label>
-            <label className="flex flex-col text-sm">
-              <span>Installment Due Day (1-28)</span>
-              <input
-                name="dueDay"
-                type="number"
-                min="1"
-                max="28"
-                defaultValue="1"
-                className="rounded border px-2 py-1"
-              />
-            </label>
-            <button type="submit" className="rounded bg-slate-900 px-3 py-1.5 text-white">
-              Endorse & Save
-            </button>
-          </form>
-        </section>
-      )}
-      {showEndorseForm && (
-        <section className="rounded border bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold">Sales Endorsement</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            Capture the project commencement date and payment schedule for this quote.
-          </p>
-
-          {project && (
-            <div className="mt-3 space-y-1 rounded-md bg-gray-50 p-3 text-sm text-gray-600">
-              <div>
-                <span className="font-semibold text-gray-900">Project ID:</span> {project.id}
-              </div>
-              <div>
-                <span className="font-semibold text-gray-900">Commences:</span>{' '}
-                {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : 'TBD'}
-              </div>
-              <div>
-                <span className="font-semibold text-gray-900">Deposit:</span>{' '}
-                <Money value={projectDefaults.deposit} />
-              </div>
-              <div>
-                <span className="font-semibold text-gray-900">Installment:</span>{' '}
-                <Money value={projectDefaults.installment} />
-              </div>
-              {projectDefaults.dueDay && (
-                <div>
-                  <span className="font-semibold text-gray-900">Installment due day:</span>{' '}
-                  {projectDefaults.dueDay}
-                </div>
-              )}
-            </div>
-          )}
-
-          <form action={endorseProjectAction} className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="flex flex-col text-sm font-medium text-gray-700">
-              <span>Commencement date</span>
-              <input
-                type="date"
-                name="commenceOn"
-                defaultValue={projectDefaults.commenceOn}
-                required
-                className="mt-1 rounded border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-            </label>
-
-            <label className="flex flex-col text-sm font-medium text-gray-700">
-              <span>Deposit (major)</span>
-              <input
-                type="number"
-                name="deposit"
-                step="0.01"
-                min="0"
-                defaultValue={projectDefaults.deposit.toString()}
-                className="mt-1 rounded border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-            </label>
-
-            <label className="flex flex-col text-sm font-medium text-gray-700">
-              <span>Installment (major)</span>
-              <input
-                type="number"
-                name="installment"
-                step="0.01"
-                min="0"
-                defaultValue={projectDefaults.installment.toString()}
-                className="mt-1 rounded border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-            </label>
-
-            <label className="flex flex-col text-sm font-medium text-gray-700">
-              <span>Installment due day</span>
-              <input
-                type="number"
-                name="dueDay"
-                min="1"
-                max="31"
-                defaultValue={projectDefaults.dueDay.toString()}
-                className="mt-1 rounded border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
-              />
-            </label>
-
-            <div className="md:col-span-2 flex items-end">
-              <LoadingButton
-                type="submit"
-                className="rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700"
-                loadingText="Saving..."
-              >
-                Endorse & Create Project
-              </LoadingButton>
-            </div>
-          </form>
-        </section>
+        ...
       )} */}
 
       {canSalesEndorse && (
-        <div className="space-y-4">
-          <div className="rounded-xl bg-blue-50 p-4 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 flex items-center gap-3">
+        <div className="mx-auto max-w-3xl space-y-4 py-10">
+          <div className="rounded-xl bg-blue-50 p-4 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 flex items-center justify-center gap-3">
              <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <h3 className="font-bold text-blue-900 dark:text-blue-100 uppercase tracking-wider text-sm">Sales Endorsement</h3>
           </div>
           
-          <section className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:bg-gray-800 dark:border-gray-700">
+          <section className="rounded-xl border border-gray-200 bg-white p-8 shadow-lg dark:bg-gray-800 dark:border-gray-700">
           {project && (
             <div className="mt-4 grid grid-cols-2 gap-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-900/50 dark:text-gray-300 border border-gray-100 dark:border-gray-700">
               <div>
@@ -1380,8 +1231,10 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
         </section>
       )}
 
-      <div className="space-y-8">
-        {groups.map((group) => (
+      {!canSalesEndorse && (
+        <>
+          <div className="space-y-8">
+            {groups.map((group) => (
           <div key={group.section} className="space-y-4">
             <div className="rounded-xl bg-blue-50 p-4 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 flex items-center gap-3">
               {group.section === 'MATERIALS' ? (
@@ -1445,6 +1298,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
                               lineId={row.id}
                               defaultRate={row.rate}
                               defaultQuantity={row.qty}
+                              isNegotiationPending={row.negotiation?.status === 'PENDING'}
                             />
                           </div>
                         ) : (
@@ -1600,6 +1454,8 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
       <div className="flex gap-2">
         <PrintButton />
       </div>
+        </>
+      )}
     </div>
   );
 }

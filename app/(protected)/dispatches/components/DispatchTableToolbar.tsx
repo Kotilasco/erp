@@ -4,7 +4,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useState, useTransition, useEffect } from 'react';
 import { MagnifyingGlassIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 
-export default function DispatchTableToolbar({ role }: { role?: string }) {
+export default function DispatchTableToolbar({ role, hideStatusFilter = false }: { role?: string; hideStatusFilter?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -83,6 +83,7 @@ export default function DispatchTableToolbar({ role }: { role?: string }) {
          </select>
       </div>
 
+      {!hideStatusFilter && (
       <div className="flex items-center gap-2">
          <span className="bg-barmlo-blue text-white px-2 py-1 rounded text-xs font-bold shadow-sm">Status</span>
          <select
@@ -109,9 +110,11 @@ export default function DispatchTableToolbar({ role }: { role?: string }) {
             )}
             <option value="APPROVED">Approved</option>
             <option value="DISPATCHED">Dispatched / En Route</option>
+            <option value="IN_TRANSIT">In Transit</option>
             <option value="DELIVERED">Delivered</option>
          </select>
       </div>
+      )}
 
       <div className="flex items-center gap-2">
         <div className="relative">

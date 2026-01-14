@@ -32,94 +32,79 @@ export async function recordClientPayment(projectId: string, args: {
   const amountMinor = BigInt(Math.round((args.amount ?? 0) * 100));
   if (amountMinor <= 0n) throw new Error('Amount must be positive');
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { status: true },
-  });
-  if (!project) throw new Error('Project not found');
-  const needsDeposit = project.status === 'CREATED' || project.status === 'DEPOSIT_PENDING';
+  await prisma.$transaction(async (tx) => {
+    const project = await tx.project.findUnique({
+      where: { id: projectId },
+      select: { status: true },
+    });
+    if (!project) throw new Error('Project not found');
+    const needsDeposit = project.status === 'CREATED' || project.status === 'DEPOSIT_PENDING';
 
+    await tx.clientPayment.create({
+      data: {
+        projectId,
+        type: args.type,
+        amountMinor,
+        receivedAt: new Date(args.receivedAt),
+        receiptNo: args.receiptNo ?? null,
+        method: args.method ?? null,
+        attachmentUrl: args.attachmentUrl ?? null,
+        description: args.description ?? null,
+        recordedById: me!.id!,
+      },
+    });
 
-  console.log("hjhhwhjwehhwe")
-  // 1) Create payment record
-  await prisma.clientPayment.create({
-    data: {
-      projectId,
-      type: args.type,
-      amountMinor: amountMinor,
-      receivedAt: new Date(args.receivedAt),
-      receiptNo: args.receiptNo ?? null,
-      method: args.method ?? null,
-      attachmentUrl: args.attachmentUrl ?? null,
-      description: args.description ?? null,
-      recordedById: me!.id!,
-    },
-  });
+    let remaining = amountMinor;
 
-  console.log("payment recorded")
+    const items = await tx.paymentSchedule.findMany({
+      where: { projectId },
+      orderBy: [{ dueOn: 'asc' }, { seq: 'asc' }],
+    });
 
+    for (const it of items) {
+      if (remaining <= 0n) break;
+      const need = BigInt(it.amountMinor) - BigInt(it.paidMinor);
+      if (need <= 0n) continue;
 
+      const use = need > remaining ? remaining : need;
+      const newPaid = BigInt(it.paidMinor) + use;
+      const status = newPaid >= BigInt(it.amountMinor) ? 'PAID' : 'PARTIAL';
 
-  // 2) Allocate oldest-first to schedule
-  let remaining = amountMinor;
-
-  console.log("starting allocation")
-
-  const items = await prisma.paymentSchedule.findMany({
-    where: { projectId, status: { in: ['OVERDUE', 'DUE', 'PARTIAL'] } },
-    orderBy: [{ dueOn: 'asc' }, { seq: 'asc' }],
-  });
-
-  console.log("found items:", items.length)
-
-  for (const it of items) {
-    if (remaining <= 0n) break;
-    const need = BigInt(it.amountMinor) - BigInt(it.paidMinor ?? 0);
-    const use = need > remaining ? remaining : need;
-    if (use > 0n) {
-      const newPaid = BigInt(it.paidMinor ?? 0) + use;
-      const status =
-        newPaid === BigInt(it.amountMinor) ? 'PAID' :
-          newPaid > 0n ? 'PARTIAL' : 'DUE';
-
-      await prisma.paymentSchedule.update({
+      await tx.paymentSchedule.update({
         where: { id: it.id },
-        data: { paidMinor: Number(newPaid), status },
+        data: { paidMinor: newPaid, status },
       });
 
       remaining -= use;
     }
-  }
 
-  console.log("allocation done")
-  // 3) Mark overdue items by date
-  await prisma.paymentSchedule.updateMany({
-    where: {
-      projectId,
-      status: { in: ['DUE', 'PARTIAL'] },
-      dueOn: { lt: new Date() },
-    },
-    data: { status: 'OVERDUE' },
-  });
-
-  // 4) Check if Deposit is fully paid and update status if needed
-  if (needsDeposit) {
-    const depositItem = await prisma.paymentSchedule.findFirst({
-      where: { projectId, label: 'Deposit' }
+    await tx.paymentSchedule.updateMany({
+      where: {
+        projectId,
+        status: { in: ['DUE', 'PARTIAL'] },
+        dueOn: { lt: new Date() },
+      },
+      data: { status: 'OVERDUE' },
     });
-    // If no deposit item found, or if it is fully paid, transition to PLANNED
-    const isPaid = !depositItem || (BigInt(depositItem.paidMinor ?? 0n) >= BigInt(depositItem.amountMinor));
 
-    if (isPaid) {
-      await prisma.project.update({
-        where: { id: projectId },
-        data: { status: 'PLANNED' },
+    if (needsDeposit) {
+      const depositItem = await tx.paymentSchedule.findFirst({
+        where: { projectId, label: 'Deposit' },
       });
+      const isPaid = !depositItem || (BigInt(depositItem.paidMinor) >= BigInt(depositItem.amountMinor));
+      if (isPaid) {
+        await tx.project.update({
+          where: { id: projectId },
+          data: { status: 'PLANNED' },
+        });
+      }
     }
-  }
+  });
 
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/accounts/payments`);
+  revalidatePath(`/projects/${projectId}/payments`);
+  revalidatePath(`/projects`);
 }
 
 

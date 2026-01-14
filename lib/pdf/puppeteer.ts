@@ -4,9 +4,28 @@ import type { Browser } from "puppeteer-core";
 import puppeteer from "puppeteer-core";
 import type { PdfRenderer, PdfRequest, PdfResult } from "./index";
 import { prisma } from "@/lib/db";
+import fs from "fs";
+import path from "path";
 
 function money(minor: number, cur = "USD") {
   return `${cur === "USD" ? "US$" : ""}${(Number(minor || 0) / 100).toFixed(2)}`;
+}
+
+function getLocalBrowserPath(): string | undefined {
+  const commonPaths = [
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    process.env.CHROME_EXECUTABLE_PATH,
+  ];
+
+  for (const p of commonPaths) {
+    if (p && fs.existsSync(p)) {
+      return p;
+    }
+  }
+  return undefined;
 }
 
 export class PuppeteerRenderer implements PdfRenderer {
@@ -39,7 +58,7 @@ export class PuppeteerRenderer implements PdfRenderer {
   </style>
 </head>
 <body>
-  <h1>Quote ${quote.number || `#${quote.id.slice(0,6)}`}</h1>
+  <h1>Quote ${quote.number || `#${quote.id.slice(0, 6)}`}</h1>
   <div class="muted">Customer: ${quote.customer?.displayName ?? ""}</div>
   <div class="muted">VAT: ${vatPct.toFixed(2)}%</div>
   <div class="muted">Status: <span class="badge">${quote.status}</span></div>
@@ -77,14 +96,18 @@ export class PuppeteerRenderer implements PdfRenderer {
 
     // Launch Chromium (works locally & on Vercel)
     const isServerless = !!process.env.VERCEL;
-    const executablePath = isServerless
+    let executablePath = isServerless
       ? await chromium.executablePath()
-      : process.env.CHROME_EXECUTABLE_PATH; // optional for local full Chrome
+      : getLocalBrowserPath();
+
+    if (!executablePath && !isServerless) {
+      console.warn("Could not find local Chrome/Edge. PDF generation might fail. Please install Chrome or set CHROME_EXECUTABLE_PATH.");
+    }
 
     const browser: Browser = await puppeteer.launch({
       args: chromium.args,
-      defaultViewport: chromium.defaultViewport,
-      headless: "new",
+      defaultViewport: { width: 1920, height: 1080 },
+      headless: true,
       executablePath,
     });
 
@@ -92,11 +115,12 @@ export class PuppeteerRenderer implements PdfRenderer {
       const page = await browser.newPage();
       await page.setContent(html, { waitUntil: "networkidle0" });
 
-      const buffer = await page.pdf({
+      const pdfUint8 = await page.pdf({
         format: "A4",
         printBackground: true,
         margin: { top: "10mm", right: "10mm", bottom: "12mm", left: "10mm" },
       });
+      const buffer = Buffer.from(pdfUint8);
 
       const filename = `${quote.number || quote.id}.pdf`;
       return { buffer, filename };

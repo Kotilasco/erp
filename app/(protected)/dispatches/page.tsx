@@ -5,7 +5,6 @@ import { assertRoles } from '@/lib/workflow';
 import { redirect } from 'next/navigation';
 import { DispatchStatusBadge } from '@/components/ui/dispatch-status-badge';
 import TablePagination from '@/components/ui/table-pagination';
-import { DispatchStatus } from '@prisma/client';
 import DispatchTableToolbar from './components/DispatchTableToolbar';
 import { TruckIcon, EyeIcon } from '@heroicons/react/24/outline';
 
@@ -15,20 +14,24 @@ export const revalidate = 0;
 export default async function DispatchesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; status?: string; pageSize?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; status?: string; pageSize?: string; driver?: string }>;
 }) {
   const me = await getCurrentUser();
   if (!me) redirect('/login');
 
   try {
-    assertRoles(me.role as any, ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN', 'STORE_KEEPER'] as any);
+    assertRoles(me.role as any, ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN', 'STORE_KEEPER', 'DRIVER'] as any);
   } catch {
     redirect('/projects');
   }
 
-  const { q, page, status, pageSize } = await searchParams;
+  const { q, page, status, pageSize, driver } = await searchParams;
   const currentPage = Math.max(1, Number(page || '1'));
   const size = Math.max(1, Number(pageSize || '20'));
+  
+  // Force driver view if the user is explicitly a driver role, or if URL param is set
+  const isDriver = me.role === 'DRIVER';
+  const isDriverView = isDriver || driver === 'me';
 
   const where: any = {};
   
@@ -42,7 +45,13 @@ export default async function DispatchesPage({
   }
 
   if (status) {
-    where.status = status as DispatchStatus;
+    where.status = status === 'ALL' ? undefined : status;
+    if (where.status === undefined) delete where.status; // Cleanup if ALL
+  }
+
+  // Enforce driver filter
+  if (isDriverView) {
+    where.assignedToDriverId = me.id;
   }
 
   const [dispatches, total] = await Promise.all([
@@ -89,7 +98,7 @@ export default async function DispatchesPage({
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
         <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-           <DispatchTableToolbar />
+           <DispatchTableToolbar role={me.role} hideStatusFilter={isDriverView} />
         </div>
 
         <div className="overflow-x-auto">

@@ -9,8 +9,7 @@ import type { QuoteStatus } from '@/lib/workflow';
 import { USER_ROLES } from '@/lib/workflow';
 import Image from 'next/image';
 
-type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' };
-
+type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' };
 type Role = (typeof USER_ROLES)[number];
 type PageDef = NavItem & { roles?: Role[] };
 
@@ -26,11 +25,12 @@ const PAGE_DEFS: PageDef[] = [
   // New Quote: QS, SENIOR_QS, ADMIN
   { label: 'New Quote', href: '/quotes/new', icon: 'plus-document', roles: ['QS', 'SENIOR_QS', 'ADMIN'] },
   // Projects: all roles except QS, SENIOR_QS, SALES
+  // Projects: all roles except QS, SENIOR_QS, SALES
   {
     label: 'Projects',
     href: '/projects',
     icon: 'folder',
-    roles: USER_ROLES.filter((r) => !['QS', 'SENIOR_QS', 'SALES', 'SALES_ACCOUNTS', 'PROJECT_COORDINATOR'].includes(r as string)) as Role[],
+    roles: ['ADMIN','PROJECT_OPERATIONS_OFFICER','PROCUREMENT','ACCOUNTS','CASHIER','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ACCOUNTING_CLERK','GENERAL_MANAGER','MANAGING_DIRECTOR'], // Updated as per user request (removed SECURITY, VIEWER, CLIENT)
   },
   // Senior PM Specific
   {
@@ -81,6 +81,12 @@ const PAGE_DEFS: PageDef[] = [
   { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
   // Employees: Admin, Managing Director, Project Manager
   { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'] },
+  { label: 'Awaiting Delivery', href: '/dispatches?status=ARRIVED', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER', 'ADMIN', 'FOREMAN', 'PROJECT_COORDINATOR', 'DRIVER'] },
+  
+  // Driver specific
+  { label: 'My Pickups', href: '/dispatches?status=DISPATCHED&driver=me', icon: 'truck', roles: ['DRIVER'] },
+  { label: 'Deliveries', href: '/dispatches?status=IN_TRANSIT&driver=me', icon: 'map', roles: ['DRIVER'] },
+  { label: 'Settled', href: '/dispatches?status=DELIVERED&driver=me', icon: 'check', roles: ['DRIVER'] },
 ];
 
 type NotificationItem = {
@@ -221,6 +227,24 @@ function Icon({ name, className }: { name: NavItem['icon']; className?: string }
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" />
+        </svg>
+      );
+    case 'truck':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.75" />
+        </svg>
+      );
+    case 'map':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M9 6.75V15m6-6v8.25m.503 3.498l4.875-2.437c.381-.19.622-.58.622-1.006V4.82c0-.836-.88-1.38-1.628-1.006l-3.869 1.934c-.317.159-.69.159-1.006 0L9.503 3.252a1.125 1.125 0 00-1.006 0L3.622 5.689C3.24 5.88 3 6.27 3 6.695V19.18c0 .836.88 1.38 1.628 1.006l3.869-1.934c.317-.159.69-.159 1.006 0l4.994 2.497c.317.159.69.159 1.006 0z" />
+        </svg>
+      );
+    case 'check':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
         </svg>
       );
   }
