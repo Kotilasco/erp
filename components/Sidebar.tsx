@@ -12,6 +12,7 @@ const BASE: { label:string; href:string; icon:string; roles?: string[] }[] = [
   { label: 'Inventory', href: '/inventory', icon: 'boxes', roles: ['PROCUREMENT','PROJECT_OPERATIONS_OFFICER','ADMIN'] },
   { label: 'Audit Logs', href: '/audit-logs', icon: 'list', roles: ['ADMIN'] },
   { label: 'Employees', href: '/employees', icon: 'list', roles: ['ADMIN','MANAGING_DIRECTOR','HUMAN_RESOURCE'] },
+  { label: 'Add Employee', href: '/employees/add', icon: 'plus', roles: ['ADMIN','MANAGING_DIRECTOR','HUMAN_RESOURCE'] },
   { label: 'Awaiting Delivery', href: '/dispatches?status=ARRIVED', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER','ADMIN', 'FOREMAN', 'PROJECT_COORDINATOR', 'DRIVER'] },
   // Driver specific
   { label: 'My Pickups', href: '/dispatches?status=DISPATCHED&driver=me', icon: 'truck', roles: ['DRIVER'] },
@@ -24,9 +25,9 @@ export default async function Sidebar() {
   const role = (me?.role ?? 'VIEWER') as string;
   let pages = BASE.filter(p => !p.roles || p.roles.includes(role));
 
-  // HR Sees ONLY Employees
+  // HR sees Employees and Add Employee
   if (role === 'HUMAN_RESOURCE') {
-    pages = BASE.filter(p => p.label === 'Employees');
+    pages = BASE.filter(p => p.label === 'Employees' || p.label === 'Add Employee');
   }
 
   // if (role === 'DRIVER') {

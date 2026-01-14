@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { UserIcon, EnvelopeIcon, PhoneIcon, BriefcaseIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
 function canManage(role: string | null | undefined) {
-  return ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'].includes(role || '');
+  return ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'HUMAN_RESOURCE'].includes(role || '');
 }
 
 export default async function AddEmployeePage() {

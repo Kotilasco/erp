@@ -633,7 +633,7 @@ async function PendingTasks({
             <div className="w-full max-w-xl">
             <Link
                 href="/employees"
-                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
             >
                 <div className="p-2 bg-white/20 rounded-full">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
