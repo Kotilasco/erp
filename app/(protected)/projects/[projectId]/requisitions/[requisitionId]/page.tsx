@@ -95,7 +95,7 @@ export default async function ProjectRequisitionDetailPage({
         <div className="flex gap-3">
           <Link
             href={`/projects/${projectId}/requisitions`}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm border border-gray-300 transition-all hover:bg-orange-50 hover:text-orange-700 hover:border-orange-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm border border-transparent transition-all hover:bg-orange-700 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
           >
             <ArrowLeftIcon className="h-4 w-4 stroke-2" />
             Back to Requisitions
@@ -111,10 +111,9 @@ export default async function ProjectRequisitionDetailPage({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content (Items) */}
-        <div className="lg:col-span-2 space-y-6">
-            <Card className="border-gray-200 shadow-sm overflow-hidden">
+      <div className="space-y-6">
+        <div className="space-y-6">
+            <Card className="border border-gray-200 shadow-sm overflow-hidden">
                 <CardHeader className="bg-gray-50/50 border-b border-gray-100 pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <DocumentTextIcon className="h-5 w-5 text-gray-500" />
@@ -197,49 +196,6 @@ export default async function ProjectRequisitionDetailPage({
                     )}
                 </div>
             )}
-        </div>
-
-        {/* Sidebar Info */}
-        <div className="space-y-6">
-            <Card className="border-gray-200 shadow-sm">
-                <CardHeader className="pb-3">
-                    <CardTitle className="text-base font-bold">Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div>
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Status</div>
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${
-                          req.status === 'APPROVED' ? 'bg-green-50 text-green-700 ring-green-600/20' :
-                          req.status === 'REJECTED' ? 'bg-red-50 text-red-700 ring-red-600/20' :
-                          req.status === 'SUBMITTED' ? 'bg-blue-50 text-blue-700 ring-blue-600/20' :
-                          'bg-gray-100 text-gray-600 ring-gray-500/10'
-                        }`}>
-                          {req.status}
-                        </span>
-                    </div>
-
-                    <div>
-                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                            <UserIcon className="h-3 w-3" /> Created By
-                         </div>
-                         <div className="text-sm font-medium text-gray-900">{req.submittedBy?.name || 'Unknown'}</div>
-                    </div>
-
-                    <div>
-                         <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                            <CalendarIcon className="h-3 w-3" /> Date
-                         </div>
-                         <div className="text-sm font-medium text-gray-900">
-                            {new Date(req.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
-                         </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-100">
-                        <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Project</div>
-                        <div className="text-sm font-semibold text-gray-900">{req.project?.projectNumber || 'No Number'}</div>
-                    </div>
-                </CardContent>
-            </Card>
         </div>
       </div>
     </div>
