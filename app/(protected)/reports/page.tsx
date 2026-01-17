@@ -1,10 +1,7 @@
-// app/(protected)/projects/[projectId]/reports/page.tsx
-import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { notFound, redirect } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import {
-  ArrowLeftIcon,
   ChartBarSquareIcon,
   BanknotesIcon,
   ShoppingCartIcon,
@@ -15,32 +12,14 @@ import {
   ArchiveBoxIcon,
   UserGroupIcon,
   ScaleIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  GlobeAltIcon
 } from '@heroicons/react/24/outline';
 import PrintHeader from '@/components/PrintHeader';
 
-export default async function ProjectReportsListPage({
-  params,
-}: {
-  params: Promise<{ projectId: string }>;
-}) {
-  const { projectId } = await params;
+export default async function GlobalReportsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
-
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: {
-      name: true,
-      quote: {
-        select: {
-          customer: { select: { displayName: true } }
-        }
-      }
-    }
-  });
-
-  if (!project) return notFound();
 
   type Report = {
       title: string;
@@ -55,83 +34,74 @@ export default async function ProjectReportsListPage({
 
   const reports: Report[] = [
     {
-      title: "Task Progress Tracking",
-      description: "Detailed breakdown of schedule tasks, completion status, and progress variance.",
-      href: `/projects/${projectId}/reports/progress-tracking`,
+      title: "Global Task Progress",
+      description: "Aggregate tracking of schedule tasks and completion status across all projects.",
+      href: `/reports/progress-tracking`,
       icon: ChartBarSquareIcon,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
       roles: ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS']
     },
     {
-      title: "Profit & Loss Account (Combined)",
-      description: "Comprehensive financial overview including procurement, usage, negotiations, and returns.",
-      href: `/projects/${projectId}/reports/profit-loss`,
+      title: "Consolidated Profit & Loss",
+      description: "Company-wide financial overview including procurement, usage, and variances.",
+      href: `/reports/profit-loss`,
       icon: BanknotesIcon,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
     },
     {
-      title: "Profit & Loss (Procurement)",
-      description: "Focused analysis on procurement efficiency, estimating variances against actual purchase costs.",
-      href: `/projects/${projectId}/reports/profit-loss-procurement`,
+      title: "Procurement Efficiency (Global)",
+      description: "Analysis of procurement variances and spending trends across all sites.",
+      href: `/reports/profit-loss-procurement`,
       icon: ShoppingCartIcon,
       color: "text-indigo-600",
       bgColor: "bg-indigo-50",
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT']
     },
     {
-      title: "Profit & Loss (Negotiation)",
-      description: "Track revenue changes driven by post-quote negotiations.",
-      href: `/projects/${projectId}/reports/profit-loss-negotiation`,
+      title: "Negotiation Gains (Global)",
+      description: "Total revenue impact from post-quote negotiations across the organization.",
+      href: `/reports/profit-loss-negotiation`,
       icon: ArrowTrendingDownIcon,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
     },
     {
-      title: "Profit & Loss (Usage)",
-      description: "Monitor material over-usage or under-usage against quoted quantities.",
-      href: `/projects/${projectId}/reports/profit-loss-usage`,
+      title: "Material Usage Analysis",
+      description: "Consolidated view of material over/under usage statistics.",
+      href: `/reports/profit-loss-usage`,
       icon: ExclamationTriangleIcon,
       color: "text-amber-600",
       bgColor: "bg-amber-50",
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
     },
     {
-      title: "Profit & Loss (Returns)",
-      description: "Value recovered from materials returned from site.",
-      href: `/projects/${projectId}/reports/profit-loss-returns`,
-      icon: ArchiveBoxIcon,
-      color: "text-cyan-600",
-      bgColor: "bg-cyan-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
+      title: "Global Employee Performance",
+      description: "Ranking and performance metrics for employees across all assigned projects.",
+      href: `/reports/employee-performance`,
+      icon: UserGroupIcon,
+      color: "text-teal-600",
+      bgColor: "bg-teal-50",
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
+      disabled: false
     },
     {
-        title: "Employee Performance Report",
-        description: "Detailed report on employee contributions, tasks completed, and project involvement.",
-        href: `/projects/${projectId}/reports/employee-performance`,
-        icon: UserGroupIcon,
-        color: "text-teal-600",
-        bgColor: "bg-teal-50",
-        roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
-        disabled: false
+      title: "Material Efficiency (Global)",
+      description: "Identify top material consumers and efficiency trends organization-wide.",
+      href: `/reports/material-efficiency`,
+      icon: ScaleIcon,
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
+      disabled: false
     },
     {
-        title: "Material Efficiency",
-        description: "Compare quantity used vs quoted by employee to identify efficient vs wasteful behaviors.",
-        href: `/projects/${projectId}/reports/material-efficiency`,
-        icon: ScaleIcon,
-        color: "text-orange-600",
-        bgColor: "bg-orange-50",
-        roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
-        disabled: false
-    },
-    {
-        title: "Schedule Reliability",
-        description: "Track which employees consistently complete tasks on time vs delayed delivery.",
-        href: `/projects/${projectId}/reports/schedule-reliability`,
+        title: "Schedule Reliability (Global)",
+        description: "Organization-wide analysis of task completion timeliness and delays.",
+        href: `/reports/schedule-reliability`,
         icon: CalendarDaysIcon,
         color: "text-rose-600",
         bgColor: "bg-rose-50",
@@ -141,32 +111,25 @@ export default async function ProjectReportsListPage({
   ];
 
   return (
-    <div className="p-6 space-y-8 max-w-[1400px] mx-auto bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-8 max-w-[1600px] mx-auto min-h-screen">
       <PrintHeader />
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
         <div>
            <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                Reports Center
+              <span className="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
+                Organization Overview
               </span>
            </div>
-           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Project Reports
+           <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-3">
+              <GlobeAltIcon className="h-8 w-8 text-gray-400" />
+              Global Reports Center
            </h1>
            <p className="text-gray-500 mt-2">
-              Select a report below to view detailed analysis for 
-              <span className="font-semibold text-gray-900 ml-1">{project.quote?.customer?.displayName || project.name}</span>.
+              Consolidated reporting and analytics across {user.role === 'PROJECT_OPERATIONS_OFFICER' ? 'your assigned' : 'all'} projects.
            </p>
         </div>
-        <Link
-          href={`/projects/${projectId}`}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 transition-all"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Project
-        </Link>
       </div>
 
       {/* Reports Grid */}
@@ -191,7 +154,7 @@ export default async function ProjectReportsListPage({
                     <div className="mt-6 flex items-center gap-4 text-sm font-medium text-gray-500">
                         <div className="flex items-center gap-1 hover:text-gray-900">
                             <DocumentDuplicateIcon className="h-4 w-4" />
-                            View Report
+                            View Global Report
                         </div>
                     </div>
                 )}

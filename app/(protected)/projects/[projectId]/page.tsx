@@ -543,7 +543,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             )}
             
             {/* Reports Button */}
-            {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role) && (
+            {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'].some(r => user.role === r || (user.role === 'ADMIN')) && (
                  <Link 
                     href={`/projects/${projectId}/reports`}
                     className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
