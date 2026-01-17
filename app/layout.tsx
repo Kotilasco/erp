@@ -11,6 +11,9 @@ export const metadata: Metadata = {
   },
   description: 'The official Website for Bamlo Enterprise',
   metadataBase: new URL('https://barmlo.co.zw/index.php/services/agricultural-processing'),
+  icons: {
+    icon: '/barmlo_logo111.png',
+  },
 };
 import { Toaster } from 'sonner';
 

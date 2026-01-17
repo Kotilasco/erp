@@ -9,7 +9,7 @@ import type { QuoteStatus } from '@/lib/workflow';
 import { USER_ROLES } from '@/lib/workflow';
 import Image from 'next/image';
 
-type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' };
+type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' | 'chart-pie' };
 type Role = (typeof USER_ROLES)[number];
 type PageDef = NavItem & { roles?: Role[] };
 
@@ -31,6 +31,12 @@ const PAGE_DEFS: PageDef[] = [
     href: '/projects',
     icon: 'folder',
     roles: ['ADMIN','PROJECT_OPERATIONS_OFFICER','PROCUREMENT','ACCOUNTS','CASHIER','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ACCOUNTING_CLERK','GENERAL_MANAGER','MANAGING_DIRECTOR'], // Updated as per user request (removed SECURITY, VIEWER, CLIENT)
+  },
+  {
+    label: 'Reports',
+    href: '/reports',
+    icon: 'chart-pie',
+    roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER'],
   },
   // Senior PM Specific
   {
@@ -246,6 +252,13 @@ function Icon({ name, className }: { name: NavItem['icon']; className?: string }
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
           <path strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+        </svg>
+      );
+    case 'chart-pie':
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
         </svg>
       );
   }
