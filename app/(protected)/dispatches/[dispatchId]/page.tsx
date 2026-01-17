@@ -137,7 +137,7 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
             </LoadingButton>
             <LoadingButton formAction={submitAction} className="bg-emerald-600 text-white hover:bg-emerald-700 border-transparent shadow-sm">
                 <DocumentCheckIcon className="h-4 w-4 mr-2" />
-                Submit for Security
+                Submit to Security
             </LoadingButton>
           </div>
         </form>

@@ -193,7 +193,7 @@ export default async function ProjectDispatchesPage(props: {
                                 await createAndRedirectStockDispatch(projectId);
                             }}>
                                 <SubmitButton className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700">
-                                    Dispatch from Stock
+                                    {user.role === 'PROJECT_OPERATIONS_OFFICER' ? 'Dispatch Work Tools' : 'Dispatch from Stock'}
                                 </SubmitButton>
                             </form>
                         )}

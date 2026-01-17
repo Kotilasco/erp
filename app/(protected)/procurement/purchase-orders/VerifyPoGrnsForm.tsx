@@ -115,7 +115,6 @@ export default function VerifyPoGrnsForm({
               <th className="px-4 py-3">Receipt / Vendor</th>
               <th className="px-4 py-3 text-right">Delivered</th>
               <th className="px-4 py-3 text-right">Price</th>
-              <th className="px-4 py-3 text-center">P&L</th>
               <th className="px-4 py-3 text-right">Accepted</th>
               <th className="px-4 py-3 text-right">Rejected</th>
             </tr>
@@ -124,11 +123,7 @@ export default function VerifyPoGrnsForm({
             {visibleItems.map((item) => {
               const valStr = inputs[item.grnItemId] ?? String(item.qtyDelivered);
               const acceptedNum = valStr === '' ? 0 : parseFloat(valStr);
-              // Calculate rejected based on valid numeric accepted value
               const rejected = Math.max(0, item.qtyDelivered - acceptedNum);
-              
-              const isProfit = item.varianceMinor > 0;
-              const isVariance = item.varianceMinor !== 0;
 
               return (
                 <tr key={item.grnItemId} className="hover:bg-gray-50">
@@ -145,15 +140,6 @@ export default function VerifyPoGrnsForm({
                   <td className="px-4 py-3 text-right">{item.qtyDelivered}</td>
                   <td className="px-4 py-3 text-right">
                     <Money minor={BigInt(item.priceMinor)} />
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {isVariance ? (
-                      <span className={isProfit ? 'text-green-600' : 'text-red-600'}>
-                         {isProfit ? '+' : ''}<Money minor={BigInt(item.varianceMinor)} />
-                      </span>
-                    ) : (
-                      <span className="text-gray-400">-</span>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <input
