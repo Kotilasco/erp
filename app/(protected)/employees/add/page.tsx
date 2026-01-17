@@ -1,7 +1,7 @@
 'use server';
 
 import { getCurrentUser } from '@/lib/auth';
-import { createEmployee } from '../actions';
+import { addEmployee } from '../actions';
 import { redirect } from 'next/navigation';
 import { UserIcon, EnvelopeIcon, PhoneIcon, BriefcaseIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 
@@ -16,7 +16,7 @@ export default async function AddEmployeePage() {
 
   async function add(formData: FormData) {
     'use server';
-    await createEmployee(formData);
+    await addEmployee(formData);
     redirect('/employees');
   }
 

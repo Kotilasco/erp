@@ -422,7 +422,7 @@ async function PendingTasks({
     // 2. Count: Request Funding (Submitted/Approved internally, but no active funding request)
     fundingNeededCount = await prisma.procurementRequisition.count({
       where: {
-        status: { in: ['SUBMITTED', 'APPROVED'] },
+        status: 'SUBMITTED',
         funding: { 
             none: { 
                 status: { in: ['REQUESTED', 'APPROVED'] } 

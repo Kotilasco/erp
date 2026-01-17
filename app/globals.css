@@ -16,23 +16,6 @@ html, body, :root {
   }
 }
 
-/* Brand orange unification (QS CTA orange) */
-@layer utilities {
-  .bg-orange-500,
-  .bg-orange-600,
-  .bg-orange-700,
-  .bg-amber-500,
-  .bg-amber-600,
-  .bg-rose-500 {
-    background-color: #f97316;
-  }
-
-  .hover\:bg-orange-600:hover,
-  .hover\:bg-orange-700:hover {
-    background-color: #ea5808;
-  }
-}
-
 /* Hide scrollbars utility */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
