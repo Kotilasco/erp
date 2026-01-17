@@ -47,6 +47,7 @@ export default async function DispatchDetail({
   if (!dispatch) return <div className="p-6">Not found.</div>;
 
   const canEdit = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'DRAFT';
+  const isProjectOps = role === 'PROJECT_OPERATIONS_OFFICER';
   const canApprove =
     (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN') && dispatch.status === 'SUBMITTED';
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
@@ -333,7 +334,7 @@ export default async function DispatchDetail({
                         min={0}
                         step="0.01"
                         defaultValue={Number(it.qty)}
-                        className="w-28 rounded-md border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-orange-500 focus:bg-white focus:ring-orange-500 transition-all"
+                        className="block w-32 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                       />
                     ) : (
                       <span className="font-mono">{Number(it.qty)}</span>
@@ -399,15 +400,15 @@ export default async function DispatchDetail({
                         type="submit"
                         className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-green-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                     >
-                        <CheckIcon className="h-4 w-4" />
+                        {!isProjectOps && <CheckIcon className="h-4 w-4" />}
                         Save Changes
                     </LoadingButton>
                     <LoadingButton
                         formAction={submitAction}
                         className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-blue-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                     >
-                        <ShieldCheckIcon className="h-4 w-4" />
-                        Submit for Security
+                        {!isProjectOps && <ShieldCheckIcon className="h-4 w-4" />}
+                        Submit to Security
                     </LoadingButton>
                 </form>
                 
@@ -421,7 +422,7 @@ export default async function DispatchDetail({
                         className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-red-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                         loadingText="Deleting..."
                      >
-                        <TrashIcon className="h-4 w-4" />
+                        {!isProjectOps && <TrashIcon className="h-4 w-4" />}
                         Delete Draft
                      </LoadingButton>
                 </form>
@@ -465,7 +466,7 @@ export default async function DispatchDetail({
                                 min="0"
                                 step="0.01"
                                 placeholder="0"
-                                className="w-full rounded border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"
+                                className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                             />
                         </div>
 
@@ -473,7 +474,7 @@ export default async function DispatchDetail({
                             <input
                                 name={`usedout-${it.id}`}
                                 type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                             />
                         </div>
 
@@ -482,7 +483,7 @@ export default async function DispatchDetail({
                                 name={`note-${it.id}`}
                                 type="text"
                                 placeholder="Reason / Note"
-                                className="w-full rounded border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 text-sm"
+                                className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
                             />
                         </div>
                     </div>
