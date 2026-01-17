@@ -1915,7 +1915,7 @@ export async function submitRequisitionToProcurement(requisitionId: string) {
   });
 
   revalidatePath(`/projects/${req.projectId}`);
-  redirect(`/procurement/requisitions/${requisitionId}`);
+  redirect(`/projects/${req.projectId}/requisitions`);
 }
 
 export async function createRequisitionFromQuotePicks(formData: FormData) {
