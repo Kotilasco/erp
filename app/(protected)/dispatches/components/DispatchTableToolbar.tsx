@@ -11,7 +11,7 @@ export default function DispatchTableToolbar({ role, hideStatusFilter = false }:
   const [isPending, startTransition] = useTransition();
 
   // Determine default status based on logic in original DispatchFilter/page
-  const defaultStatus = (role === 'SECURITY' || role === 'DRIVER') ? 'APPROVED' : 'AWAITING';
+  const defaultStatus = (role === 'SECURITY' || role === 'DRIVER') ? 'APPROVED' : 'READY';
 
   const [status, setStatus] = useState(searchParams.get('status') ?? defaultStatus);
   const [search, setSearch] = useState(searchParams.get('search') ?? '');
@@ -51,7 +51,7 @@ export default function DispatchTableToolbar({ role, hideStatusFilter = false }:
         const params = new URLSearchParams(searchParams.toString());
         // Reset to minimal params
         const newParams = new URLSearchParams();
-        if (defaultStatus !== 'AWAITING') {
+        if (defaultStatus !== 'READY') {
             newParams.set('status', defaultStatus);
         }
         router.push(`${pathname}?${newParams.toString()}`);
@@ -102,7 +102,7 @@ export default function DispatchTableToolbar({ role, hideStatusFilter = false }:
          >
             {role !== 'SECURITY' && (
               <>
-                <option value="AWAITING">Ready to Dispatch</option>
+                <option value="READY">Ready to Dispatch</option>
                 <option value="ALL">All Dispatches</option>
                 <option value="DRAFT">Draft</option>
                 <option value="SUBMITTED">Submitted</option>

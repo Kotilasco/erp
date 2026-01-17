@@ -103,7 +103,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
   
   const canAcknowledge = isSiteManager && ['ARRIVED', 'IN_TRANSIT'].includes(dispatch.status);
 
-  if (!canConfirmPickup && !canMarkArrived && !canAcknowledge && dispatch.status !== 'DELIVERED') {
+  if (!canConfirmPickup && !canMarkArrived && !canAcknowledge) {
       return null; 
   }
 
