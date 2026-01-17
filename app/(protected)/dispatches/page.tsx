@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation';
 import { DispatchStatusBadge } from '@/components/ui/dispatch-status-badge';
 import TablePagination from '@/components/ui/table-pagination';
 import DispatchTableToolbar from './components/DispatchTableToolbar';
-import { TruckIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { TruckIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { getPendingDispatchItems, type PendingDispatchItem } from '@/lib/dispatch-logic';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -44,9 +45,16 @@ export default async function DispatchesPage({
     ];
   }
 
-  if (status) {
-    where.status = status === 'ALL' ? undefined : status;
-    if (where.status === undefined) delete where.status; // Cleanup if ALL
+  // Determine effective status (defaulting to READY for most roles if not specified)
+  const defaultStatus = (me.role === 'SECURITY' || me.role === 'DRIVER') ? 'APPROVED' : 'READY';
+  const effectiveStatus = status ?? defaultStatus;
+
+  if (effectiveStatus) {
+    where.status = effectiveStatus === 'ALL' ? undefined : effectiveStatus;
+    // Special handling: READY is a virtual status, not a DB status for dispatches
+    if (effectiveStatus === 'READY') delete where.status; 
+    
+    if (where.status === undefined) delete where.status; // Cleanup if ALL or deleted
   }
 
   // Enforce driver filter
@@ -54,28 +62,42 @@ export default async function DispatchesPage({
     where.assignedToDriverId = me.id;
   }
 
-  const [dispatches, total] = await Promise.all([
-    prisma.dispatch.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip: (currentPage - 1) * size,
-      take: size,
-      include: {
-        createdBy: { select: { name: true } },
-        project: {
-          select: {
-            projectNumber: true,
-            quote: {
-              select: {
-                customer: { select: { displayName: true } }
+  const isReadyMode = effectiveStatus === 'READY';
+  let dispatches: any[] = [];
+  let pendingProjects: PendingDispatchItem[] = [];
+  let total = 0;
+
+  if (isReadyMode) {
+    pendingProjects = await getPendingDispatchItems(me.id!, me.role!);
+    total = pendingProjects.length;
+    // Manual pagination for projects
+    pendingProjects = pendingProjects.slice((currentPage - 1) * size, currentPage * size);
+  } else {
+    const [d, t] = await Promise.all([
+      prisma.dispatch.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (currentPage - 1) * size,
+        take: size,
+        include: {
+          createdBy: { select: { name: true } },
+          project: {
+            select: {
+              projectNumber: true,
+              quote: {
+                select: {
+                  customer: { select: { displayName: true } }
+                }
               }
             }
-          }
+          },
         },
-      },
-    }),
-    prisma.dispatch.count({ where }),
-  ]);
+      }),
+      prisma.dispatch.count({ where }),
+    ]);
+    dispatches = d;
+    total = t;
+  }
 
   const totalPages = Math.ceil(total / size);
 
@@ -102,6 +124,56 @@ export default async function DispatchesPage({
         </div>
 
         <div className="overflow-x-auto">
+          {isReadyMode ? (
+             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+               <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
+                 <tr>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
+                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pending Items</th>
+                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+                 </tr>
+               </thead>
+               <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
+                 {pendingProjects.length === 0 ? (
+                   <tr>
+                     <td className="px-6 py-12 text-center text-gray-500 dark:text-gray-400" colSpan={4}>
+                       <div className="flex flex-col items-center justify-center gap-2">
+                          <TruckIcon className="h-10 w-10 text-gray-300" />
+                          <p className="text-base font-medium">No projects ready for dispatch</p>
+                          <p className="text-sm">All received items have been dispatched.</p>
+                       </div>
+                     </td>
+                   </tr>
+                 ) : (
+                   pendingProjects.map((p) => (
+                     <tr key={p.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                       <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100 font-mono">
+                         {p.projectNumber}
+                       </td>
+                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                         {p.customerName}
+                       </td>
+                       <td className="px-6 py-4 text-center">
+                          <span className="inline-flex items-center justify-center rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-medium text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                            {p.pendingCount} Items
+                          </span>
+                       </td>
+                       <td className="px-6 py-4 text-center">
+                         <Link 
+                           href={`/projects/${p.id}/dispatches/new`}
+                           className="inline-flex items-center gap-1 rounded border border-blue-500 px-3 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                         >
+                           <PlusIcon className="h-3.5 w-3.5" />
+                           Create Dispatch
+                         </Link>
+                       </td>
+                     </tr>
+                   ))
+                 )}
+               </tbody>
+             </table>
+          ) : (
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
               <tr>
@@ -161,6 +233,7 @@ export default async function DispatchesPage({
               )}
             </tbody>
           </table>
+          )}
         </div>
         
         {/* Pagination */}
