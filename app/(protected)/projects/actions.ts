@@ -2003,7 +2003,7 @@ export async function createRequisitionFromQuotePicks(formData: FormData) {
   });
 
   revalidatePath(`/projects/${projectId}`);
-  redirect(`/projects/${projectId}/requisitions`);
+  redirect(`/projects/${projectId}/requisitions/${req.id}`);
 }
 
 export async function createRequisitionFromQuote(

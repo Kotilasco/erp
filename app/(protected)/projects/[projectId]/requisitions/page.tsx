@@ -4,35 +4,91 @@ import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getCurrentUser } from '@/lib/auth';
 import { ButtonWithLoading as SubmitButton } from '@/components/ui/button-with-loading';
-import { createPOFromRequisition } from '@/app/(protected)/procurement/requisitions/[requisitionId]/actions';
-import { ShoppingCartIcon, PlusIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ShoppingCartIcon, PlusIcon, ArrowLeftIcon, ClipboardDocumentListIcon, EyeIcon } from '@heroicons/react/24/outline';
+import POORequisitionToolbar from '@/app/(protected)/requisitions/components/POORequisitionToolbar';
+import TablePagination from '@/components/ui/table-pagination';
+import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
+import Money from '@/components/Money';
 
-export default async function ProjectRequisitionsPage({ params }: { params: { projectId: string } }) {
+export default async function ProjectRequisitionsPage({ 
+  params, 
+  searchParams 
+}: { 
+  params: { projectId: string };
+  searchParams: Promise<{ q?: string; status?: string; page?: string; pageSize?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) return redirect('/sign-in');
 
   const { projectId } = await params;
-  const project = await prisma.project.findUnique({
+  const { q, status, page, pageSize } = await searchParams;
+
+  const projectCheck = await prisma.project.findUnique({
     where: { id: projectId },
-    include: {
-      schedules: true,
-      requisitions: { orderBy: { createdAt: 'desc' } },
-    },
+    select: { projectNumber: true, status: true, schedules: true } // Minimal check
   });
+  if (!projectCheck) return notFound();
 
-  if (!project) return notFound();
-
-  // Role checks logic (copied from main page)
+  // Role checks
   const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role);
-  const isProc = ['PROCUREMENT', 'ADMIN'].includes(user.role);
-  const opsLocked = project.status === 'DEPOSIT_PENDING' || project.status === 'QUOTE_ACCEPTED' || !project.schedules; // Simplify lock check logic
+  const opsLocked = projectCheck.status === 'DEPOSIT_PENDING' || projectCheck.status === 'QUOTE_ACCEPTED' || !projectCheck.schedules; // Simplify lock check logic
 
-  // Fetch POs for these requisitions to show status
-  const reqIds = project.requisitions.map((r) => r.id);
-  const purchaseOrders = await prisma.purchaseOrder.findMany({
-    where: { requisitionId: { in: reqIds } },
-    select: { id: true, status: true, requisitionId: true },
-  });
+  // Pagination & Filtering
+  const currentPage = Math.max(1, parseInt(page || '1', 10));
+  const size = Math.max(1, parseInt(pageSize || '20', 10));
+  const skip = (currentPage - 1) * size;
+
+  const where: any = { projectId };
+
+  if (status) {
+    where.status = status;
+  }
+
+  if (q) {
+    where.OR = [
+      { id: { contains: q, mode: 'insensitive' } },
+      // Project filter is redundant here since we are IN a project, but we can search item descriptions if we want? 
+      // For now, let's keep it simple: Search ID (Ref)
+    ];
+  }
+
+  const [requisitions, totalCount] = await Promise.all([
+    prisma.procurementRequisition.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: size,
+      include: {
+        project: {
+          select: {
+            id: true,
+            projectNumber: true,
+            name: true,
+            quote: {
+              select: {
+                customer: { select: { displayName: true, city: true } },
+              },
+            },
+          },
+        },
+        items: {
+          select: { description: true, amountMinor: true, estPriceMinor: true, qtyRequested: true },
+        },
+        submittedBy: { select: { name: true } }
+      },
+    }),
+    prisma.procurementRequisition.count({ where }),
+  ]);
+
+  const totalPages = Math.ceil(totalCount / size);
+
+  // Helper to calculate total
+  const calculateTotal = (req: any) => {
+    return req.items.reduce((sum: number, item: any) => {
+      const amount = Number(item.amountMinor ?? item.estPriceMinor ?? 0);
+      return sum + amount;
+    }, 0) / 100;
+  };
 
   return (
     <div className="space-y-6">
@@ -45,7 +101,7 @@ export default async function ProjectRequisitionsPage({ params }: { params: { pr
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Requisitions</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Manage material requests for <span className="font-medium text-gray-900">{project.projectNumber || 'this project'}</span>.
+              Manage material requests for <span className="font-medium text-gray-900">{projectCheck.projectNumber || 'this project'}</span>.
             </p>
           </div>
         </div>
@@ -71,100 +127,90 @@ export default async function ProjectRequisitionsPage({ params }: { params: { pr
       </div>
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
+        
+        <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+            <POORequisitionToolbar />
+        </div>
+
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Reference</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Created Date</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                <th scope="col" className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requisition</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Description</th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                <th scope="col" className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total</th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-              {project.requisitions.length === 0 ? (
+              {requisitions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
                       <div className="flex flex-col items-center justify-center gap-2">
-                        <ShoppingCartIcon className="h-10 w-10 text-gray-300" />
+                        <ClipboardDocumentListIcon className="h-10 w-10 text-gray-300" />
                         <p className="text-base font-medium">No requisitions found</p>
                         <p className="text-sm">Get started by creating a new requisition above.</p>
                       </div>
                   </td>
                 </tr>
               ) : (
-                project.requisitions.map((req) => {
-                  const po = purchaseOrders.find((p) => p.requisitionId === req.id);
-                  return (
-                    <tr key={req.id} className="group hover:bg-orange-50/30 transition-colors dark:hover:bg-gray-700/50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                         <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 font-bold border border-gray-200 group-hover:bg-orange-100 group-hover:text-orange-600 group-hover:border-orange-200 transition-colors text-xs">
-                                REQ
-                            </div>
-                            <span className="font-mono text-sm font-semibold text-gray-900 dark:text-gray-100">
-                                #{req.id.slice(0, 8)}
-                            </span>
-                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 font-medium">
-                        {new Date(req.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold uppercase tracking-wide ring-1 ring-inset ${
-                          req.status === 'APPROVED' ? 'bg-green-50 text-green-700 ring-green-600/20' :
-                          req.status === 'REJECTED' ? 'bg-red-50 text-red-700 ring-red-600/20' :
-                          'bg-gray-100 text-gray-600 ring-gray-500/10'
-                        }`}>
-                          {req.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3">
-                        <Link
-                          href={`/projects/${projectId}/requisitions/${req.id}`}
-                          className="inline-flex items-center justify-center rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-orange-50 hover:text-orange-700 hover:ring-orange-200 transition-all"
-                        >
-                          View Details
-                        </Link>
-                        {po ? (
-                          <Link
-                            href={`/procurement/purchase-orders/${po.id}`}
-                            className="inline-flex items-center justify-center rounded-lg bg-orange-50 px-3 py-1.5 text-sm font-semibold text-orange-700 ring-1 ring-inset ring-orange-600/20 hover:bg-orange-100 transition-all"
-                          >
-                            View PO ({po.status})
-                          </Link>
-                        ) : (
-                          req.status === 'APPROVED' &&
-                          isProc && (
-                            <div className="inline-block">
-                                <form
-                                action={async (fd) => {
-                                    'use server';
-                                    await createPOFromRequisition(req.id, fd);
-                                }}
-                                className="inline-flex items-center gap-2"
-                                >
-                                <input
-                                    name="vendor"
-                                    placeholder="Vendor Name"
-                                    required
-                                    className="h-8 w-32 rounded border border-gray-300 px-2 text-xs focus:border-orange-500 focus:ring-orange-500"
-                                />
-                                <SubmitButton className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-2 py-1 rounded shadow-sm transition-colors">
-                                    Create PO
-                                </SubmitButton>
-                                </form>
-                            </div>
-                          )
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })
+                requisitions.map((req) => (
+                  <tr key={req.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
+                     <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col">
+                           <span className="font-medium text-gray-900 dark:text-gray-200">
+                               {req.project?.projectNumber || 'N/A'}
+                           </span>
+                           <span className="text-xs text-gray-500">{req.project?.quote?.customer?.displayName}</span>
+                        </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-gray-100 font-mono">
+                      {req.id.slice(0, 8).toUpperCase()}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                      <div className="max-w-[200px] truncate" title={req.items[0]?.description}>
+                        {req.items[0]?.description || 'No items'}
+                        {req.items.length > 1 && <span className="text-xs text-gray-400 ml-1">(+{req.items.length - 1} more)</span>}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                       <div className="flex justify-center">
+                          <WorkflowStatusBadge status={req.status} />
+                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-right font-medium text-gray-900 dark:text-gray-100">
+                        <Money value={calculateTotal(req)} />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                            <Link 
+                                href={`/projects/${req.project.id}/requisitions/${req.id}`}
+                                className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                            >
+                                <EyeIcon className="h-3.5 w-3.5" />
+                                View
+                            </Link>
+                        </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
+
+        {totalCount > 0 && (
+          <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-gray-700 dark:bg-gray-800/50">
+             <TablePagination
+               currentPage={currentPage}
+               totalPages={totalPages}
+               totalItems={totalCount}
+               pageSize={size}
+             />
+          </div>
+        )}
       </div>
     </div>
   );

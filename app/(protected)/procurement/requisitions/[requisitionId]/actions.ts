@@ -132,5 +132,5 @@ export async function submitRequisition(requisitionId: string) {
   revalidatePath(`/projects/${req.projectId}`);
   revalidatePath('/reqs');
   revalidatePath('/dashboard')
-  redirect('/dashboard');
+  redirect(`/projects/${req.projectId}/requisitions/${requisitionId}`);
 }

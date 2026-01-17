@@ -37,17 +37,17 @@ export default async function RequisitionsPage({
 
   // Tab Logic
   if (currentTab === 'funding_needed') {
-      where.status = { in: ['APPROVED', 'PARTIAL'] };
-      // where.paymentStatus = { not: 'PAID' }; // Removed as field does not exist
+      where.status = 'SUBMITTED';
+      where.funding = { none: { status: { in: ['REQUESTED', 'APPROVED'] } } };
   } else if (currentTab === 'action_purchases') {
       where.status = { in: ['APPROVED', 'PARTIAL'] };
-      // where.items = { some: { status: 'PENDING' } }; // Simplified for now
   } else if (currentTab === 'completed') {
       where.status = { in: ['COMPLETED', 'REJECTED'] };
   } else if (currentTab === 'my_requests') {
       where.submittedById = me.id;
   } else if (currentTab === 'pending_approval') {
       where.status = 'SUBMITTED';
+      where.funding = { some: { status: 'REQUESTED' } };
   }
 
   const [requisitions, total] = await Promise.all([
