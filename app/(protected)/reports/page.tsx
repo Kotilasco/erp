@@ -49,7 +49,7 @@ export default async function GlobalReportsPage() {
       icon: BanknotesIcon,
       color: "text-emerald-600",
       bgColor: "bg-emerald-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT']
     },
     {
       title: "Procurement Efficiency (Global)",
@@ -58,7 +58,7 @@ export default async function GlobalReportsPage() {
       icon: ShoppingCartIcon,
       color: "text-indigo-600",
       bgColor: "bg-indigo-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT']
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT']
     },
     {
       title: "Negotiation Gains (Global)",
@@ -67,7 +67,7 @@ export default async function GlobalReportsPage() {
       icon: ArrowTrendingDownIcon,
       color: "text-purple-600",
       bgColor: "bg-purple-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT']
     },
     {
       title: "Material Usage Analysis",
@@ -77,6 +77,16 @@ export default async function GlobalReportsPage() {
       color: "text-amber-600",
       bgColor: "bg-amber-50",
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
+    },
+    {
+      title: "Vendor Pricing Analysis",
+      description: "Top vendors and pricing trends for procured items.",
+      href: `/reports/vendor-pricing`,
+      icon: ChartBarSquareIcon,
+      color: "text-rose-600",
+      bgColor: "bg-rose-50",
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'PROJECT_OPERATIONS_OFFICER'],
+      disabled: false
     },
     {
       title: "Global Employee Performance",
