@@ -476,7 +476,7 @@ async function PendingTasks({
             )}
           </Link>
 
-          {/* 2. Request Funding (Procurement) */}
+          {/* 2. Create Purchase Order (Procurement) */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"
             className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
@@ -485,7 +485,7 @@ async function PendingTasks({
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Request Funding</span>
+                <span>Create Purchase Order</span>
             </div>
             {fundingNeededCount > 0 && (
               <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
@@ -494,7 +494,7 @@ async function PendingTasks({
             )}
           </Link>
           
-          {/* 3. Action Purchases (Procurement) */}
+          {/* 3. Procure (Procurement) */}
           <Link
             href="/procurement/requisitions?tab=action_purchases"
             className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
@@ -503,26 +503,13 @@ async function PendingTasks({
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span>Action Purchases</span>
+                <span>Procure</span>
             </div>
             {actionPurchasesCount > 0 && (
               <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
                 {actionPurchasesCount}
               </span>
             )}
-          </Link>
-          
-          {/* 4. POs (Procurement) */}
-          <Link
-            href="/procurement/purchase-orders"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
-          >
-            <div className="flex items-center gap-3 z-10">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Purchase Orders</span>
-            </div>
           </Link>
         </div>
       </div>
@@ -535,7 +522,7 @@ async function PendingTasks({
       <div className="flex flex-col gap-6 p-4">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Procurement Dashboard</h1>
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* 1. Request Funding */}
+          {/* 1. Create Purchase Order */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"
             className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
@@ -544,7 +531,7 @@ async function PendingTasks({
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span>Request Funding</span>
+                <span>Create Purchase Order</span>
             </div>
             {fundingNeededCount > 0 && (
               <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
@@ -553,7 +540,7 @@ async function PendingTasks({
             )}
           </Link>
           
-          {/* 2. Action Purchases */}
+          {/* 2. Procure */}
           <Link
             href="/procurement/requisitions?tab=action_purchases"
             className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
@@ -562,26 +549,13 @@ async function PendingTasks({
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
-                <span>Action Purchases</span>
+                <span>Procure</span>
             </div>
             {actionPurchasesCount > 0 && (
               <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
                 {actionPurchasesCount}
               </span>
             )}
-          </Link>
-          
-          {/* 3. POs */}
-          <Link
-            href="/procurement/purchase-orders"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
-          >
-             <div className="flex items-center gap-3 z-10">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Purchase Orders</span>
-            </div>
           </Link>
         </div>
       </div>

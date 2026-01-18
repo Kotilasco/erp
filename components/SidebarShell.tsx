@@ -74,7 +74,7 @@ const PAGE_DEFS: PageDef[] = [
   },
   // Procurement & Logistics
   { label: 'Requisitions', href: '/requisitions', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR'] },
-  { label: 'Requisitions', href: '/procurement/requisitions', icon: 'list', roles: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'] },
+  { label: 'Purchase Orders', href: '/procurement/requisitions', icon: 'list', roles: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'] },
   { label: 'Purchase Orders', href: '/accounts/po', icon: 'list', roles: ['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ADMIN'] },
   { label: 'Dispatches', href: '/dispatches', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'SECURITY', 'ADMIN'] },
   
