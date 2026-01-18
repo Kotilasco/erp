@@ -105,7 +105,7 @@ export default async function AccountsPage({
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="bg-amber-100 border-none shadow-sm transition-all hover:shadow-md">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-black">Pending Requests</CardTitle>
@@ -122,15 +122,6 @@ export default async function AccountsPage({
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-black">{stats.approved._count.id}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-purple-100 border-none shadow-sm transition-all hover:shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-black">Disbursed</CardTitle>
-              <BanknotesIcon className="h-5 w-5 text-black" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-black">{stats.disbursed._count.id}</div>
             </CardContent>
           </Card>
           <Card className="bg-rose-100 border-none shadow-sm transition-all hover:shadow-md">
