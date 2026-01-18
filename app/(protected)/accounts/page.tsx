@@ -3,10 +3,7 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { approveFunding, rejectFunding } from './actions';
 import { fromMinor } from '@/lib/accounting';
-import SubmitButton from '@/components/SubmitButton';
-import { revalidatePath } from 'next/cache';
 import { SearchInput } from '@/components/ui/search-input';
 import { 
   EyeIcon, 
@@ -265,20 +262,13 @@ export default async function AccountsPage({
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                                {canApprove && (f.status === 'PENDING' || f.status === 'REQUESTED') ? (
-                                <div className="flex items-center gap-2">
-                                  <form action={async () => { 'use server'; await approveFunding(f.id); }}>
-                                    <SubmitButton className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all">
-                                      Approve
-                                    </SubmitButton>
-                                  </form>
                                   <Link
                                       href={`/accounts/funding/${f.id}`}
-                                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all"
+                                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all"
                                   >
-                                      <EyeIcon className="h-3.5 w-3.5 text-gray-500" />
+                                      <EyeIcon className="h-3.5 w-3.5 text-white" />
                                       Review
                                   </Link>
-                                </div>
                                ) : (
                                   <Link
                                       href={`/accounts/funding/${f.id}`}
