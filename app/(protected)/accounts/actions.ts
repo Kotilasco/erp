@@ -12,7 +12,7 @@ function assertRole(userRole: string | null | undefined, allowed: string[]) {
 
 
 function requirePaymentRole(role?: string | null) {
-  if (!role || !['SALES_ACCOUNTS', 'ADMIN'].includes(role)) {
+  if (!role || !['SALES_ACCOUNTS', 'ACCOUNTS', 'ADMIN'].includes(role)) {
     throw new Error('Only Sales Accounts or Admin can record payments');
   }
 }
@@ -166,6 +166,33 @@ export async function rejectFunding(fundingId: string, reason: string) {
       decidedBy: { connect: { id: user.id } },
       decidedAt: new Date(),
       reason: reason || '—',
+    },
+  });
+
+  revalidatePath('/dashboard');
+  revalidatePath('/accounts');
+  return { success: true };
+}
+
+export async function postponeFunding(fundingId: string, postponeUntil: Date, reason: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRole(user.role, [
+    'ACCOUNTING_OFFICER',
+    'ADMIN',
+    'ACCOUNTS',
+    'ACCOUNTING_CLERK',
+    'MANAGING_DIRECTOR',
+  ]);
+
+  await prisma.fundingRequest.update({
+    where: { id: fundingId },
+    data: {
+      status: 'POSTPONED',
+      postponedUntil: postponeUntil,
+      decidedBy: { connect: { id: user.id } },
+      decidedAt: new Date(),
+      reason: reason || null,
     },
   });
 

@@ -1,132 +1,264 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import PaymentForms from './PaymentForms';
+import { ArrowLeftIcon, ClockIcon, CheckCircleIcon, BanknotesIcon } from '@heroicons/react/24/outline';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import clsx from 'clsx';
+import { Money } from '@/components/Money';
+
+const formatMoney = (minor: bigint | number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(Number(minor) / 100);
+};
 
 export default async function ProjectPaymentsPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ projectId: string }>;
+  searchParams: Promise<{ action?: string; amount?: string; type?: string; filter?: string }>;
 }) {
   const { projectId } = await params;
+  const { action, amount, type, filter } = await searchParams;
   
   const me = await getCurrentUser();
   if (!me) redirect('/login');
-  if (!['SALES_ACCOUNTS', 'ADMIN'].includes(me.role as string)) {
+  if (!['SALES_ACCOUNTS', 'ACCOUNTS', 'ADMIN'].includes(me.role as string)) {
     redirect(`/projects/${projectId}`);
   }
 
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
-      clientPayments: true,
-      quote: { include: { customer: true } },
-      paymentSchedules: { select: { id: true, label: true, amountMinor: true, paidMinor: true, dueOn: true, status: true, seq: true } },
+      clientPayments: { orderBy: { receivedAt: 'desc' } },
+      quote: { include: { customer: true, lines: true } },
+      paymentSchedules: { select: { id: true, label: true, amountMinor: true, paidMinor: true, dueOn: true, status: true, seq: true }, orderBy: { seq: 'asc' } },
     },
   });
 
   if (!project) return <div className="p-6">Project not found</div>;
 
-  const schedules = (project as any).paymentSchedules || [];
+  const schedules = project.paymentSchedules || [];
+  const payments = project.clientPayments || [];
   
-  // Sort schedules by date/seq
-  schedules.sort((a: any, b: any) => {
-    const dateA = new Date(a.dueOn).getTime();
-    const dateB = new Date(b.dueOn).getTime();
-    if (dateA !== dateB) return dateA - dateB;
-    return (a.seq || 0) - (b.seq || 0);
+  // Stats
+  const contractValue = project.quote?.lines?.reduce((sum, line) => sum + BigInt(line.lineTotalMinor), 0n) || 0n;
+  const totalPaid = payments.reduce((sum, p) => sum + BigInt(p.amountMinor), 0n);
+  const balance = contractValue - totalPaid;
+
+  const showReceiveForm = action === 'receive';
+  const initialAmount = amount ? Number(amount) : 0;
+  const fixedType = (type?.toUpperCase() === 'DEPOSIT' ? 'DEPOSIT' : 'INSTALLMENT') as 'DEPOSIT' | 'INSTALLMENT';
+
+  // Filter Schedule
+  const currentFilter = filter || 'ALL'; // ALL, DUE, FUTURE
+  const filteredSchedules = schedules.filter(s => {
+    if (currentFilter === 'DUE') return s.status === 'DUE' || s.status === 'OVERDUE' || s.status === 'PARTIAL';
+    if (currentFilter === 'FUTURE') return s.status === 'PENDING';
+    return true;
   });
 
-  // Calculate total paid from all client payments
-  const totalPaid = (project as any).clientPayments.reduce(
-    (sum: bigint, p: any) => sum + BigInt(p.amountMinor ?? 0),
-    0n
-  );
-
-  let currentItem: any = null;
-  let dueBal = 0;
-  let cumulativeDue = 0n;
-
-  // Find the first schedule that isn't fully covered by total payments
-  for (const s of schedules) {
-    const amount = BigInt(s.amountMinor ?? 0);
-    cumulativeDue += amount;
-    
-    if (cumulativeDue > totalPaid) {
-      currentItem = s;
-      // The amount due is the difference between what should have been paid by now (cumulativeDue)
-      // and what has actually been paid (totalPaid).
-      // However, we only want the portion for THIS item.
-      // So effectively: due for this item = cumulativeDue - totalPaid
-      dueBal = Number(cumulativeDue - totalPaid);
-      break;
-    }
-  }
-
-  // Fallback: If no schedules (e.g. legacy project), try to infer from project fields
-  if (!currentItem && schedules.length === 0) {
-    const dep = BigInt((project as any).depositMinor ?? 0);
-    const inst = BigInt((project as any).installmentMinor ?? 0);
-    let paid = totalPaid;
-
-    if (dep > 0n) {
-      if (paid < dep) {
-        dueBal = Number(dep - paid);
-        currentItem = { label: 'Deposit' };
-      } else {
-        paid -= dep;
-        if (inst > 0n) {
-          const remainder = paid % inst;
-          dueBal = Number(inst - remainder);
-          currentItem = { label: 'Installment' };
-        }
-      }
-    } else if (inst > 0n) {
-      const remainder = paid % inst;
-      dueBal = Number(inst - remainder);
-      currentItem = { label: 'Installment' };
-    }
-  }
-
-  let typeLabel = currentItem
-    ? (String(currentItem.label || '').toLowerCase().includes('deposit') ? 'DEPOSIT' : 'INSTALLMENT')
-    : 'INSTALLMENT';
-
-  const initialAmount = Number(dueBal) / 100;
-  const fixedType = typeLabel as 'DEPOSIT' | 'INSTALLMENT';
-  const customerName = project.quote?.customer?.displayName || 'Project';
-
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-gray-50/50 p-4">
-      <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+    <div className="min-h-screen bg-gray-50/50 pb-12">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+               <div className="flex items-center gap-4">
+                  <Link href="/accounts/payments" className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+                     <ArrowLeftIcon className="h-5 w-5" />
+                  </Link>
+                  <div>
+                     <h1 className="text-xl font-bold text-gray-900">{project.quote?.customer?.displayName}</h1>
+                     <p className="text-sm text-gray-500">Project: {project.projectNumber}</p>
+                  </div>
+               </div>
+               <div className="flex items-center gap-3">
+                  <div className="text-right hidden sm:block">
+                     <p className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Balance Due</p>
+                     <p className="text-lg font-bold text-gray-900">{formatMoney(balance)}</p>
+                  </div>
+               </div>
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">Receive Payment</h2>
-              <p className="text-sm text-gray-600">{customerName}</p>
-            </div>
-          </div>
-          <Link href="/projects" className="rounded-full p-1 hover:bg-gray-100 transition-colors">
-            <svg className="h-5 w-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </Link>
-        </div>
-        <PaymentForms
-          projectId={projectId}
-          initialAmount={initialAmount}
-          fixedType={fixedType}
-          customerName={customerName}
-          cancelHref="/projects"
-        />
+         </div>
       </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+           <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium text-gray-500">Contract Value</CardTitle>
+                 <BanknotesIcon className="h-4 w-4 text-gray-400" />
+              </CardHeader>
+              <CardContent>
+                 <div className="text-2xl font-bold text-gray-900">{formatMoney(contractValue)}</div>
+              </CardContent>
+           </Card>
+           <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium text-gray-500">Total Paid</CardTitle>
+                 <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
+              </CardHeader>
+              <CardContent>
+                 <div className="text-2xl font-bold text-emerald-600">{formatMoney(totalPaid)}</div>
+              </CardContent>
+           </Card>
+           <Card className="border-none shadow-sm bg-white">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                 <CardTitle className="text-sm font-medium text-gray-500">Outstanding</CardTitle>
+                 <ClockIcon className="h-4 w-4 text-orange-500" />
+              </CardHeader>
+              <CardContent>
+                 <div className="text-2xl font-bold text-orange-600">{formatMoney(balance)}</div>
+              </CardContent>
+           </Card>
+        </div>
+
+        {/* Content Tabs */}
+        <Tabs defaultValue="schedule" className="w-full">
+           <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="schedule">Payment Schedule</TabsTrigger>
+              <TabsTrigger value="history">Payment History</TabsTrigger>
+           </TabsList>
+
+           <TabsContent value="schedule" className="mt-6 space-y-6">
+              
+              {/* Schedule Filters */}
+              <div className="flex items-center gap-2 mb-4">
+                 <Link href={`/projects/${projectId}/payments?filter=ALL`} className={clsx("px-3 py-1.5 text-sm font-medium rounded-md transition-colors", currentFilter === 'ALL' ? "bg-gray-200 text-gray-900" : "text-gray-600 hover:bg-gray-100")}>All</Link>
+                 <Link href={`/projects/${projectId}/payments?filter=DUE`} className={clsx("px-3 py-1.5 text-sm font-medium rounded-md transition-colors", currentFilter === 'DUE' ? "bg-orange-100 text-orange-800" : "text-gray-600 hover:bg-gray-100")}>Due / Overdue</Link>
+                 <Link href={`/projects/${projectId}/payments?filter=FUTURE`} className={clsx("px-3 py-1.5 text-sm font-medium rounded-md transition-colors", currentFilter === 'FUTURE' ? "bg-blue-100 text-blue-800" : "text-gray-600 hover:bg-gray-100")}>Future</Link>
+              </div>
+
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                 <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                       <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                       </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                       {filteredSchedules.map((s) => {
+                          const sAmt = BigInt(s.amountMinor);
+                          const sPaid = BigInt(s.paidMinor || 0);
+                          const sBal = sAmt - sPaid;
+                          const isReceiveable = s.status !== 'PAID';
+                          
+                          // Pre-fill type
+                          const itemType = s.label.toLowerCase().includes('deposit') ? 'deposit' : 'installment';
+
+                          return (
+                             <tr key={s.id} className="hover:bg-gray-50">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{s.label}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(s.dueOn).toLocaleDateString()}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">{formatMoney(sAmt)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-emerald-600 text-right">{formatMoney(sPaid)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">{formatMoney(sBal)}</td>
+                                <td className="px-6 py-4 whitespace-nowrap text-center">
+                                   <span className={clsx(
+                                      "px-2 inline-flex text-xs leading-5 font-semibold rounded-full",
+                                      s.status === 'PAID' ? "bg-green-100 text-green-800" :
+                                      s.status === 'OVERDUE' ? "bg-red-100 text-red-800" :
+                                      s.status === 'PARTIAL' ? "bg-yellow-100 text-yellow-800" :
+                                      s.status === 'DUE' ? "bg-orange-100 text-orange-800" :
+                                      "bg-gray-100 text-gray-800"
+                                   )}>
+                                      {s.status}
+                                   </span>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                   {isReceiveable && (
+                                      <Link 
+                                         href={`/projects/${projectId}/payments?action=receive&amount=${Number(sBal)/100}&type=${itemType}`}
+                                         className="text-emerald-600 hover:text-emerald-900 font-bold"
+                                      >
+                                         Receive
+                                      </Link>
+                                   )}
+                                </td>
+                             </tr>
+                          );
+                       })}
+                       {filteredSchedules.length === 0 && (
+                          <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500">No scheduled items found.</td></tr>
+                       )}
+                    </tbody>
+                 </table>
+              </div>
+           </TabsContent>
+
+           <TabsContent value="history" className="mt-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                 <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                       <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receipt #</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                          <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                       </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                       {payments.map((p) => (
+                          <tr key={p.id} className="hover:bg-gray-50">
+                             <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.receiptNo || '-'}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{new Date(p.receivedAt).toLocaleDateString()}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{p.method}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{p.type.toLowerCase()}</td>
+                             <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">{p.description || '-'}</td>
+                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">{formatMoney(p.amountMinor)}</td>
+                          </tr>
+                       ))}
+                       {payments.length === 0 && (
+                          <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No payments recorded yet.</td></tr>
+                       )}
+                    </tbody>
+                 </table>
+              </div>
+           </TabsContent>
+        </Tabs>
+      </div>
+
+      {/* Receive Payment Modal Overlay */}
+      {showReceiveForm && (
+         <div className="fixed inset-0 z-50 overflow-y-auto">
+            <div className="flex min-h-screen items-end justify-center px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+               <Link href={`/projects/${projectId}/payments`} className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"></Link>
+               
+               <div className="inline-block transform overflow-hidden rounded-lg bg-white text-left align-bottom shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:align-middle">
+                  <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                     <div className="sm:flex sm:items-start">
+                        <div className="w-full">
+                           <h3 className="text-lg font-medium leading-6 text-gray-900 mb-4">Receive Payment</h3>
+                           <PaymentForms
+                              projectId={projectId}
+                              initialAmount={initialAmount}
+                              fixedType={fixedType}
+                              customerName={project.quote?.customer?.displayName}
+                              cancelHref={`/projects/${projectId}/payments`}
+                           />
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </div>
+      )}
     </div>
   );
 }

@@ -1,173 +1,185 @@
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
-import { recordClientPayment } from '@/app/(protected)/accounts/actions';
-import SubmitButton from '@/components/SubmitButton';
 import { redirect } from 'next/navigation';
+import Link from 'next/link';
+import { EyeIcon } from '@heroicons/react/24/outline';
+import { SearchInput } from '@/components/ui/search-input';
 
-const money = (minor?: bigint | number | null) =>
-  typeof minor === 'bigint'
-    ? (Number(minor) / 100).toFixed(2)
-    : typeof minor === 'number'
-      ? (minor / 100).toFixed(2)
-      : '0.00';
+const formatMoney = (minor: bigint | number) => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(Number(minor) / 100);
+};
 
-export default async function PaymentsDashboard() {
+export default async function PaymentsDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string; q?: string }>;
+}) {
   const me = await getCurrentUser();
-  //if (!me) return <div className="p-6">Auth required.</div>;
 
   if (!me) {
     redirect('/login');
   }
-  if (!['SALES_ACCOUNTS', 'ADMIN'].includes(me.role as string)) {
+  if (!['SALES_ACCOUNTS', 'ACCOUNTS', 'ADMIN'].includes(me.role as string)) {
     redirect('/dashboard');
   }
 
-  const schedules = await prisma.paymentSchedule.findMany({
-    orderBy: [{ dueOn: 'asc' }],
-    include: {
-      project: {
-        include: {
-          quote: { select: { number: true, customer: { select: { displayName: true } } } },
+  const { page, q } = await searchParams;
+  const currentPage = Number(page) || 1;
+  const itemsPerPage = 10;
+  const skip = (currentPage - 1) * itemsPerPage;
+
+  // Build Where Clause
+  const where: any = {};
+  if (q) {
+    where.OR = [
+      { projectNumber: { contains: q, mode: 'insensitive' } },
+      { quote: { customer: { displayName: { contains: q, mode: 'insensitive' } } } },
+      { quote: { number: { contains: q, mode: 'insensitive' } } },
+    ];
+  }
+
+  const [totalItems, projects] = await Promise.all([
+    prisma.project.count({ where }),
+    prisma.project.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: {
+        quote: {
+          include: {
+            customer: true,
+            lines: true,
+          },
         },
+        clientPayments: true,
       },
-    },
-    take: 200,
-  });
+      skip,
+      take: itemsPerPage,
+    }),
+  ]);
 
-  const upcoming = schedules.filter((s) => s.status === 'DUE' || s.status === 'PARTIAL');
-  const overdue = schedules.filter((s) => s.status === 'OVERDUE');
-
-  const firstProject = schedules[0]?.projectId;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Client Payments</h1>
+    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-1">
+           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Project Payments</h1>
+           <p className="text-gray-500">Select a project to view payment history and record new payments.</p>
+        </div>
+        <div className="w-full sm:w-72">
+            <SearchInput placeholder="Search BM number or customer..." />
+        </div>
+      </div>
 
-      <section className="rounded border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Overdue</h2>
-        {overdue.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-1">No overdue installments.</p>
-        ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
+      <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50/80 backdrop-blur-sm">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Project</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Customer</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Verified Contract</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Paid to Date</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Balance</th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 bg-white">
+              {projects.length === 0 ? (
                 <tr>
-                  <th className="px-2 py-1 text-left">Quote</th>
-                  <th className="px-2 py-1 text-left">Customer</th>
-                  <th className="px-2 py-1">Due Date</th>
-                  <th className="px-2 py-1 text-right">Due</th>
-                  <th className="px-2 py-1 text-right">Paid</th>
-                  <th className="px-2 py-1 text-right">Balance</th>
+                   <td colSpan={6} className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <p className="text-sm font-medium text-gray-900">No projects found</p>
+                        <p className="text-sm text-gray-500">Try adjusting your search</p>
+                      </div>
+                   </td>
                 </tr>
-              </thead>
-              <tbody>
-                {overdue.map((s) => {
-                  const bal = BigInt(s.amountMinor) - BigInt(s.paidMinor ?? 0);
+              ) : (
+                projects.map((p) => {
+                  const contractValue = p.quote?.lines?.reduce((sum, line) => sum + BigInt(line.lineTotalMinor), 0n) || 0n;
+                  const totalPaid = p.clientPayments.reduce((sum, pay) => sum + BigInt(pay.amountMinor), 0n);
+                  const balance = contractValue - totalPaid;
+
                   return (
-                    <tr key={s.id} className="border-b last:border-b-0">
-                      <td className="px-2 py-1">{s.project.quote?.number ?? s.projectId}</td>
-                      <td className="px-2 py-1">{s.project.quote?.customer?.displayName ?? '-'}</td>
-                      <td className="px-2 py-1">{new Date(s.dueOn).toLocaleDateString()}</td>
-                      <td className="px-2 py-1 text-right">{money(s.amountMinor)}</td>
-                      <td className="px-2 py-1 text-right">{money(s.paidMinor)}</td>
-                      <td className="px-2 py-1 text-right text-red-600">{money(bal)}</td>
+                    <tr key={p.id} className="group hover:bg-gray-50/80 transition-all duration-200">
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-semibold text-gray-900">{p.projectNumber || p.id.slice(0, 8)}</span>
+                          <span className="text-xs text-gray-500 font-mono">
+                            {new Date(p.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-medium text-gray-700">{p.quote?.customer?.displayName || '-'}</span>
+                      </td>
+                      <td className="px-6 py-4 text-right tabular-nums text-sm text-gray-900">
+                        {formatMoney(contractValue)}
+                      </td>
+                       <td className="px-6 py-4 text-right tabular-nums text-sm text-emerald-600 font-medium">
+                        {formatMoney(totalPaid)}
+                      </td>
+                       <td className="px-6 py-4 text-right tabular-nums text-sm font-medium text-gray-900">
+                        {formatMoney(balance)}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <Link
+                          href={`/projects/${p.id}/payments`}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-all"
+                        >
+                          <EyeIcon className="h-3.5 w-3.5 text-gray-500" />
+                          View
+                        </Link>
+                      </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
-          </div>
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        
+        {/* Pagination */}
+        {totalPages > 1 && (
+            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+                <Link
+                   href={{ query: { q, page: Math.max(1, currentPage - 1) } }}
+                   className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 ${currentPage === 1 ? 'pointer-events-none opacity-50' : ''}`}
+                >
+                   Previous
+                </Link>
+                <div className="hidden sm:flex items-center gap-1">
+                   {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
+                      // Simple generic pagination logic for display, centers around current if possible
+                      let p = i + 1;
+                      if (totalPages > 5 && currentPage > 3) {
+                         p = currentPage - 2 + i;
+                         if (p > totalPages) p = totalPages - (4 - i);
+                      }
+                      return p; // simplified for speed, can be improved
+                   }).map(p => (
+                       <Link
+                          key={p}
+                          href={{ query: { q, page: p } }}
+                          className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium ${currentPage === p ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                       >
+                          {p}
+                       </Link>
+                   ))}
+                </div>
+                <span className="sm:hidden text-sm font-medium text-gray-700">Page {currentPage} of {totalPages}</span>
+                <Link
+                   href={{ query: { q, page: Math.min(totalPages, currentPage + 1) } }}
+                   className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 ${currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}`}
+                >
+                   Next
+                </Link>
+            </div>
         )}
       </section>
-
-      <section className="rounded border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Upcoming / Due</h2>
-        {upcoming.length === 0 ? (
-          <p className="text-sm text-gray-500 mt-1">Nothing due.</p>
-        ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-2 py-1 text-left">Quote</th>
-                  <th className="px-2 py-1 text-left">Customer</th>
-                  <th className="px-2 py-1">Due Date</th>
-                  <th className="px-2 py-1 text-right">Due</th>
-                  <th className="px-2 py-1 text-right">Paid</th>
-                  <th className="px-2 py-1 text-right">Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {upcoming.map((s) => {
-                  const bal = BigInt(s.amountMinor) - BigInt(s.paidMinor ?? 0);
-                  return (
-                    <tr key={s.id} className="border-b last:border-b-0">
-                      <td className="px-2 py-1">{s.project.quote?.number ?? s.projectId}</td>
-                      <td className="px-2 py-1">{s.project.quote?.customer?.displayName ?? '-'}</td>
-                      <td className="px-2 py-1">{new Date(s.dueOn).toLocaleDateString()}</td>
-                      <td className="px-2 py-1 text-right">{money(s.amountMinor)}</td>
-                      <td className="px-2 py-1 text-right">{money(s.paidMinor)}</td>
-                      <td className="px-2 py-1 text-right">{money(bal)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
-
-      {firstProject && (
-        <section className="rounded border bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold">Receive Payment (quick)</h2>
-          <form
-            action={async (fd) => {
-              'use server';
-              await recordClientPayment(String(fd.get('projectId') || firstProject), {
-                type: fd.get('type') as any,
-                amount: Number(fd.get('amount') || 0),
-                receivedAt: String(fd.get('receivedAt') || new Date().toISOString().slice(0, 10)),
-                receiptNo: String(fd.get('receiptNo') || ''),
-                method: String(fd.get('method') || ''),
-                attachmentUrl: null,
-              });
-            }}
-            className="mt-3 grid gap-2 md:grid-cols-3 text-sm max-w-3xl"
-          >
-            <input
-              name="projectId"
-              placeholder="Project ID"
-              className="rounded border px-2 py-1"
-              defaultValue={firstProject}
-            />
-            <label htmlFor="type" className="sr-only">
-              Payment type
-            </label>
-            <select id="type" name="type" className="rounded border px-2 py-1">
-              <option value="DEPOSIT">Deposit</option>
-              <option value="INSTALLMENT">Installment</option>
-              <option value="ADJUSTMENT">Adjustment</option>
-            </select>
-            <input
-              name="amount"
-              type="number"
-              step="0.01"
-              placeholder="Amount"
-              className="rounded border px-2 py-1"
-              required
-            />
-            <input name="receivedAt" type="date" className="rounded border px-2 py-1" required />
-            <input name="receiptNo" placeholder="Receipt #" className="rounded border px-2 py-1" />
-            <input name="method" placeholder="Method" className="rounded border px-2 py-1" />
-            <SubmitButton
-              loadingText="Submitting..."
-              className="md:col-span-3 rounded bg-slate-900 px-3 py-1.5 text-white"
-            >
-              Save Payment
-            </SubmitButton>
-          </form>
-        </section>
-      )}
     </div>
   );
 }
