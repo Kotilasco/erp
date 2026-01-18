@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useTransition, useState, useEffect } from 'react';
 
-export function SearchInput({ placeholder }: { placeholder?: string }) {
+export function SearchInput({ placeholder, className }: { placeholder?: string, className?: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -26,7 +26,7 @@ export function SearchInput({ placeholder }: { placeholder?: string }) {
   }, [term, searchParams, router]);
 
   return (
-    <div className="relative">
+    <div className={`relative ${className || ''}`}>
       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
         <svg
           className="h-5 w-5 text-gray-400"

@@ -48,18 +48,35 @@ export default async function AccountsPage({
   // --- FUNDING TAB LOGIC ---
   if (currentTab === 'funding') {
     // Build Filter
-    const where: any = {};
+    const where: any = { AND: [] };
 
-    if (currentStatus && currentStatus !== 'ALL') {
-      where.status = currentStatus;
+    // Status Filter
+    if (currentStatus === 'REQUESTED') {
+      where.AND.push({
+        OR: [
+          { status: 'REQUESTED' },
+          { status: 'PENDING' },
+          {
+            status: 'POSTPONED',
+            postponedUntil: { lte: new Date() }
+          }
+        ]
+      });
+    } else if (currentStatus === 'POSTPONED') {
+         where.AND.push({ status: 'POSTPONED' });
+    } else if (currentStatus && currentStatus !== 'ALL') {
+      where.AND.push({ status: currentStatus });
     }
 
+    // Search Filter
     if (q && typeof q === 'string') {
-      where.OR = [
-        { requisition: { project: { projectNumber: { contains: q, mode: 'insensitive' } } } },
-        { requisition: { project: { quote: { number: { contains: q, mode: 'insensitive' } } } } },
-        { requisition: { project: { quote: { customer: { displayName: { contains: q, mode: 'insensitive' } } } } } },
-      ];
+      where.AND.push({
+        OR: [
+          { requisition: { project: { projectNumber: { contains: q, mode: 'insensitive' } } } },
+          { requisition: { project: { quote: { number: { contains: q, mode: 'insensitive' } } } } },
+          { requisition: { project: { quote: { customer: { displayName: { contains: q, mode: 'insensitive' } } } } } },
+        ]
+      });
     }
 
     // Fetch Stats
@@ -73,6 +90,7 @@ export default async function AccountsPage({
       requested: statsRaw.find(s => s.status === 'REQUESTED') || { _count: { id: 0 }, _sum: { amountMinor: 0 } },
       approved: statsRaw.find(s => s.status === 'APPROVED') || { _count: { id: 0 }, _sum: { amountMinor: 0 } },
       rejected: statsRaw.find(s => s.status === 'REJECTED') || { _count: { id: 0 }, _sum: { amountMinor: 0 } },
+      postponed: statsRaw.find(s => s.status === 'POSTPONED') || { _count: { id: 0 }, _sum: { amountMinor: 0 } },
       disbursed: statsRaw.find(s => s.status === 'DISBURSED') || { _count: { id: 0 }, _sum: { amountMinor: 0 } },
     };
 
@@ -106,33 +124,41 @@ export default async function AccountsPage({
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="bg-amber-100 border-none shadow-sm transition-all hover:shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-black">Pending Requests</CardTitle>
-              <ClockIcon className="h-5 w-5 text-black" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-black">{stats.requested._count.id}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-emerald-100 border-none shadow-sm transition-all hover:shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-black">Approved</CardTitle>
-              <CheckCircleIcon className="h-5 w-5 text-black" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-black">{stats.approved._count.id}</div>
-            </CardContent>
-          </Card>
-          <Card className="bg-rose-100 border-none shadow-sm transition-all hover:shadow-md">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-black">Rejected</CardTitle>
-              <XCircleIcon className="h-5 w-5 text-black" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-black">{stats.rejected._count.id}</div>
-            </CardContent>
-          </Card>
+          <Link href={{ query: { ...resolvedParams, status: 'REQUESTED' } }} className="block">
+            <Card className={clsx("border-none shadow-sm transition-all hover:shadow-md cursor-pointer", currentStatus === 'REQUESTED' ? 'ring-2 ring-indigo-500 bg-amber-100' : 'bg-amber-100')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-black">Pending Requests</CardTitle>
+                <ClockIcon className="h-5 w-5 text-black" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-black">{stats.requested._count.id}</div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href={{ query: { ...resolvedParams, status: 'APPROVED' } }} className="block">
+            <Card className={clsx("border-none shadow-sm transition-all hover:shadow-md cursor-pointer", currentStatus === 'APPROVED' ? 'ring-2 ring-emerald-500 bg-emerald-100' : 'bg-emerald-100')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-black">Approved</CardTitle>
+                <CheckCircleIcon className="h-5 w-5 text-black" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-black">{stats.approved._count.id}</div>
+              </CardContent>
+            </Card>
+          </Link>
+
+          <Link href={{ query: { ...resolvedParams, status: 'POSTPONED' } }} className="block">
+            <Card className={clsx("border-none shadow-sm transition-all hover:shadow-md cursor-pointer", currentStatus === 'POSTPONED' ? 'ring-2 ring-orange-500 bg-orange-100' : 'bg-orange-100')}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium text-black">Postponed</CardTitle>
+                <ClockIcon className="h-5 w-5 text-black" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-black">{stats.postponed._count.id}</div>
+              </CardContent>
+            </Card>
+          </Link>
         </div>
           
         <div className="flex flex-col gap-6">
@@ -158,8 +184,7 @@ export default async function AccountsPage({
                           <option value="ALL">All Statuses</option>
                           <option value="REQUESTED">Requested</option>
                           <option value="APPROVED">Approved</option>
-                          <option value="REJECTED">Rejected</option>
-                          <option value="DISBURSED">Disbursed</option>
+                          <option value="POSTPONED">Postponed</option>
                         </select>
                      </div>
                      <button type="submit" className="hidden sm:block px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors shadow-sm">
