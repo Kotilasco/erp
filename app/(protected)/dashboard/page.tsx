@@ -521,7 +521,7 @@ async function PendingTasks({
     return (
       <div className="flex flex-col gap-6 p-4">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Procurement Dashboard</h1>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 w-full max-w-5xl">
           {/* 1. Create Purchase Order */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"

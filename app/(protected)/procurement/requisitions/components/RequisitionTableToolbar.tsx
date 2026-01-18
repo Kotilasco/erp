@@ -62,11 +62,9 @@ export default function RequisitionTableToolbar({ currentTab = 'funding_needed' 
   };
 
   const tabs = [
-      { id: 'funding_needed', label: 'Funding Needed' },
-      { id: 'action_purchases', label: 'Action Purchases' },
+      { id: 'funding_needed', label: 'Create Purchase Order' },
+      { id: 'action_purchases', label: 'Procure' },
       { id: 'pending_approval', label: 'Pending Approval' },
-      { id: 'my_requests', label: 'My Requests' },
-      { id: 'completed', label: 'Completed' },
   ];
 
   return (

@@ -90,11 +90,11 @@ export default async function RequisitionsPage({
   let pageDesc = 'Manage purchase requisitions.';
 
   if (currentTab === 'funding_needed') {
-      pageTitle = 'Funding Needed';
-      pageDesc = 'Requisitions approved but waiting for funds.';
+      pageTitle = 'Create Purchase Order';
+      pageDesc = 'Requisitions approved but waiting to be converted into POs.';
   } else if (currentTab === 'action_purchases') {
-      pageTitle = 'Action Purchases';
-      pageDesc = 'Items ready to be purchased.';
+      pageTitle = 'Procure';
+      pageDesc = 'Items ready to be purchased from approved funding.';
   } else if (currentTab === 'pending_approval') {
       pageTitle = 'Pending Approval';
       pageDesc = 'Requisitions waiting for manager approval.';
@@ -180,7 +180,7 @@ export default async function RequisitionsPage({
                         className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
                       >
                         <EyeIcon className="h-3.5 w-3.5" />
-                        View
+                        {currentTab === 'action_purchases' ? 'Procure' : 'Create'}
                       </Link>
                     </td>
                   </tr>
