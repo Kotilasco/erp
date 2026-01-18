@@ -86,8 +86,8 @@ const PAGE_DEFS: PageDef[] = [
   
   // Admin
   { label: 'Audit Logs', href: '/audit-logs', icon: 'list', roles: ['ADMIN'] },
-  // Assets (multipurpose): Procurement / Security / PM / Admin
-  { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
+  // Assets (multipurpose): Security / PM / Admin (hidden for Procurement)
+  { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['SENIOR_PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
   // Employees: Admin, Managing Director, Project Manager
   { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'] },
   { label: 'Awaiting Delivery', href: '/dispatches?status=ARRIVED', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER', 'ADMIN', 'FOREMAN', 'PROJECT_COORDINATOR', 'DRIVER'] },
