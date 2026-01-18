@@ -521,7 +521,7 @@ async function PendingTasks({
     return (
       <div className="flex flex-col gap-6 p-4">
         <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Procurement Dashboard</h1>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 w-full max-w-5xl">
           {/* 1. Create Purchase Order */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"
@@ -653,10 +653,25 @@ async function PendingTasks({
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
-            Funding Requests
+            Approve Purchase Order
             {pendingFundingCount > 0 && (
               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600">
                 {pendingFundingCount}
+              </span>
+            )}
+          </Link>
+
+          <Link
+            href="/accounts?tab=receipts"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-amber-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-amber-600 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            Goods Receiving
+            {pendingGrnPos.length > 0 && (
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-amber-600">
+                {pendingGrnPos.length}
               </span>
             )}
           </Link>
@@ -668,32 +683,7 @@ async function PendingTasks({
            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Client Payments
-          </Link>
-
-          <Link
-            href="/projects"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            All Projects
-          </Link>
-
-          <Link
-            href="/accounts?tab=receipts"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-amber-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-amber-600 hover:shadow-xl hover:-translate-y-1"
-          >
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            Acknowledge Receipts
-            {pendingGrnPos.length > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-amber-600">
-                {pendingGrnPos.length}
-              </span>
-            )}
+            Payment History
           </Link>
         </div>
       </div>

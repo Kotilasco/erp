@@ -159,7 +159,7 @@ export async function rejectFunding(fundingId: string, reason: string) {
     'ACCOUNTING_CLERK',
     'MANAGING_DIRECTOR',
   ]);
-  const updatedFunding = await prisma.fundingRequest.update({
+  await prisma.fundingRequest.update({
     where: { id: fundingId },
     data: {
       status: 'REJECTED',
@@ -167,15 +167,7 @@ export async function rejectFunding(fundingId: string, reason: string) {
       decidedAt: new Date(),
       reason: reason || '—',
     },
-    select: { requisitionId: true },
   });
-
-  if (updatedFunding.requisitionId) {
-    await prisma.procurementRequisition.update({
-      where: { id: updatedFunding.requisitionId },
-      data: { status: 'REJECTED' },
-    });
-  }
 
   revalidatePath('/dashboard');
   revalidatePath('/accounts');
