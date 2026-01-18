@@ -344,6 +344,7 @@ model FundingRequest {
   approvedAt     DateTime?
   lastReminderAt DateTime?
   rejectedAt     DateTime?
+  postponedUntil DateTime?
   reminderCount  Int                    @default(0)
   requestedAt    DateTime               @default(now())
   requestedById  String?
