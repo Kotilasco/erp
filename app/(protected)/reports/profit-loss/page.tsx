@@ -22,7 +22,7 @@ export default async function GlobalPnLPage() {
   if (!user) redirect('/login');
 
   const allowedRoles = ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER'];
-  if (!allowedRoles.includes(user.role)) return redirect('/reports');
+  if (!allowedRoles.includes(user.role as string)) return redirect('/reports');
 
   // Filter Projects Logic
   const projectWhere = user.role === 'PROJECT_OPERATIONS_OFFICER' 
@@ -46,6 +46,7 @@ export default async function GlobalPnLPage() {
 
   const categories = {
       NEGOTIATION: globalItems.filter(i => i.category === 'NEGOTIATION'),
+      PLANNING: globalItems.filter(i => i.category === 'PLANNING'),
       PROCUREMENT: globalItems.filter(i => i.category === 'PROCUREMENT'),
       USAGE: globalItems.filter(i => i.category === 'USAGE'),
       RETURNS: globalItems.filter(i => i.category === 'RETURNS'),
@@ -79,14 +80,22 @@ export default async function GlobalPnLPage() {
                     <ArrowLeftIcon className="h-4 w-4" />
                     Reports Center
                 </Link>
+                <Link 
+                    href={`/reports/profit-loss-anomaly`}
+                    className="hidden md:inline-flex items-center gap-2 rounded-lg bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700 shadow-sm border border-rose-200 hover:bg-rose-100 transition-all"
+                >
+                    <ExclamationTriangleIcon className="h-4 w-4" />
+                    Anomaly Report
+                </Link>
                 <PrintButton />
             </div>
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Card title="Total Contract Value" icon={CurrencyDollarIcon} value={globalSummary.contractValueMinor} variant="neutral" />
             <Card title="Negotiation Delta" icon={ArrowTrendingDownIcon} value={globalSummary.negotiationVarianceMinor} variant="variance" />
+            <Card title="Planning Delta" icon={ArrowTrendingDownIcon} value={globalSummary.planningVarianceMinor} variant="variance" />
             <Card title="Procurement Delta" icon={ShoppingCartIcon} value={globalSummary.procurementVarianceMinor} variant="variance" />
             <Card title="Usage Variance" icon={ExclamationTriangleIcon} value={globalSummary.usageVarianceMinor} variant="variance" />
             <Card title="Returns Value" icon={ArchiveBoxIcon} value={globalSummary.returnsValueMinor} variant="variance" />
@@ -105,9 +114,13 @@ export default async function GlobalPnLPage() {
 
         {/* Detailed Tables */}
         <div className="space-y-6">
-            {categories.PROCUREMENT.length > 0 && (
-                 <GlobalPnLTable title="Procurement Efficiency" items={categories.PROCUREMENT} />
+            {categories.PLANNING.length > 0 && (
+                 <GlobalPnLTable title="Planning Efficiency (Quote vs Requisition)" items={categories.PLANNING} />
             )}
+            {categories.PROCUREMENT.length > 0 && (
+                 <GlobalPnLTable title="Procurement Efficiency (Requisition vs Purchase)" items={categories.PROCUREMENT} />
+            )}
+
             {categories.USAGE.length > 0 && (
                 <GlobalPnLTable title="Material Usage" items={categories.USAGE} />
             )}

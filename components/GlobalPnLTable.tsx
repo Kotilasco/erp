@@ -55,14 +55,15 @@ export default function GlobalPnLTable({
                         {paginatedItems.map((item, idx) => {
                             const details = item.structuredDetails;
                             const isProcurement = item.category === 'PROCUREMENT';
+                            const isPlanning = item.category === 'PLANNING';
                             const isUsage = item.category === 'USAGE';
                             
                             // Determine what to show in "Est" and "Act" columns based on category
-                            let estPrice = null;
-                            let actPrice = null;
+                            let estPrice = null; // Baseline (e.g. Quote)
+                            let actPrice = null; // Actual (e.g. Requisition Est or Purchase)
                             let qty = details?.quantity;
 
-                            if (isProcurement) {
+                            if (isProcurement || isPlanning) {
                                 estPrice = details?.estUnitPriceMinor;
                                 actPrice = details?.actualUnitPriceMinor;
                             } else if (isUsage) {

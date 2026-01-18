@@ -16,6 +16,8 @@ type PageDef = NavItem & { roles?: Role[] };
 const PAGE_DEFS: PageDef[] = [
   // Dashboard
   { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
+  // Approvals: SENIOR_PROCUREMENT
+  { label: 'Approvals', href: '/procurement/approvals', icon: 'check', roles: ['SENIOR_PROCUREMENT'] },
   // My Quotes: QS, SENIOR_QS, ADMIN
   { label: 'My Quotes', href: '/quotes', icon: 'list', roles: ['QS', 'SENIOR_QS', 'ADMIN'] },
   // New Quotations: SALES
@@ -30,13 +32,13 @@ const PAGE_DEFS: PageDef[] = [
     label: 'Projects',
     href: '/projects',
     icon: 'folder',
-    roles: ['ADMIN','PROJECT_OPERATIONS_OFFICER','PROCUREMENT','ACCOUNTS','CASHIER','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ACCOUNTING_CLERK','GENERAL_MANAGER','MANAGING_DIRECTOR'], // Updated as per user request (removed SECURITY, VIEWER, CLIENT)
+    roles: ['ADMIN','PROJECT_OPERATIONS_OFFICER','PROCUREMENT', 'SENIOR_PROCUREMENT', 'ACCOUNTS','CASHIER','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ACCOUNTING_CLERK','GENERAL_MANAGER','MANAGING_DIRECTOR'], // Updated as per user request (removed SECURITY, VIEWER, CLIENT)
   },
   {
     label: 'Reports',
     href: '/reports',
     icon: 'chart-pie',
-    roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER'],
+    roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT'],
   },
   // Senior PM Specific
   {
@@ -72,7 +74,7 @@ const PAGE_DEFS: PageDef[] = [
   },
   // Procurement & Logistics
   { label: 'Requisitions', href: '/requisitions', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR'] },
-  { label: 'Requisitions', href: '/procurement/requisitions', icon: 'list', roles: ['PROCUREMENT', 'ADMIN'] },
+  { label: 'Requisitions', href: '/procurement/requisitions', icon: 'list', roles: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN'] },
   { label: 'Purchase Orders', href: '/accounts/po', icon: 'list', roles: ['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ADMIN'] },
   { label: 'Dispatches', href: '/dispatches', icon: 'list', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'SECURITY', 'ADMIN'] },
   
@@ -80,12 +82,12 @@ const PAGE_DEFS: PageDef[] = [
   { label: 'Funds', href: '/funds', icon: 'banknotes', roles: ['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTING_AUDITOR', 'ADMIN'] },
   
   // Inventory: PROJECT_OPERATIONS_OFFICER, PROCUREMENT, SECURITY, ADMIN
-  { label: 'Inventory', href: '/inventory', icon: 'box', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SECURITY', 'ADMIN'] },
+  { label: 'Inventory', href: '/inventory', icon: 'box', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'ADMIN'] },
   
   // Admin
   { label: 'Audit Logs', href: '/audit-logs', icon: 'list', roles: ['ADMIN'] },
   // Assets (multipurpose): Procurement / Security / PM / Admin
-  { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
+  { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
   // Employees: Admin, Managing Director, Project Manager
   { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'] },
   { label: 'Awaiting Delivery', href: '/dispatches?status=ARRIVED', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER', 'ADMIN', 'FOREMAN', 'PROJECT_COORDINATOR', 'DRIVER'] },

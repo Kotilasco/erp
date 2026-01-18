@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 
 export type PnLSummary = {
     contractValueMinor: bigint;
+    planningVarianceMinor: bigint; // New: Quote vs Requisition
     negotiationVarianceMinor: bigint;
     procurementVarianceMinor: bigint;
     usageVarianceMinor: bigint;
@@ -13,7 +14,7 @@ export type PnLSummary = {
 export type VarianceItem = {
     id: string; // quoteLineId or similar
     description: string;
-    category: 'NEGOTIATION' | 'PROCUREMENT' | 'USAGE' | 'RETURNS';
+    category: 'NEGOTIATION' | 'PLANNING' | 'PROCUREMENT' | 'USAGE' | 'RETURNS'; // Added PLANNING
     varianceMinor: bigint; // Positive = Profit/Savings, Negative = Loss
     details: string; // Keep for backward compatibility or simple view
     projectName?: string; // Optional context
@@ -36,6 +37,7 @@ export type VarianceItem = {
 function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[] } {
     const items: VarianceItem[] = [];
     let negotiationVarianceMinor = 0n;
+    let planningVarianceMinor = 0n; // New
     let procurementVarianceMinor = 0n;
     let usageVarianceMinor = 0n;
     let returnsValueMinor = 0n;
@@ -46,6 +48,53 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
         // Implementation for negotiation variance logic (currently 0 per original logic)
     }
 
+    // --- 2. Planning Variance (Quote vs Requisition) ---
+    // Did we estimate/plan differently on the Requisition than what we Quoted?
+    if (project.requisitions) {
+        for (const req of project.requisitions) {
+            for (const item of req.items) {
+                if (item.quoteLineId && project.quote?.lines) {
+                    const ql = project.quote.lines.find((l: any) => l.id === item.quoteLineId);
+                    if (ql) {
+                        const reqQty = item.qtyRequested || item.qty || 0;
+                        if (reqQty > 0) {
+                            // Requisition Est Unit Price
+                            // If estPriceMinor is total, derive unit. 
+                            // Warning: estPriceMinor might be 0 if not set.
+                            if (item.estPriceMinor > 0n) {
+                                const reqUnitBig = item.estPriceMinor / BigInt(Math.max(1, Math.round(reqQty))); // Approximation
+                                const quoteUnitBig = ql.unitPriceMinor;
+
+                                const diffUnit = quoteUnitBig - reqUnitBig;
+                                // Positive = Savings (Quote > Req Est)
+                                // Negative = Loss (Quote < Req Est)
+
+                                // We track the variance on the quantity REQUESTED
+                                const variance = diffUnit * BigInt(Math.round(reqQty));
+
+                                if (variance !== 0n) {
+                                    planningVarianceMinor += variance;
+                                    items.push({
+                                        id: item.id,
+                                        description: `Planning: ${item.description}`,
+                                        category: 'PLANNING',
+                                        varianceMinor: variance,
+                                        details: `Quote: ${Number(quoteUnitBig) / 100} -> Req: ${Number(reqUnitBig) / 100}`,
+                                        structuredDetails: {
+                                            estUnitPriceMinor: quoteUnitBig, // "Est" is Quote here
+                                            actualUnitPriceMinor: reqUnitBig, // "Act" is Requisition Est here
+                                            quantity: reqQty
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // --- 2. Procurement Variance ---
     if (project.requisitions) {
         for (const req of project.requisitions) {
@@ -54,14 +103,28 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
                 if (item.purchases) {
                     for (const purch of item.purchases) {
                         if (purch.qty > 0) {
-                            let baselineUnitPrice = item.estPriceMinor > 0n ? item.estPriceMinor : 0n;
+                            // Calculate Est Unit Price (Total Est / Total Req Qty)
+                            const reqQty = item.qtyRequested || item.qty || 1;
+                            let baselineTotal = item.estPriceMinor > 0n ? item.estPriceMinor : 0n;
+
+                            // Override with Quote Line if available
                             if (item.quoteLineId && project.quote?.lines) {
                                 const ql = project.quote.lines.find((l: any) => l.id === item.quoteLineId);
-                                if (ql) baselineUnitPrice = ql.unitPriceMinor;
+                                if (ql) {
+                                    // Quote Line Unit Price is explicitly unit price
+                                    baselineTotal = ql.unitPriceMinor * BigInt(Math.floor(reqQty));
+                                }
                             }
-                            const actualUnitPrice = purch.priceMinor;
-                            const diff = baselineUnitPrice - actualUnitPrice;
-                            const variance = diff * BigInt(Math.round(purch.qty));
+
+                            const baselineUnitPrice = Number(baselineTotal) / reqQty; // derived unit price (float safe for minor units?)
+                            // Using BigInt for unit price might lose precision if division not clean. 
+                            // Better: Variance = (EstUnit - ActUnit) * Qty
+                            // Variance = (EstTotal/ReqQty * PurchQty) - PurchTotal
+
+                            const estCostForBatch = BigInt(Math.round(baselineUnitPrice * purch.qty));
+                            const actualCostForBatch = purch.priceMinor; // Total for this purchase
+
+                            const variance = estCostForBatch - actualCostForBatch;
 
                             if (variance !== 0n) {
                                 procurementVarianceMinor += variance;
@@ -70,10 +133,10 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
                                     description: `Procurement: ${item.description || 'Item'} (${purch.vendor})`,
                                     category: 'PROCUREMENT',
                                     varianceMinor: variance,
-                                    details: `Est: ${Number(baselineUnitPrice) / 100}, Paid: ${Number(actualUnitPrice) / 100} x ${purch.qty}`,
+                                    details: `Est: ${(baselineUnitPrice / 100).toFixed(2)}, Paid: ${(Number(actualCostForBatch) / 100 / purch.qty).toFixed(2)} x ${purch.qty}`,
                                     structuredDetails: {
-                                        estUnitPriceMinor: baselineUnitPrice,
-                                        actualUnitPriceMinor: actualUnitPrice,
+                                        estUnitPriceMinor: BigInt(Math.round(baselineUnitPrice)),
+                                        actualUnitPriceMinor: BigInt(Math.round(Number(purch.priceMinor) / purch.qty)),
                                         quantity: purch.qty
                                     }
                                 });
@@ -159,6 +222,7 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
 
     const netProfitLossMinor =
         negotiationVarianceMinor +
+        planningVarianceMinor + // Include Planning
         procurementVarianceMinor +
         usageVarianceMinor +
         returnsValueMinor;
@@ -166,6 +230,7 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
     return {
         summary: {
             contractValueMinor,
+            planningVarianceMinor, // Export
             negotiationVarianceMinor,
             procurementVarianceMinor,
             usageVarianceMinor,
@@ -229,6 +294,7 @@ export async function getBulkPnL(where: Prisma.ProjectWhereInput): Promise<{ sum
 
     const globalSummary: PnLSummary = {
         contractValueMinor: BigInt(0),
+        planningVarianceMinor: BigInt(0), // New
         negotiationVarianceMinor: BigInt(0),
         procurementVarianceMinor: BigInt(0),
         usageVarianceMinor: BigInt(0),
@@ -246,6 +312,7 @@ export async function getBulkPnL(where: Prisma.ProjectWhereInput): Promise<{ sum
 
         // Aggregate
         globalSummary.contractValueMinor += res.summary.contractValueMinor;
+        globalSummary.planningVarianceMinor += res.summary.planningVarianceMinor;
         globalSummary.negotiationVarianceMinor += res.summary.negotiationVarianceMinor;
         globalSummary.procurementVarianceMinor += res.summary.procurementVarianceMinor;
         globalSummary.usageVarianceMinor += res.summary.usageVarianceMinor;
