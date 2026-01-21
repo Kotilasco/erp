@@ -199,14 +199,37 @@ export async function rejectItemReview(requisitionId: string, itemId: string, re
   if (!user) throw new Error('Authentication required');
   assertRoles(user.role as any, ['SENIOR_PROCUREMENT', 'ADMIN']);
 
+  console.log(`[rejectItemReview] Item: ${itemId}, Reason: "${reason}"`);
+
   await prisma.procurementRequisitionItem.update({
     where: { id: itemId },
     data: {
       reviewRequested: false,
       reviewApproved: false,
+      // @ts-ignore
       reviewRejectionReason: reason
     }
   });
+
+  // Check if any items are still pending review for this requisition
+  const remainingReviews = await prisma.procurementRequisitionItem.count({
+    where: {
+      requisitionId,
+      reviewRequested: true,
+    },
+  });
+
+  // If no items are left to review, we can unlock the requisition (back to SUBMITTED)
+  // so the officer can see the rejections and fix them.
+  if (remainingReviews === 0) {
+    await prisma.procurementRequisition.update({
+      where: { id: requisitionId },
+      data: {
+        status: 'SUBMITTED',
+        reviewSubmittedAt: null
+      }
+    });
+  }
 
   revalidatePath(`/procurement/requisitions/${requisitionId}`);
 }

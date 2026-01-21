@@ -32,7 +32,7 @@ export default function ProcurementItemsTable({
   readOnly = false,
   hideFinancials = false,
   ...props
-}: Props & { hideFinancials?: boolean }) {
+}: Props & { hideFinancials?: boolean, rejectItemReviewAction?: (id: string, reason: string) => Promise<any> }) {
   return (
     <ProcurementItemsTableClient
       {...props}
@@ -48,7 +48,7 @@ export default function ProcurementItemsTable({
         approveTopUpRequest,
         requestItemReview,
         approveItemReview,
-        rejectItemReview,
+        rejectItemReview: props.rejectItemReviewAction || rejectItemReview,
         updateRequisitionItemUnitPrice,
       }}
     />

@@ -352,7 +352,7 @@ export default async function ProjectsPage({
                          <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Link 
-                                 href={`/projects/${project.id}/payments`}
+                                 href={`/projects/${project.id}/payments?action=receive&amount=${Number(dueAmount)/100}&type=${typeLabel.toLowerCase()}`}
                                  className="inline-flex items-center justify-center gap-1 rounded border border-orange-600 bg-orange-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-500 hover:border-orange-500 shadow-sm"
                               >
                                  <BanknotesIcon className="h-3.5 w-3.5" />

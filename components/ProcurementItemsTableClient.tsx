@@ -396,7 +396,7 @@ export default function ProcurementItemsTableClient({
                       )}
                       {!hideFinancials && (
                         <td className="px-6 py-4">
-                          {!readOnly || (reviewFlags[item.id] && !item.reviewRequested) ? (
+                          {!readOnly || (reviewFlags[item.id] && !item.reviewRequested) || (!!item.reviewRejectionReason && !item.reviewRequested) ? (
                             <ClearableNumberInput
                               id={`visible-unitPrice-${item.id}`}
                               type="text"

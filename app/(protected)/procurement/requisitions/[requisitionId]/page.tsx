@@ -28,7 +28,7 @@ import { USER_ROLES, UserRole } from '@/lib/workflow';
 import SubmitButton from '@/components/SubmitButton';
 import { redirect } from 'next/navigation';
 import { setFlashMessage } from '@/lib/flash.server';
-import { markAsPurchased, submitRequisition, deleteStagedPurchase, cancelItemReview } from './actions';
+import { markAsPurchased, submitRequisition, deleteStagedPurchase, cancelItemReview, rejectItemReview } from './actions';
 import { createPartialPOFromPurchases } from '@/app/(protected)/projects/actions';
 import PrintButton from '@/components/PrintButton';
 import PrintHeader from '@/components/PrintHeader';
@@ -615,9 +615,9 @@ export default async function RequisitionDetailPage({
                 showVariance={canViewVariance}
                 unitPriceFormIds={[fundingFormId, reviewFormId]}
                 reviewFlagFormIds={[reviewFormId]}
-                showReviewControls={showReviewControls && !fundingLocked}
                 readOnly={reviewSubmissionPending || fundingLocked}
                 hideFinancials={role === 'PROJECT_OPERATIONS_OFFICER' && !fundingLocked}
+                rejectItemReviewAction={rejectItemReview.bind(null, requisitionId)}
               />
             </div>
           </CardContent>
