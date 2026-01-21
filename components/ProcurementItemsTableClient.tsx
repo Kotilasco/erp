@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import clsx from 'clsx';
 import ClearableNumberInput from './ClearableNumberInput';
 
 type Topup = {
@@ -32,8 +33,10 @@ export type ProcurementItemRow = {
   requestedTotalMajor: number;
   quotedUnitMajor: number;
   requestedUnitMajor: number;
+  stagedUnitMajor: number;
   reviewRequested: boolean;
   reviewApproved: boolean;
+  reviewRejectionReason?: string | null;
   topups: TopupRow[];
 };
 
@@ -55,7 +58,7 @@ type Actions = {
   approveTopUpRequest: (id: string, approve?: boolean) => Promise<any>;
   requestItemReview: (id: string, flag: boolean) => Promise<any>;
   approveItemReview: (id: string) => Promise<any>;
-  rejectItemReview: (id: string) => Promise<any>;
+  rejectItemReview: (id: string, reason: string) => Promise<any>;
   updateRequisitionItemUnitPrice: (id: string, unitPriceMajor: number) => Promise<any>;
 };
 
@@ -89,12 +92,14 @@ export default function ProcurementItemsTableClient({
     const init: Record<string, string> = {};
     grouped.forEach((group) =>
       group.items.forEach((item) => {
-        const req = Number(item.requestedUnitMajor);
-        const quoted = Number(item.quotedUnitMajor);
-        // If requested matches quoted (approx) or is 0, we show empty (using placeholder 0).
-        // User explicitly wanted 0/Empty default to hide sensitive quoted price.
-        const isDefault = Math.abs(req - quoted) < 0.01;
-        init[item.id] = (req > 0 && !isDefault) ? req.toString() : '';
+        if (item.reviewRequested) {
+          init[item.id] = item.stagedUnitMajor > 0 ? item.stagedUnitMajor.toString() : '';
+        } else {
+          const req = Number(item.requestedUnitMajor);
+          const quoted = Number(item.quotedUnitMajor);
+          const isDefault = Math.abs(req - quoted) < 0.01;
+          init[item.id] = (req > 0 && !isDefault) ? req.toString() : '';
+        }
       })
     );
     return init;
@@ -119,6 +124,8 @@ export default function ProcurementItemsTableClient({
   const [recentRejected, setRecentRejected] = useState<Record<string, boolean>>({});
   const [status, setStatus] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState<{ itemId: string } | null>(null);
+  const [rejectionModal, setRejectionModal] = useState<{ itemId: string; description: string } | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const formatter = useMemo(
@@ -136,10 +143,14 @@ export default function ProcurementItemsTableClient({
     const next: Record<string, string> = {};
     grouped.forEach((group) =>
       group.items.forEach((item) => {
-        const req = Number(item.requestedUnitMajor);
-        const quoted = Number(item.quotedUnitMajor);
-        const isDefault = Math.abs(req - quoted) < 0.01;
-        next[item.id] = (req > 0 && !isDefault) ? req.toString() : '';
+        if (item.reviewRequested) {
+          next[item.id] = item.stagedUnitMajor > 0 ? item.stagedUnitMajor.toString() : '';
+        } else {
+          const req = Number(item.requestedUnitMajor);
+          const quoted = Number(item.quotedUnitMajor);
+          const isDefault = Math.abs(req - quoted) < 0.01;
+          next[item.id] = (req > 0 && !isDefault) ? req.toString() : '';
+        }
       })
     );
     setUnitPriceInputs(next);
@@ -239,7 +250,9 @@ export default function ProcurementItemsTableClient({
     startTransition(() => {
       actions
         .requestItemReview(item.id, flag)
-        .then(() => router.refresh())
+        .then(() => {
+             // success - do nothing, keep local state
+        })
         .catch((err) => setStatus(err?.message ?? 'Failed to update review flag'));
     });
   };
@@ -254,17 +267,38 @@ export default function ProcurementItemsTableClient({
   };
 
   const handleRejectReview = (item: ProcurementItemRow) => {
-    const resetTo = item.quotedUnitMajor > 0 ? item.quotedUnitMajor.toString() : '';
-    setReviewFlags((prev) => ({ ...prev, [item.id]: false }));
-    setRecentRejected((prev) => ({ ...prev, [item.id]: true }));
-    setUnitPriceInputs((prev) => ({ ...prev, [item.id]: resetTo }));
-    startTransition(() => {
-      actions
-        .rejectItemReview(item.id)
-        .then(() => router.refresh())
-        .catch((err) => setStatus(err?.message + ' Failed to reject review'));
-    });
+    setRejectionModal({ itemId: item.id, description: item.description });
+    setRejectionReasonInput('');
   };
+
+  const confirmRejection = () => {
+      if (!rejectionModal) return;
+      const { itemId } = rejectionModal;
+      const reason = rejectionReasonInput.trim();
+
+      if (!reason) {
+          setStatus('Reason is required to reject');
+          return;
+      }
+
+      // Optimistic updates
+      const item = grouped.flatMap(g => g.items).find(i => i.id === itemId);
+      if (item) {
+          const resetTo = item.quotedUnitMajor > 0 ? item.quotedUnitMajor.toString() : '';
+          setReviewFlags((prev) => ({ ...prev, [itemId]: false }));
+          setRecentRejected((prev) => ({ ...prev, [itemId]: true }));
+          setUnitPriceInputs((prev) => ({ ...prev, [itemId]: resetTo }));
+      }
+
+      setRejectionModal(null);
+      
+      startTransition(() => {
+        actions
+          .rejectItemReview(itemId, reason)
+          .then(() => router.refresh())
+          .catch((err) => setStatus(err?.message + ' Failed to reject review'));
+      });
+  }
 
   return (
     <div className="space-y-6">
@@ -278,7 +312,9 @@ export default function ProcurementItemsTableClient({
           Current total: <span className="font-semibold">{formatter.format(totalCalculated)}</span>
         </div>
       )}
-      {grouped.map((group) => (
+      {grouped.map((group) => {
+        if (group.items.length === 0) return null;
+        return (
         <div key={group.section} className="space-y-4">
            <div className="flex items-center justify-between px-1">
             <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
@@ -338,6 +374,12 @@ export default function ProcurementItemsTableClient({
                             ))}
                           </div>
                         )}
+                        {/* Display Rejection Reason if present and not currently under review (or if we want to show history) */}
+                        {!item.reviewRequested && item.reviewRejectionReason && (
+                             <div className="mt-2 text-xs text-rose-700 bg-rose-50 p-2 rounded border border-rose-200">
+                                <strong>Rejection Reason:</strong> {item.reviewRejectionReason}
+                             </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{item.unit ?? '-'}</td>
                       <td className="px-6 py-4 text-right text-sm text-gray-600">{item.quotedQty.toLocaleString()}</td>
@@ -354,11 +396,7 @@ export default function ProcurementItemsTableClient({
                       )}
                       {!hideFinancials && (
                         <td className="px-6 py-4">
-                          {readOnly ? (
-                            <span className="font-medium text-gray-900">
-                              {formatter.format(Number(unitPriceInputs[item.id] ?? 0))}
-                            </span>
-                          ) : (
+                          {!readOnly || (reviewFlags[item.id] && !item.reviewRequested) ? (
                             <ClearableNumberInput
                               id={`visible-unitPrice-${item.id}`}
                               type="text"
@@ -369,9 +407,19 @@ export default function ProcurementItemsTableClient({
                                 setUnitPriceInputs((prev) => ({ ...prev, [item.id]: nextVal }));
                               }}
                               onBlur={() => handleUnitPriceBlur(item)}
-                              disabled={!permissions.canEditUnitPrice}
-                              className="w-24 text-right rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                              disabled={
+                                reviewFlags[item.id] 
+                                    ? !permissions.canToggleReview 
+                                    : !permissions.canEditUnitPrice
+                              }
+                                className={clsx(
+                                  "w-24 text-right rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                                )}
                             />
+                          ) : (
+                            <span className="font-medium text-gray-900">
+                              {formatter.format(Number(unitPriceInputs[item.id] ?? 0))}
+                            </span>
                           )}
                           {unitPriceFormIds.map((formId) => (
                             <input
@@ -426,7 +474,7 @@ export default function ProcurementItemsTableClient({
                               <button
                                 type="button"
                                 onClick={() => handleTopUpRequest(item.id)}
-                                className="rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-500 disabled:opacity-60"
+                                className="rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-50 disabled:opacity-60"
                                 disabled={isPending || readOnly}
                               >
                                 Request more
@@ -507,7 +555,8 @@ export default function ProcurementItemsTableClient({
           </div>
         </div>
         </div>
-      ))}
+        );
+      })}
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
@@ -529,6 +578,45 @@ export default function ProcurementItemsTableClient({
           </div>
         </div>
       )}
+
+      {rejectionModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+              <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl transform transition-all">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">Reject Review Request</h3>
+                  <p className="text-sm text-gray-600 mb-4">
+                      Please provide a reason for rejecting the review for <strong>{rejectionModal.description}</strong>.
+                      This will be visible to the Procurement Officer.
+                  </p>
+                  
+                  <textarea
+                      className="w-full rounded-lg border-gray-300 shadow-sm focus:border-rose-500 focus:ring-rose-500 sm:text-sm min-h-[100px]"
+                      placeholder="Enter rejection reason..."
+                      value={rejectionReasonInput}
+                      onChange={(e) => setRejectionReasonInput(e.target.value)}
+                  />
+
+                  <div className="mt-6 flex justify-end gap-3">
+                      <button
+                          type="button"
+                          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                          onClick={() => setRejectionModal(null)}
+                          disabled={isPending}
+                      >
+                          Cancel
+                      </button>
+                      <button
+                          type="button"
+                          className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-60"
+                          onClick={confirmRejection}
+                          disabled={isPending || !rejectionReasonInput.trim()}
+                      >
+                          {isPending ? 'Rejecting...' : 'Confirm Rejection'}
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 }

@@ -72,9 +72,24 @@ async function clearReviewSubmissionIfNone(requisitionId: string) {
     where: { requisitionId, reviewRequested: true },
   });
   if (pending === 0) {
+    // Unlock and clear note
+    const current = await prisma.procurementRequisition.findUnique({ where: { id: requisitionId }, select: { status: true, note: true } });
+    const updates: any = { reviewSubmittedAt: null, reviewSubmittedById: null };
+
+    if (current?.status === 'AWAITING_APPROVAL') {
+      updates.status = 'SUBMITTED';
+    }
+
+    // Clear note
+    let newNote = current?.note;
+    if (newNote && newNote.includes('Review request from Req')) {
+      newNote = newNote.split('\n').filter(line => !line.includes('Review request from Req')).join('\n').trim();
+    }
+    updates.note = newNote;
+
     await prisma.procurementRequisition.update({
       where: { id: requisitionId },
-      data: { reviewSubmittedAt: null, reviewSubmittedById: null },
+      data: updates,
     });
   }
 }
@@ -107,6 +122,12 @@ export async function submitProcurementRequest(requisitionId: string, amountMajo
   const totalMinor = req.items.reduce((acc, it) => acc + BigInt(it.estPriceMinor ?? 0n), 0n);
   const amountMinor =
     typeof amountMajor === 'number' && amountMajor >= 0 ? toMinor(amountMajor) : totalMinor;
+
+  // Clear any rejection reasons now that we are proceeding with funding
+  await prisma.procurementRequisitionItem.updateMany({
+    where: { requisitionId },
+    data: { reviewRejectionReason: null },
+  });
 
   await prisma.fundingRequest.create({
     data: {
@@ -2658,34 +2679,7 @@ export async function requestTopUpForItem(requisitionItemId: string, qty: number
   return { ok: true };
 }
 
-export async function sendRequisitionForReview(requisitionId: string) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error('Authentication required');
-  const role = assertRole(user.role);
-  if (!['PROCUREMENT', 'ADMIN'].includes(role)) {
-    throw new Error('Only Procurement can send items for Senior review');
-  }
-
-  const requisition = await prisma.procurementRequisition.findUnique({
-    where: { id: requisitionId },
-    select: { projectId: true },
-  });
-  if (!requisition) throw new Error('Requisition not found');
-
-  const pending = await prisma.procurementRequisitionItem.count({
-    where: { requisitionId, reviewRequested: true },
-  });
-  if (pending === 0) throw new Error('Mark at least one item for review before sending');
-  console.log("ggfgfffggffggffggffg")
-  await prisma.procurementRequisition.update({
-    where: { id: requisitionId },
-    data: { reviewSubmittedAt: new Date(), reviewSubmittedById: user.id },
-  });
-
-  revalidatePath(`/procurement/requisitions/${requisitionId}`);
-  revalidatePath(`/projects/${requisition.projectId}`);
-  return { ok: true };
-}
+// function sendRequisitionForReview removed (replaced by newer version at bottom)
 
 export async function approveTopUpRequest(topupId: string, approve = true) {
   const user = await getCurrentUser();
@@ -2766,6 +2760,8 @@ export async function requestItemReview(requisitionItemId: string, flag: boolean
     data: {
       reviewRequested: flag,
       reviewApproved: false,
+      // @ts-ignore
+      stagedUnitPriceMinor: flag ? undefined : 0n, // Reset if un-flagging
     },
     select: { requisitionId: true, requisition: { select: { projectId: true } } },
   });
@@ -2784,9 +2780,38 @@ export async function approveItemReview(requisitionItemId: string) {
   if (!['SENIOR_PROCUREMENT', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role))
     throw new Error('Not authorized to approve reviews');
 
+  // Calculate new amount based on the APPROVED requested price (or Staged if present)
+  const pendingItem = await prisma.procurementRequisitionItem.findUnique({
+    where: { id: requisitionItemId },
+    select: {
+      qty: true,
+      qtyRequested: true,
+      requestedUnitPriceMinor: true,
+      // @ts-ignore
+      stagedUnitPriceMinor: true
+    }
+  });
+
+  // @ts-ignore
+  const staged = BigInt(pendingItem?.stagedUnitPriceMinor ?? 0n);
+  const requested = pendingItem?.requestedUnitPriceMinor ?? 0n;
+
+  // If staged price exists (In-Place Review), promote it. Otherwise use requested (Post-Funding Split).
+  const newUnitMinor = staged > 0n ? staged : requested;
+
+  const qty = Number(pendingItem?.qtyRequested ?? pendingItem?.qty ?? 0);
+  const newAmountMinor = BigInt(qty) * newUnitMinor;
+
   const item = await prisma.procurementRequisitionItem.update({
     where: { id: requisitionItemId },
-    data: { reviewApproved: true, reviewRequested: false },
+    data: {
+      reviewApproved: true,
+      reviewRequested: false,
+      requestedUnitPriceMinor: newUnitMinor, // Promote staged -> requested
+      amountMinor: newAmountMinor,           // Update total budget
+      // @ts-ignore
+      stagedUnitPriceMinor: 0n               // Clear staged
+    },
     select: { requisitionId: true, requisition: { select: { projectId: true } } },
   });
 
@@ -2867,10 +2892,23 @@ export async function updateRequisitionItemUnitPrice(
   }
 
   const priceMinor = BigInt(Math.round(price * 100));
-  await prisma.procurementRequisitionItem.update({
-    where: { id: requisitionItemId },
-    data: { requestedUnitPriceMinor: priceMinor },
-  });
+
+  // SEPARATION OF CONCERNS:
+  // If review is requested, we update the STAGED price.
+  // If not, we update the main APPROVED/REQUESTED price.
+
+  if (item.reviewRequested) {
+    await prisma.procurementRequisitionItem.update({
+      where: { id: requisitionItemId },
+      // @ts-ignore
+      data: { stagedUnitPriceMinor: priceMinor },
+    });
+  } else {
+    await prisma.procurementRequisitionItem.update({
+      where: { id: requisitionItemId },
+      data: { requestedUnitPriceMinor: priceMinor },
+    });
+  }
 
   revalidatePath(`/procurement/requisitions/${item.requisitionId}`);
   if (item.requisition?.projectId) revalidatePath(`/projects/${item.requisition.projectId}`);
@@ -2891,21 +2929,31 @@ export async function saveUnitPricesForRequisition(
 
   const items = await prisma.procurementRequisitionItem.findMany({
     where: { requisitionId, id: { in: updates.map((u) => u.itemId) } },
-    select: { id: true },
+    select: { id: true, reviewRequested: true },
   });
-  const allowed = new Set(items.map((it) => it.id));
+
+  const itemMap = new Map(items.map(it => [it.id, it]));
 
   await prisma.$transaction(
     updates
-      .filter((upd) => allowed.has(upd.itemId))
-      .map((upd) =>
-        prisma.procurementRequisitionItem.update({
-          where: { id: upd.itemId },
-          data: {
-            requestedUnitPriceMinor: BigInt(Math.max(0, Math.round(upd.unitPriceMajor * 100))),
-          },
-        }),
-      ),
+      .filter((upd) => itemMap.has(upd.itemId))
+      .map((upd) => {
+        const item = itemMap.get(upd.itemId)!;
+        const priceMinor = BigInt(Math.max(0, Math.round(upd.unitPriceMajor * 100)));
+
+        if (item.reviewRequested) {
+          return prisma.procurementRequisitionItem.update({
+            where: { id: upd.itemId },
+            // @ts-ignore
+            data: { stagedUnitPriceMinor: priceMinor }
+          });
+        } else {
+          return prisma.procurementRequisitionItem.update({
+            where: { id: upd.itemId },
+            data: { requestedUnitPriceMinor: priceMinor }
+          });
+        }
+      }),
   );
 }
 
@@ -3701,3 +3749,190 @@ export async function saveSchedule(
     return { ok: true, scheduleId: schedule.id };
   });
 }
+
+
+export async function sendRequisitionForReviewInPlace(requisitionId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRoles(user.role as any, ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN']);
+
+  const req = await prisma.procurementRequisition.findUnique({
+    where: { id: requisitionId },
+    select: { id: true, note: true }
+  });
+  if (!req) throw new Error('Requisition not found');
+
+  const pendingItems = await prisma.procurementRequisitionItem.findMany({
+    where: { requisitionId, reviewRequested: true },
+    select: {
+      id: true, description: true, requestedUnitPriceMinor: true,
+      // @ts-ignore
+      stagedUnitPriceMinor: true
+    }
+  });
+  if (pendingItems.length === 0) throw new Error('Mark at least one item for review before sending');
+
+  // Validate Prices
+  const missingPrice = pendingItems.find(it => {
+    // Check staged price (since that is what we edit during review staging).
+    // @ts-ignore
+    const price = BigInt(it.stagedUnitPriceMinor ?? 0);
+    return price <= 0n;
+  });
+
+  if (missingPrice) {
+    throw new Error(`Item "${missingPrice.description}" marked for review must have a unit price > 0.`);
+  }
+
+  // Update In-Place:
+  // 1. Set reviewSubmittedAt/By
+  // 2. Append/Set "Review request" in note to trigger routing logic (Hidden from Procurement, Visible to Senior)
+  //    (We check if note already contains it to avoid duplication)
+  const newNote = req.note?.includes('Review request from Req')
+    ? req.note
+    : `${req.note || ''}\nReview request from Req #${req.id.slice(-6).toUpperCase()}`.trim();
+
+  await prisma.procurementRequisition.update({
+    where: { id: requisitionId },
+    data: {
+      reviewSubmittedAt: new Date(),
+      reviewSubmittedById: user.id,
+      note: newNote,
+      status: 'AWAITING_APPROVAL'
+    },
+  });
+
+  revalidatePath(`/procurement/requisitions/${requisitionId}`);
+  revalidatePath(`/projects`); // Update dashboard counts
+  return { ok: true };
+}
+
+export async function sendRequisitionForReview(requisitionId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRoles(user.role as any, ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN']);
+
+  const req = await prisma.procurementRequisition.findUnique({
+    where: { id: requisitionId },
+    include: { items: { include: { quoteLine: true } }, project: true }
+  });
+  if (!req) throw new Error('Requisition not found');
+
+  // Identify items to move (review requested but not approved)
+  const itemsToMove = req.items.filter(it => it.reviewRequested && !it.reviewApproved);
+  if (itemsToMove.length === 0) return; // Nothing to do
+
+  await prisma.$transaction(async (tx) => {
+    // Create new Requisition
+    const newReq = await tx.procurementRequisition.create({
+      data: {
+        projectId: req.projectId,
+        status: 'AWAITING_APPROVAL', // New status for review requests
+        submittedById: user.id,
+        note: `Review request from Req #${req.id.slice(-6).toUpperCase()}`,
+        items: {
+          create: [] // we will populate this manually in the loop
+        }
+      }
+    });
+
+    for (const item of itemsToMove) {
+      // Calculate remaining (unpurchased) quantity
+      const purchases = await tx.purchase.findMany({
+        where: { requisitionItemId: item.id },
+        select: { qty: true }
+      });
+      const purchasedQty = purchases.reduce((s, p) => s + p.qty, 0);
+      const totalReqQty = Number(item.qtyRequested ?? item.qty ?? 0);
+      const remainingQty = Math.max(0, totalReqQty - purchasedQty);
+
+      if (remainingQty <= 0) {
+        // If item is fully purchased, just clear the review flag on the old item so it stops blocking
+        await tx.procurementRequisitionItem.update({
+          where: { id: item.id },
+          data: { reviewRequested: false }
+        });
+        continue;
+      }
+
+      // Add to new Req
+      await tx.procurementRequisitionItem.create({
+        data: {
+          requisitionId: newReq.id,
+          description: item.description,
+          unit: item.unit,
+          qty: remainingQty,
+          // qty: remainingQty, // Duplicate removed
+          qtyRequested: remainingQty,
+          // Use the STAGED price as the new Requested Price
+          // @ts-ignore
+          requestedUnitPriceMinor: item.stagedUnitPriceMinor ?? item.requestedUnitPriceMinor,
+          // @ts-ignore
+          amountMinor: BigInt(Math.round(remainingQty * Number(item.stagedUnitPriceMinor ?? item.requestedUnitPriceMinor ?? 0n))),
+          quoteLineId: item.quoteLineId,
+          estPriceMinor: item.estPriceMinor,
+          reviewRequested: true,
+          reviewApproved: false
+        }
+      });
+
+      // Update old item to close it out (reduce qtyRequested to what's already bought)
+      // and clear the review flag so it doesn't show up in the staged list anymore
+      await tx.procurementRequisitionItem.update({
+        where: { id: item.id },
+        data: {
+          qtyRequested: purchasedQty,
+          reviewRequested: false,
+          // @ts-ignore
+          // @ts-ignore
+          stagedUnitPriceMinor: 0n,
+          // Sync amountMinor with new qtyRequested (purchasedQty)
+          // @ts-ignore
+          amountMinor: BigInt(Math.round(purchasedQty * Number(item.requestedUnitPriceMinor ?? 0n)))
+        }
+      });
+    }
+
+    // NEW: Calculate total reduction in value for the moved items, to update the Approved Funding.
+    // We must reduce the funding by the amount that was APPROVED for these items.
+    let totalReductionMinor = 0n;
+    for (const item of itemsToMove) {
+      const purchases = await tx.purchase.findMany({ where: { requisitionItemId: item.id }, select: { qty: true } });
+      const purchasedQty = purchases.reduce((s, p) => s + p.qty, 0);
+      const totalReqQty = Number(item.qtyRequested ?? item.qty ?? 0);
+      const remainingQty = Math.max(0, totalReqQty - purchasedQty);
+      if (remainingQty <= 0) continue;
+
+      // Priority: Requested (Approved) -> Quote -> Estimate -> Amount/Qty
+      let originalPriceMinor = item.requestedUnitPriceMinor ?? item.quoteLine?.unitPriceMinor ?? item.estPriceMinor ?? 0n;
+
+      if (!originalPriceMinor && totalReqQty > 0 && item.amountMinor) {
+        originalPriceMinor = BigInt(item.amountMinor) / BigInt(totalReqQty);
+      }
+
+      totalReductionMinor += BigInt(Math.round(remainingQty * Number(originalPriceMinor)));
+    }
+
+    if (totalReductionMinor > 0n) {
+      // Find the active funding request
+      const funding = await tx.fundingRequest.findFirst({
+        where: { requisitionId: req.id, status: { in: ['REQUESTED', 'APPROVED'] } },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (funding) {
+        const newAmount = BigInt(funding.amountMinor) - totalReductionMinor;
+        await tx.fundingRequest.update({
+          where: { id: funding.id },
+          data: { amountMinor: newAmount > 0n ? newAmount : 0n } // Ensure not negative
+        });
+      }
+    }
+
+  });
+
+  revalidatePath(`/procurement/requisitions/${requisitionId}`);
+  revalidatePath(`/projects/${req.projectId}`);
+}
+
+

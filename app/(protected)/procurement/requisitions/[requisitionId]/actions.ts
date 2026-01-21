@@ -134,3 +134,79 @@ export async function submitRequisition(requisitionId: string) {
   revalidatePath('/dashboard')
   redirect(`/projects/${req.projectId}/requisitions/${requisitionId}`);
 }
+
+export async function deleteStagedPurchase(purchaseId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRoles(user.role as any, ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN']);
+
+  const purchase = await prisma.purchase.findUnique({
+    where: { id: purchaseId },
+    include: { requisition: true },
+  });
+
+  if (!purchase) throw new Error('Requisition purchase not found');
+  if (purchase.purchaseOrderId) throw new Error('Cannot delete purchase linked to a PO');
+
+  await prisma.purchase.delete({
+    where: { id: purchaseId },
+  });
+
+  revalidatePath(`/procurement/requisitions/${purchase.requisitionId}`);
+}
+
+export async function requestItemReview(requisitionId: string, itemId: string, newUnitPriceMajor: number) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRoles(user.role as any, ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN']);
+
+  await prisma.procurementRequisitionItem.update({
+    where: { id: itemId },
+    data: {
+      reviewRequested: true,
+      reviewApproved: false,
+      // @ts-ignore
+      // @ts-ignore
+      stagedUnitPriceMinor: BigInt(Math.round(newUnitPriceMajor * 100)), // Use staged price!
+      reviewRejectionReason: null // Clear previous rejection reason
+    }
+  });
+
+  revalidatePath(`/procurement/requisitions/${requisitionId}`);
+}
+
+export async function cancelItemReview(requisitionId: string, itemId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRoles(user.role as any, ['PROCUREMENT', 'SENIOR_PROCUREMENT', 'ADMIN']);
+
+  await prisma.procurementRequisitionItem.update({
+    where: { id: itemId },
+    data: {
+      reviewRequested: false, // Un-flag
+      reviewApproved: false,
+      // @ts-ignore
+      stagedUnitPriceMinor: 0n, // Reset staged price
+      // requestedUnitPriceMinor: 0n, // DO NOT RESET APPROVED PRICE! (User complained about this)
+    }
+  });
+
+  revalidatePath(`/procurement/requisitions/${requisitionId}`);
+}
+
+export async function rejectItemReview(requisitionId: string, itemId: string, reason: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Authentication required');
+  assertRoles(user.role as any, ['SENIOR_PROCUREMENT', 'ADMIN']);
+
+  await prisma.procurementRequisitionItem.update({
+    where: { id: itemId },
+    data: {
+      reviewRequested: false,
+      reviewApproved: false,
+      reviewRejectionReason: reason
+    }
+  });
+
+  revalidatePath(`/procurement/requisitions/${requisitionId}`);
+}

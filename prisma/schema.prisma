@@ -290,6 +290,8 @@ model ProcurementRequisitionItem {
   reviewRequested         Boolean                @default(false)
   reviewApproved          Boolean                @default(false)
   requestedUnitPriceMinor BigInt?
+  stagedUnitPriceMinor    BigInt?  @default(0) // New field for review prices
+  reviewRejectionReason   String?
   dispatchItems           DispatchItem[]
   quoteLine               QuoteLine?             @relation(fields: [quoteLineId], references: [id])
   requisition             ProcurementRequisition @relation(fields: [requisitionId], references: [id])

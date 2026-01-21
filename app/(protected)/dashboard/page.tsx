@@ -405,6 +405,11 @@ async function PendingTasks({
             status: 'REQUESTED', // Exclude those waiting for funding approval
           },
         },
+        // EXCLUDE Review Requests (They go to Senior Procurement)
+        OR: [
+          { note: null },
+          { note: { not: { contains: 'Review request from Req' } } }
+        ]
       },
       include: {
         project: {
@@ -428,6 +433,11 @@ async function PendingTasks({
                 status: { in: ['REQUESTED', 'APPROVED'] } 
             } 
         },
+        // EXCLUDE Review Requests (They go to Senior Procurement)
+        OR: [
+          { note: null },
+          { note: { not: { contains: 'Review request from Req' } } }
+        ]
       },
     });
 
@@ -442,12 +452,29 @@ async function PendingTasks({
   // Logic for Senior Procurement (Approvals)
   let seniorApprovalsCount = 0;
   if (role === 'SENIOR_PROCUREMENT' || role === 'ADMIN' || role === 'MANAGING_DIRECTOR' || role === 'GENERAL_MANAGER') {
-     seniorApprovalsCount = await prisma.requisitionItemTopup.count({
-         where: {
-             decidedAt: null,
-             requestedById: { not: userId } // Conflict of Interest Check
-         }
-     });
+      const [topupCount, reviewReqCount] = await Promise.all([
+         prisma.requisitionItemTopup.count({
+             where: {
+                 decidedAt: null,
+                 requestedById: { not: userId } // Conflict of Interest Check
+             }
+         }),
+         prisma.procurementRequisition.count({
+            where: {
+                OR: [
+                    {
+                        status: 'SUBMITTED',
+                        note: { contains: 'Review request from Req' },
+                    },
+                    {
+                        status: 'AWAITING_APPROVAL'
+                    }
+                ],
+                submittedById: { not: userId }
+            }
+         })
+      ]);
+      seniorApprovalsCount = topupCount + reviewReqCount;
   }
 
 /* ... sort logic ... */

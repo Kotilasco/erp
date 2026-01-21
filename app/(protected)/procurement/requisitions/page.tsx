@@ -39,6 +39,10 @@ export default async function RequisitionsPage({
   if (currentTab === 'funding_needed') {
       where.status = 'SUBMITTED';
       where.funding = { none: { status: { in: ['REQUESTED', 'APPROVED'] } } };
+      where.OR = [
+          { note: null },
+          { note: { not: { contains: 'Review request from Req' } } }
+      ];
   } else if (currentTab === 'action_purchases') {
       where.status = { in: ['APPROVED', 'PARTIAL'] };
   } else if (currentTab === 'completed') {
