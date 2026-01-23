@@ -99,6 +99,8 @@ export async function recordClientPayment(projectId: string, args: {
         });
       }
     }
+  }, {
+    timeout: 20000, // Increase timeout to 20s to handle network latency with Neon
   });
 
   revalidatePath(`/projects/${projectId}`);

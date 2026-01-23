@@ -127,6 +127,15 @@ export default async function ProjectsPage({
         },
       ],
     };
+  } else if (isSalesAccounts && currentTab === 'all_payments') {
+     // Exclude completed projects from "Other Payments" (all_payments)
+     where = {
+       ...where,
+       status: { notIn: ['COMPLETED', 'CLOSED'] },
+       // Ensure there's at least something to pay (not fully paid)
+       // OR if it has schedules, exclude if all are paid? 
+       // For now, let's just filter by project status as a high-level filter
+     };
   }
 
   if (isSeniorPM) {
@@ -279,8 +288,18 @@ export default async function ProjectsPage({
                       } else if (pastDueRemaining > 0n) {
                         typeLabel = 'Installment';
                       } else {
-                        typeLabel = 'Completed';
-                        dueAmount = 0n;
+                        // Instead of showing 'Completed', show the next upcoming payment if any
+                         const nextPayment = (schedules as any[])
+                           .filter(s => BigInt(s.amountMinor ?? 0) > BigInt(s.paidMinor ?? 0))
+                           .sort((a, b) => new Date(a.dueOn).getTime() - new Date(b.dueOn).getTime())[0];
+                         
+                         if (nextPayment) {
+                            typeLabel = nextPayment.label || 'Installment';
+                            dueAmount = BigInt(nextPayment.amountMinor) - BigInt(nextPayment.paidMinor);
+                         } else {
+                            typeLabel = 'Completed';
+                            dueAmount = 0n;
+                         }
                       }
                    } else {
                        // Fallback
@@ -352,7 +371,7 @@ export default async function ProjectsPage({
                          <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                               <Link 
-                                 href={`/projects/${project.id}/payments?action=receive&amount=${Number(dueAmount)/100}&type=${typeLabel.toLowerCase()}`}
+                                 href={`/projects/${project.id}/receive-payment?amount=${Number(dueAmount)/100}&type=${typeLabel.toLowerCase()}`}
                                  className="inline-flex items-center justify-center gap-1 rounded border border-orange-600 bg-orange-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-500 hover:border-orange-500 shadow-sm"
                               >
                                  <BanknotesIcon className="h-3.5 w-3.5" />
