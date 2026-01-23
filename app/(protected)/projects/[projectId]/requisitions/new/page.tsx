@@ -137,7 +137,7 @@ export default async function NewRequisitionPage({
   return (
     <div className="min-h-screen bg-slate-50/50 pb-32 font-sans">
       {/* Premium Header */}
-      <header className="relative overflow-hidden bg-gradient-to-br from-indigo-900 via-blue-800 to-blue-900 pb-12 pt-10 text-white shadow-xl">
+      <header className="relative overflow-hidden bg-gradient-to-br from-orange-700 via-orange-600 to-orange-800 pb-12 pt-10 text-white shadow-xl">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
         <div className="relative mx-auto max-w-5xl px-6 lg:px-8">
           <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
@@ -152,7 +152,7 @@ export default async function NewRequisitionPage({
                   Create Requisition
                 </h1>
               </div>
-              <p className="ml-11 text-lg text-blue-100 opacity-90">
+              <p className="ml-11 text-lg text-orange-50 opacity-90">
                 Select items from the quote to request.
               </p>
             </div>

@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -425,11 +425,11 @@ export default async function ProjectsPage({
                                 </Link>
                               ) : (
                                 <Link 
-                                   href={`/projects/${project.id}`}
-                                   className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                                   href={`/projects/${project.id}/requisitions/new`}
+                                   className="inline-flex items-center gap-1 rounded border border-orange-500 px-2 py-1 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50 dark:border-orange-400 dark:text-orange-400 dark:hover:bg-orange-900/20"
                                 >
-                                   <EyeIcon className="h-3.5 w-3.5" />
-                                   View
+                                   <DocumentPlusIcon className="h-3.5 w-3.5" />
+                                   Create Requisition
                                 </Link>
                               )}
                             </div>

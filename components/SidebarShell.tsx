@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useParams } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { signOut } from 'next-auth/react';
@@ -9,7 +9,7 @@ import type { QuoteStatus } from '@/lib/workflow';
 import { USER_ROLES } from '@/lib/workflow';
 import Image from 'next/image';
 
-type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' | 'chart-pie' };
+type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' | 'chart-pie' | 'calendar' };
 type Role = (typeof USER_ROLES)[number];
 type PageDef = NavItem & { roles?: Role[] };
 
@@ -263,6 +263,12 @@ function Icon({ name, className }: { name: NavItem['icon']; className?: string }
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
         </svg>
       );
+    case 'calendar':
+        return (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+        );
   }
 }
 
@@ -277,6 +283,9 @@ export default function SidebarShell({
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const params = useParams();
+  const projectId = params?.projectId as string | undefined;
+
   const [open, setOpen] = useState(false); // mobile off-canvas
   const [collapsed, setCollapsed] = useState(false); // desktop collapsed
   const [mode, setMode] = useState<ThemeMode>('system');
@@ -285,6 +294,33 @@ export default function SidebarShell({
   const [notifications, setNotifications] = useState<NotificationPayload>({ total: 0, items: [] });
   const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  // Dynamic Navigation Items
+  const navItems = [...PAGE_DEFS];
+  if (projectId) {
+    const projectItems: PageDef[] = [
+        { 
+            label: 'Project Schedule', 
+            href: `/projects/${projectId}/schedule`, 
+            icon: 'calendar', 
+            roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR'] 
+        },
+        { 
+            label: 'Project Tasks', 
+            href: `/projects/${projectId}/daily-tasks`, 
+            icon: 'clipboard', 
+            roles: ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'] 
+        },
+    ];
+    
+    // Insert after "Projects"
+    const projectsIndex = navItems.findIndex(i => i.label === 'Projects');
+    if (projectsIndex !== -1) {
+        navItems.splice(projectsIndex + 1, 0, ...projectItems);
+    } else {
+        navItems.push(...projectItems);
+    }
+  }
 
   useEffect(() => {
     modeRef.current = mode;
@@ -399,7 +435,7 @@ export default function SidebarShell({
             Main
           </div> */}
           <nav className="px-3 space-y-1">
-            {PAGE_DEFS.filter((p) => !p.roles || p.roles.includes((currentUser?.role as Role) || 'VIEWER')).map((item) => {
+            {navItems.filter((p) => !p.roles || p.roles.includes((currentUser?.role as Role) || 'VIEWER')).map((item) => {
               const [base, queryString] = item.href.split('?');
               let active = pathname === base;
               if (queryString) {
