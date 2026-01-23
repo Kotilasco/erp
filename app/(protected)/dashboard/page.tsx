@@ -816,11 +816,9 @@ async function PendingTasks({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m-4-4h8M4 6h16M4 18h16" />
             </svg>
             Unplanned
-            {pmUnplannedCount > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                {pmUnplannedCount}
-              </span>
-            )}
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              {pmUnplannedCount}
+            </span>
           </Link>
           <Link
             href="/projects?tab=active"
@@ -830,11 +828,9 @@ async function PendingTasks({
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
              </svg>
              Active
-             {pmActiveCount > 0 && (
-               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                 {pmActiveCount}
-               </span>
-             )}
+             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+               {pmActiveCount}
+             </span>
            </Link>
           <Link
             href="/dispatches"
@@ -844,11 +840,9 @@ async function PendingTasks({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h11M9 21V3m5 6l7 7-7 7" />
             </svg>
             Dispatches
-            {dispatchTasks.length > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                {dispatchTasks.length}
-              </span>
-            )}
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              {dispatchTasks.length}
+            </span>
           </Link>
         </div>
 
@@ -862,11 +856,9 @@ async function PendingTasks({
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
              </svg>
              Awaiting Delivery
-             {awaitingDeliveryCount > 0 && (
-               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
-                 {awaitingDeliveryCount}
-               </span>
-             )}
+             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+               {awaitingDeliveryCount}
+             </span>
            </Link>
         </div>
       </div>
@@ -891,25 +883,21 @@ async function PendingTasks({
               />
             </svg>
             Unplanned
-            {pmUnplannedCount > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                {pmUnplannedCount}
-              </span>
-            )}
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              {pmUnplannedCount}
+            </span>
           </Link>
           <Link
-             href="/projects?tab=active"
-             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
-           >
+            href="/projects?tab=active"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
              </svg>
              Active
-             {pmActiveCount > 0 && (
-               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                 {pmActiveCount}
-               </span>
-             )}
+             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+               {pmActiveCount}
+             </span>
            </Link>
           <Link
             href="/dispatches"
@@ -924,11 +912,9 @@ async function PendingTasks({
                 />
               </svg>
               Dispatches
-              {dispatchTasks.length > 0 && (
-                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
-                  {dispatchTasks.length}
-                </span>
-              )}
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+                {dispatchTasks.length}
+              </span>
             </Link>
           </div>
            {/* Row 2 */}
@@ -941,11 +927,9 @@ async function PendingTasks({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                   </svg>
                   Awaiting Delivery
-                  {awaitingDeliveryCount > 0 && (
-                    <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
-                      {awaitingDeliveryCount}
-                    </span>
-                  )}
+                  <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+                    {awaitingDeliveryCount}
+                  </span>
                 </Link>
            </div>
         </div>
@@ -1148,7 +1132,7 @@ async function PendingTasks({
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">
-                            Assign Project Manager
+                            Assign Project Operations Officer
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
                             {p.quote?.customer?.displayName || 'Unknown Customer'}
@@ -1159,7 +1143,7 @@ async function PendingTasks({
                         </div>
                         <div className="text-right ml-4 flex items-center gap-3">
                           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                            ASSIGN PM
+                            ASSIGN OFFICER
                           </span>
                           <Link
                             href="/projects?tab=assignment"

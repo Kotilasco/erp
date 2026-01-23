@@ -41,7 +41,7 @@ export function ProjectAssigner({ projectId, initialAssigneeId, projectManagers,
           onChange={(e) => setSelectedId(e.target.value)}
           disabled={isPending}
         >
-          <option value="">-- Select PM --</option>
+          <option value="">-- Select Officer --</option>
           {projectManagers.map((pm) => (
             <option key={pm.id} value={pm.id}>
               {pm.name || pm.email}
@@ -62,7 +62,7 @@ export function ProjectAssigner({ projectId, initialAssigneeId, projectManagers,
   return (
     <div className="mt-3 bg-white p-4 rounded-xl border border-gray-100 shadow-sm dark:bg-gray-800 dark:border-gray-700">
       <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-2 dark:text-gray-400">
-        {hasAssignee ? 'Reassign Project Manager' : 'Assign Project Manager'}
+        {hasAssignee ? 'Reassign Project Operations Officer' : 'Assign Project Operations Officer'}
       </label>
       <div className="flex items-center gap-2">
         <select

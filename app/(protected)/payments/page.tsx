@@ -49,7 +49,7 @@ export default async function PaymentsPage() {
                     {project.quote.customer.displayName}
                   </h3>
                   <p className="text-sm text-gray-500">
-                    Project Manager: {project.quote.projectManager?.name || 'Not assigned'}
+                    Project Operations Officer: {project.quote.projectManager?.name || 'Not assigned'}
                   </p>
                   <p className="text-sm text-gray-500">
                     Created: {new Date(project.createdAt).toLocaleDateString()}
