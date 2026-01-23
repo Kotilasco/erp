@@ -418,7 +418,7 @@ export default async function ProjectsPage({
                               {isProjectManager && currentTab === 'unplanned' ? (
                                 <Link 
                                    href={`/projects/${project.id}/schedule`}
-                                   className="inline-flex items-center gap-1 rounded border border-blue-600 bg-blue-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-blue-500 shadow-sm"
+                                   className="inline-flex items-center gap-1 rounded border border-orange-600 bg-orange-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-orange-500 shadow-sm"
                                 >
                                    <CalendarIcon className="h-3.5 w-3.5" />
                                    Create Schedule

@@ -340,7 +340,8 @@ export default function ScheduleEditor({
 
   return (
     <div className="space-y-6">
-      {/* Top Controls */}
+      {/* Top Controls - Only show if items exist */}
+      {items.length > 0 && (
       <div className="flex flex-wrap items-end gap-6 bg-white p-4 rounded-lg border shadow-sm">
         <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">Project Start Date</label>
@@ -366,14 +367,14 @@ export default function ScheduleEditor({
         </div>
         <div className="flex-1"></div>
         <div className="flex items-center gap-3">
-             <button
+             {/* <button
                 onClick={addRow}
                 className="inline-flex items-center justify-center gap-2 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-8 px-3 py-1"
             >
                 <PlusIcon className="h-3 w-3" />
                 Add Row
-            </button>
-             {items.length === 0 && (
+            </button> */}
+             {/* {items.length === 0 && (
                 <button
                     onClick={handleExtract}
                     disabled={extracting}
@@ -381,10 +382,32 @@ export default function ScheduleEditor({
                 >
                     {extracting ? 'Extracting...' : 'Extract from Quote'}
                 </button>
-            )}
+            )} */}
         </div>
       </div>
+      )}
 
+      {items.length === 0 && (
+        <div className="flex justify-center items-center min-h-[60vh] p-4">
+            <button
+                onClick={handleExtract}
+                disabled={extracting}
+                className="flex flex-col items-center justify-center gap-6 rounded-2xl bg-orange-500 p-12 text-white shadow-2xl transition-all hover:bg-orange-600 hover:shadow-orange-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 w-full max-w-4xl h-[50vh] border-none"
+            >
+                <div className="rounded-full bg-white/20 p-8 backdrop-blur-sm ring-8 ring-white/10">
+                    <DocumentTextIcon className="h-24 w-24 text-white" />
+                </div>
+                <div className="text-center space-y-2">
+                    <span className="block text-4xl font-extrabold tracking-tight">Extract from Quote</span>
+                    <span className="block text-lg font-medium text-white/90">
+                        {extracting ? 'Extracting items...' : 'Click to populate schedule items'}
+                    </span>
+                </div>
+            </button>
+        </div>
+      )}
+
+      {items.length > 0 && (
       <div className="rounded-md border bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
@@ -500,7 +523,9 @@ export default function ScheduleEditor({
           </table>
         </div>
       </div>
+      )}
 
+      {items.length > 0 && (
       <div className="flex items-center justify-between pt-4 border-t">
         <div className="flex-1 max-w-sm">
           <input
@@ -533,18 +558,19 @@ export default function ScheduleEditor({
             )}
 
             {schedule?.status === 'ACTIVE' && (
-                 <button
-                 onClick={() => handleSave(true)} // Keep active
-                 disabled={loading}
-                 className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-barmlo-blue text-white shadow hover:bg-barmlo-blue/90 h-9 px-4 py-2"
-                 >
-                 <CheckCircleIcon className="h-4 w-4" />
-                 {loading ? 'Saving...' : 'Save Changes'}
-                 </button>
-            )}
-        </div>
-      </div>
-      {error && <div className="text-sm font-medium text-destructive">{error}</div>}
+                  <button
+                  onClick={() => handleSave(true)} // Keep active
+                  disabled={loading}
+                  className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-barmlo-blue text-white shadow hover:bg-barmlo-blue/90 h-9 px-4 py-2"
+                  >
+                  <CheckCircleIcon className="h-4 w-4" />
+                  {loading ? 'Saving...' : 'Save Changes'}
+                  </button>
+             )}
+         </div>
+       </div>
+       )}
+       {error && <div className="text-sm font-medium text-destructive">{error}</div>}
 
       {/* Employee Assignment Modal */}
       {modalOpen && activeRowIndex !== null && (
