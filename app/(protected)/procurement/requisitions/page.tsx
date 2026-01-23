@@ -5,9 +5,10 @@ import { redirect } from 'next/navigation';
 import { RequisitionStatusBadge } from '@/components/ui/requisition-status-badge';
 import TablePagination from '@/components/ui/table-pagination';
 import RequisitionTableToolbar from './components/RequisitionTableToolbar';
-import { ClipboardDocumentCheckIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { ClipboardDocumentCheckIcon, PlusIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
 
 export const dynamic = 'force-dynamic';
+// Force rebuild
 export const revalidate = 0;
 
 export default async function RequisitionsPage({
@@ -183,8 +184,17 @@ export default async function RequisitionsPage({
                         href={`/procurement/requisitions/${r.id}`}
                         className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
                       >
-                        <EyeIcon className="h-3.5 w-3.5" />
-                        {currentTab === 'action_purchases' ? 'Procure' : 'Create'}
+                        {currentTab === 'action_purchases' ? (
+                            <>
+                                <ShoppingBagIcon className="h-3.5 w-3.5" />
+                                Procure
+                            </>
+                        ) : (
+                            <>
+                                <PlusIcon className="h-3.5 w-3.5" />
+                                Create
+                            </>
+                        )}
                       </Link>
                     </td>
                   </tr>
