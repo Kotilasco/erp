@@ -547,8 +547,7 @@ async function PendingTasks({
   if (role === 'PROCUREMENT') {
     return (
       <div className="flex flex-col gap-6 p-4">
-        <h1 className="text-2xl font-bold text-gray-800 dark:text-white">Procurement Dashboard</h1>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 w-full max-w-5xl">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 w-full">
           {/* 1. Create Purchase Order */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"
@@ -560,11 +559,9 @@ async function PendingTasks({
                 </svg>
                 <span>Create Purchase Order</span>
             </div>
-            {fundingNeededCount > 0 && (
-              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+            <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
                 {fundingNeededCount}
-              </span>
-            )}
+            </span>
           </Link>
           
           {/* 2. Procure */}
@@ -578,11 +575,9 @@ async function PendingTasks({
                 </svg>
                 <span>Procure</span>
             </div>
-            {actionPurchasesCount > 0 && (
-              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+            <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
                 {actionPurchasesCount}
-              </span>
-            )}
+            </span>
           </Link>
         </div>
       </div>
