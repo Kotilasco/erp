@@ -9,6 +9,7 @@ const BASE: { label:string; href:string; icon:string; roles?: string[] }[] = [
   { label: 'Purchase Orders', href: '/accounts/po', icon: 'list', roles: ['ACCOUNTS','ACCOUNTING_CLERK','ACCOUNTING_OFFICER','ADMIN'] },
   { label: 'Dispatches', href: '/dispatches', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER','SECURITY','ADMIN'] },
   { label: 'Funds', href: '/funds', icon: 'bank', roles: ['ACCOUNTS','ACCOUNTING_CLERK','ACCOUNTING_OFFICER','ACCOUNTING_AUDITOR','ADMIN'] },
+  { label: 'Goods Receiving', href: '/accounts?tab=receipts', icon: 'clipboard-check', roles: ['ACCOUNTS', 'ACCOUNTING_OFFICER', 'ADMIN'] },
   { label: 'Inventory', href: '/inventory', icon: 'boxes', roles: ['PROCUREMENT','PROJECT_OPERATIONS_OFFICER','ADMIN'] },
   { label: 'Audit Logs', href: '/audit-logs', icon: 'list', roles: ['ADMIN'] },
   { label: 'Employees', href: '/employees', icon: 'list', roles: ['ADMIN','MANAGING_DIRECTOR','HUMAN_RESOURCE'] },

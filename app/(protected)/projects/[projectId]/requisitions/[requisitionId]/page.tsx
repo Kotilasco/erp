@@ -87,77 +87,47 @@ export default async function ProjectRequisitionDetailPage({
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
-      {/* Header Banner */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-6">
-            <div className="flex gap-5">
-              <div className="hidden sm:flex h-16 w-16 items-center justify-center rounded-2xl bg-orange-100 text-orange-600 shadow-inner">
-                <ShoppingCartIcon className="h-8 w-8" />
-              </div>
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 className="text-3xl font-bold tracking-tight text-gray-900">Requisition Details</h1>
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
-                    req.status === 'DRAFT' ? 'bg-gray-100 text-gray-800 border-gray-200' :
-                    req.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                    req.status === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200' :
-                    'bg-gray-100 text-gray-800 border-gray-200'
-                  }`}>
-                    {req.status}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500">
-                  <div className="flex items-center gap-1.5">
-                    <TagIcon className="h-4 w-4" />
-                    <span className="font-mono">#{req.id.slice(0, 8)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <UserIcon className="h-4 w-4" />
-                    <span>{req.project?.quote?.customer?.displayName || 'Unknown Client'}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>{format(req.createdAt, 'MMM d, yyyy')}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="flex gap-3">
-              <Link
-                href={`/projects/${projectId}/requisitions`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 transition-colors"
-              >
-                <ArrowLeftIcon className="h-4 w-4" />
-                Back
-              </Link>
-            </div>
-          </div>
-        </div>
+      <div className="mx-auto max-w-5xl px-6 pt-6 mb-4 no-print">
+         <Link href={`/projects/${projectId}/requisitions`} className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+              <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+            </svg>
+            Back to Requisitions
+         </Link>
       </div>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto max-w-5xl px-6 lg:px-8">
         <div className="space-y-6">
-          <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
-            <CardHeader className="border-b border-gray-100 bg-gray-50/30 px-6 py-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg font-semibold flex items-center gap-2 text-gray-900">
-                  <DocumentTextIcon className="h-5 w-5 text-gray-400" />
-                  Items List
-                </CardTitle>
-                <div className="flex items-center gap-4">
-                  {showEstPrice && (
-                    <div className="text-sm font-medium text-gray-900">
-                      Total: <Money value={grand} />
+          <div className="md:flex md:items-center md:justify-between">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+                {req.project?.name}
+              </h2>
+              <div className="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
+                 <div className="mt-2 flex items-center text-sm text-gray-500">
+                    Requisition #{req.id.slice(0, 8)}
+                 </div>
+                 {req.submittedBy && (
+                    <div className="mt-2 flex items-center text-sm text-gray-500">
+                        Submitted by {req.submittedBy.name}
                     </div>
-                  )}
-                  <span className="text-xs font-medium text-gray-500 bg-white px-2.5 py-1 rounded-full border border-gray-200 shadow-sm">
-                    {req.items.length} items
-                  </span>
-                </div>
+                 )}
               </div>
-            </CardHeader>
+            </div>
+            <div className="mt-4 flex md:ml-4 md:mt-0">
+                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+                  req.status === 'DRAFT' ? 'bg-gray-100 text-gray-800 border-gray-200' :
+                  req.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                  req.status === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200' :
+                  'bg-gray-100 text-gray-800 border-gray-200'
+                }`}>
+                  {req.status}
+                </span>
+            </div>
+          </div>
+
+          <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden p-6">
+            <div className="space-y-6">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -206,41 +176,42 @@ export default async function ProjectRequisitionDetailPage({
                 </tbody>
               </table>
             </div>
-          </Card>
 
-          {req.status === 'DRAFT' && (
-            <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100 p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                <div className="flex gap-4">
-                  <div className="p-3 bg-white rounded-xl text-blue-600 shadow-sm ring-1 ring-blue-100">
-                    <CheckCircleIcon className="h-6 w-6" />
+            {req.status === 'DRAFT' && (
+              <div className="mt-8 rounded-xl bg-gray-50 border border-gray-200 p-6 no-print">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                  <div className="flex gap-4">
+                    <div className="p-3 bg-white rounded-xl text-blue-600 shadow-sm ring-1 ring-blue-100">
+                      <CheckCircleIcon className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Ready to Submit?</h3>
+                      <p className="text-sm text-gray-600 mt-1 max-w-md">
+                        Review the items above. Once submitted, this requisition will be sent to Procurement for processing.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-blue-900">Ready to Submit?</h3>
-                    <p className="text-sm text-blue-700 mt-1 max-w-md">
-                      Review the items above. Once submitted, this requisition will be sent to Procurement for processing.
-                    </p>
-                  </div>
+                  {canSubmit ? (
+                    <form action={submitRequisitionToProcurement.bind(null, requisitionId)} className="w-full sm:w-auto">
+                      <SubmitButton
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                        loadingText="Submitting..."
+                      >
+                        Submit Requisition
+                      </SubmitButton>
+                    </form>
+                  ) : (
+                    <div className="px-4 py-2 bg-white/60 rounded-lg text-sm text-blue-800 font-medium border border-blue-200 shadow-sm backdrop-blur-sm">
+                      Waiting for Project Manager approval
+                    </div>
+                  )}
                 </div>
-                {canSubmit ? (
-                  <form action={submitRequisitionToProcurement.bind(null, requisitionId)} className="w-full sm:w-auto">
-                    <SubmitButton
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-                      loadingText="Submitting..."
-                    >
-                      Submit Requisition
-                    </SubmitButton>
-                  </form>
-                ) : (
-                  <div className="px-4 py-2 bg-white/60 rounded-lg text-sm text-blue-800 font-medium border border-blue-200 shadow-sm backdrop-blur-sm">
-                    Waiting for Project Manager approval
-                  </div>
-                )}
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </main>
+      </div>
+    </main>
     </div>
   );
 }

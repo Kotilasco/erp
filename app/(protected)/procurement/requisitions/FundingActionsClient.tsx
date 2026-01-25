@@ -92,11 +92,11 @@ export default function FundingActionsClient({
   }
 
   return (
-    <form id={reviewFormId.replace('review', 'funding')} onSubmit={handleSubmit} className="flex flex-wrap gap-2">
+    <form id={reviewFormId.replace('review', 'funding')} onSubmit={handleSubmit} className="flex flex-col w-full gap-4">
       <button 
         type="submit" 
         disabled={isLoading}
-        className="rounded bg-emerald-600 px-3 py-2 text-white disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        className="w-full justify-center rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all"
       >
         {isLoading && (
           <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

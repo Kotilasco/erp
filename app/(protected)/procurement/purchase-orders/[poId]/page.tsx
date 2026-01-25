@@ -9,7 +9,7 @@ import VerifyPoGrnsForm from '../VerifyPoGrnsForm';
 import SubmitButton from '@/components/SubmitButton';
 import Link from 'next/link';
 import Money from '@/components/Money';
-import { ArrowLeftIcon, ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ClipboardDocumentListIcon, ShoppingBagIcon, UserIcon, PhoneIcon, DocumentTextIcon, TruckIcon } from '@heroicons/react/24/outline';
 
 function POStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -93,43 +93,45 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
   const heading = isAccounts ? 'Goods Approvals' : isSecurity ? 'Goods Delivery Note' : 'Purchase Order';
 
   return (
-    <div className="min-h-screen bg-gray-50/50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-col gap-4 border-b border-gray-200 pb-6 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="rounded-xl bg-orange-100 p-2">
-              <ClipboardDocumentListIcon className="h-7 w-7 text-orange-600" />
+    <div className="min-h-screen bg-gray-50/50 px-4 py-8">
+      <div className="mx-auto w-full space-y-6">
+        <Card className="mb-8 overflow-hidden rounded-2xl border-0 bg-white shadow-xl ring-1 ring-gray-900/5">
+            <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 via-white to-gray-50 py-8 text-center">
+                <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="rounded-full bg-indigo-50 p-3 ring-1 ring-indigo-500/10">
+                        <ShoppingBagIcon className="h-8 w-8 text-indigo-600" />
+                    </div>
+                    <h1 className="text-3xl font-black uppercase tracking-tight text-gray-900 sm:text-4xl">
+                        {heading}
+                    </h1>
+                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-gray-500">
+                         <span className="font-mono font-bold text-indigo-600">#{po.id.slice(0, 8).toUpperCase()}</span>
+                         <span className="text-gray-300">|</span>
+                         <span className="font-medium text-gray-900">{po.vendor || 'Vendor Pending'}</span>
+                         <span className="text-gray-300">|</span>
+                         <span>
+                            Project: <span className="font-medium text-gray-900">{po.requisition?.project?.projectNumber || po.requisition?.projectId?.slice(0, 8) || 'N/A'}</span>
+                         </span>
+                    </div>
+                     <div className="mt-4">
+                        <POStatusBadge status={po.status} />
+                     </div>
+                </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900">{heading}</h1>
-              <div className="mt-1 flex items-center gap-2 text-sm text-gray-500">
-                <span className="font-mono font-semibold text-gray-800">#{po.id.slice(0, 8)}</span>
-                <span>•</span>
-                <span>{po.vendor || 'Vendor not set'}</span>
-              </div>
-              <div className="mt-1 flex items-center gap-3 text-xs text-gray-500">
-                <span>
-                  Project:{' '}
-                  <span className="font-medium text-gray-800">
-                    {po.requisition?.project?.projectNumber ||
-                      po.requisition?.projectId?.slice(0, 8) ||
-                      'N/A'}
-                  </span>
-                </span>
-                <POStatusBadge status={po.status} />
-              </div>
-            </div>
-          </div>
-          <div className="flex flex-col items-end gap-3">
-            <Link
-              href="/procurement/purchase-orders"
-              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:text-gray-900"
-            >
-              <ArrowLeftIcon className="h-4 w-4" />
-              Back to POs
-            </Link>
-          </div>
-        </header>
+             <div className="flex items-center justify-between bg-gray-50/50 px-6 py-3">
+                <div className="text-sm text-gray-500">
+                </div>
+                 <div className="flex gap-3">
+                    <Link
+                      href="/procurement/purchase-orders"
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:text-gray-900"
+                    >
+                      <ArrowLeftIcon className="h-4 w-4" />
+                      Back to POs
+                    </Link>
+                 </div>
+             </div>
+        </Card>
 
         {isProcurement && po.status === 'APPROVED' && (
           <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
@@ -203,8 +205,12 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                 }}
                 className="space-y-6"
               >
-                <div className="grid grid-cols-1 gap-4 rounded-xl border border-emerald-100 bg-emerald-50/40 p-4 md:grid-cols-2">
-                  <div className="space-y-3">
+                <div className="grid grid-cols-1 gap-6 rounded-xl border border-emerald-100 bg-emerald-50/40 p-6 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2 border-b border-emerald-200 pb-2">
+                     <TruckIcon className="h-5 w-5 text-emerald-700" />
+                     <h3 className="text-lg font-bold text-emerald-800">Receive Goods</h3>
+                  </div>
+                  <div className="space-y-3 max-w-xs">
                     <label className="text-xs font-semibold uppercase tracking-wider text-emerald-900">
                       Date Received
                     </label>
@@ -212,44 +218,53 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                       name="receivedAt"
                       type="date"
                       defaultValue={new Date().toISOString().split('T')[0]}
-                      className="flex h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all hover:bg-white hover:border-gray-300"
+                      className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all hover:border-emerald-300 shadow-sm"
                       required
                     />
                   </div>
                 </div>
 
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/5">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead className="border-b bg-gray-50/80">
                         <tr>
-                          <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 min-w-[200px]">
+                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[200px]">
                             Item Description
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 w-[100px]">
+                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600 w-[100px]">
                             Ordered
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 w-[100px]">
+                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600 w-[100px]">
                             Used
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 min-w-[180px]">
-                            From Vendor
+                          <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[180px]">
+                            <div className="flex items-center gap-1">
+                                <UserIcon className="h-4 w-4" />
+                                Supplier
+                            </div>
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 min-w-[140px]">
-                            Contact #
+                          <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[140px]">
+                            <div className="flex items-center gap-1">
+                                <PhoneIcon className="h-4 w-4" />
+                                Contact
+                            </div>
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-600 min-w-[140px]">
-                            Docket / Inv #
+                          <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[140px]">
+                            <div className="flex items-center gap-1">
+                                <DocumentTextIcon className="h-4 w-4" />
+                                # Purchase Order
+                            </div>
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-emerald-700 min-w-[120px]">
+                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-emerald-700 min-w-[120px]">
                             Qty In
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-600 min-w-[120px]">
+                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[120px]">
                             Unit Price
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y">
+                      <tbody className="divide-y divide-gray-100">
                         {po.items.map((item) => {
                           const used = receivedByItem.get(item.id) ?? 0;
                           const remaining = Math.max(0, item.qty - used);
@@ -270,40 +285,59 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                               <td className="px-6 py-4">
                                 <div className="font-medium text-gray-900">{item.description}</div>
                                 {isComplete && (
-                                  <span className="mt-1 inline-block text-xs font-medium text-green-600">
+                                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+                                    <ShoppingBagIcon className="h-3 w-3" />
                                     Order Complete
                                   </span>
                                 )}
                               </td>
-                              <td className="px-4 py-4 text-right text-gray-500 font-medium">
+                              <td className="px-4 py-4 text-right text-gray-600 font-medium">
                                 {item.qty} {item.unit ?? ''}
                               </td>
                               <td className="px-4 py-4 text-right text-gray-500">{used}</td>
                               <td className="px-4 py-4">
-                                <input
-                                  name={`vendor-${item.id}`}
-                                  disabled={isComplete}
-                                  defaultValue={!isComplete ? prefillVendor : ''}
-                                  className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm placeholder:text-gray-300 outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
-                                  placeholder={isComplete ? '-' : 'Vendor Name'}
-                                />
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <UserIcon className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                    <input
+                                      name={`vendor-${item.id}`}
+                                      disabled={isComplete}
+                                      readOnly
+                                      defaultValue={!isComplete ? prefillVendor : ''}
+                                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 px-3 text-sm text-gray-600 cursor-not-allowed shadow-sm"
+                                      placeholder={isComplete ? '-' : 'Supplier'}
+                                    />
+                                </div>
                               </td>
                               <td className="px-4 py-4">
-                                <input
-                                  name={`phone-${item.id}`}
-                                  disabled={isComplete}
-                                  defaultValue={!isComplete ? prefillPhone : ''}
-                                  className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm placeholder:text-gray-300 outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
-                                  placeholder={isComplete ? '-' : 'Phone'}
-                                />
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <PhoneIcon className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                    <input
+                                      name={`phone-${item.id}`}
+                                      disabled={isComplete}
+                                      readOnly
+                                      defaultValue={!isComplete ? prefillPhone : ''}
+                                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 px-3 text-sm text-gray-600 cursor-not-allowed shadow-sm"
+                                      placeholder={isComplete ? '-' : 'Phone'}
+                                    />
+                                </div>
                               </td>
                               <td className="px-4 py-4">
-                                <input
-                                  name={`receipt-${item.id}`}
-                                  disabled={isComplete}
-                                  className="h-9 w-full rounded-md border border-gray-200 bg-white px-3 text-sm placeholder:text-gray-300 outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
-                                  placeholder={isComplete ? '-' : 'Doc/Inv No.'}
-                                />
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <DocumentTextIcon className="h-4 w-4 text-gray-400" />
+                                    </div>
+                                    <input
+                                      name={`receipt-${item.id}`}
+                                      disabled={isComplete}
+                                      readOnly
+                                      defaultValue={po.id.slice(0, 8).toUpperCase()}
+                                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 px-3 text-sm text-gray-600 cursor-not-allowed shadow-sm"
+                                    />
+                                </div>
                               </td>
                               <td className="px-4 py-4 text-right">
                                 <div className="relative">
@@ -315,7 +349,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                                     max={remaining > 0 ? remaining : undefined}
                                     placeholder={isComplete ? 'Done' : '0'}
                                     disabled={isComplete}
-                                    className={`h-9 w-full rounded-md border bg-white px-3 text-right text-sm font-medium outline-none transition-all focus:ring-1 disabled:bg-gray-100 disabled:text-gray-400 ${
+                                    className={`h-10 w-full rounded-lg border bg-white px-3 text-right text-sm font-medium outline-none transition-all focus:ring-2 disabled:bg-gray-50 disabled:text-gray-400 shadow-sm ${
                                       remaining > 0
                                         ? 'border-emerald-200 text-emerald-700 placeholder:text-emerald-200 focus:border-emerald-500 focus:ring-emerald-500'
                                         : 'border-gray-200 text-gray-400'
@@ -338,7 +372,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                                     step="0.01"
                                     placeholder="0.00"
                                     disabled={isComplete}
-                                    className="h-9 w-full rounded-md border border-gray-200 bg-white pl-6 pr-3 text-right text-sm outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary disabled:bg-gray-100 disabled:text-gray-400"
+                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-6 pr-3 text-right text-sm outline-none transition-all focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-400 shadow-sm"
                                   />
                                 </div>
                               </td>
@@ -360,9 +394,9 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                     className="flex min-h-[80px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
                   />
                 </div>
-                <div className="flex justify-end pt-4">
-                  <SubmitButton className="inline-flex h-11 items-center justify-center rounded-lg bg-slate-900 px-8 text-sm font-medium text-white shadow-lg shadow-slate-900/20 transition-colors hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
-                    Confirm Receipt
+                <div className="pt-6">
+                  <SubmitButton className="inline-flex h-16 w-full items-center justify-center rounded-xl bg-emerald-600 px-8 text-lg font-bold uppercase tracking-wide text-white shadow-xl shadow-emerald-900/20 transition-all hover:bg-emerald-700 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:pointer-events-none disabled:opacity-50">
+                    Receive
                   </SubmitButton>
                 </div>
               </form>
@@ -387,53 +421,6 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
           <div className="space-y-4">
             <VerifyPoGrnsForm poId={params.poId} verifierId={me.id!} items={pendingGrnItems} />
           </div>
-        )}
-
-        {!isAccounts && (
-          <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <CardHeader className="border-b bg-gray-50 px-4 py-3">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Purchase Order Items
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="overflow-hidden rounded-lg border border-gray-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Item
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Qty
-                      </th>
-                      <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Unit
-                      </th>
-                      <th className="px-4 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                        Received
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {po.items.map((it) => {
-                      const received = receivedByItem.get(it.id) ?? 0;
-                      return (
-                        <tr key={it.id} className="border-t hover:bg-gray-50/50">
-                          <td className="px-4 py-2">{it.description}</td>
-                          <td className="px-4 py-2 text-right">{it.qty}</td>
-                          <td className="px-4 py-2">{it.unit ?? '-'}</td>
-                          <td className="px-4 py-2 text-right">
-                            {received} / {it.qty}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
         )}
 
         {!isAccounts && po.goodsReceivedNotes.length > 0 && (

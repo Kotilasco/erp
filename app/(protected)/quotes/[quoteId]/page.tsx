@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { revalidatePath } from 'next/cache';
 
 import LoadingButton from '@/components/LoadingButton';
+import DownloadPdfButton from '@/components/DownloadPdfButton';
 
 import Money from '@/components/Money';
 
@@ -18,6 +19,7 @@ import {
   updateProjectTask,
   endorseQuote,
   endorseQuoteToProject,
+  generateQuotePdf,
 } from '@/app/(protected)/quotes/[quoteId]/actions';
 
 import { 
@@ -35,6 +37,8 @@ import {
   ArrowRightCircleIcon,
   ClipboardDocumentCheckIcon
 } from '@heroicons/react/24/outline';
+import { PhoneIcon, HomeIcon, EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/solid';
+import Image from 'next/image';
 
 import { prisma } from '@/lib/db';
 
@@ -56,8 +60,8 @@ import { redirect } from 'next/navigation';
 import { setFlashMessage } from '@/lib/flash.server';
 import { getErrorMessage } from '@/lib/errors';
 import SubmitButton from '@/components/SubmitButton';
-import PrintButton from '@/components/PrintButton';
 import QSEditButton from '@/components/QSEditButton';
+import QuoteHeader from '@/components/QuoteHeader';
 import SalesEndorsementForm from './SalesEndorsementForm';
 import NegotiationsList from './NegotiationsList';
 
@@ -897,66 +901,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Project Name: {quote.customer?.displayName}</h1>
-
-          <div
-            className={clsx(
-              'mt-2 inline-flex items-center rounded px-2 py-1 text-xs font-semibold',
-
-              STATUS_BADGE_CLASSES[status]
-            )}
-          >
-            Status: {STATUS_LABELS[status]}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {role && (role === 'QS' || role === 'ADMIN') && <QSEditButton quoteId={quote.id} />}
-
-          {visibleTargets.map((target) => (
-            <form key={target} action={transitionAction}>
-              <input type="hidden" name="target" value={target} />
-
-              <SubmitButton
-                loadingText=""
-                className={clsx(
-                  'rounded-xl px-6 py-3 text-sm shadow-md transition-all inline-flex items-center justify-center gap-3 font-bold',
-                  STATUS_BUTTON_LABELS[target] === 'Send to Sales' || STATUS_BUTTON_LABELS[target] === 'Move to Negotiation'
-                    ? 'bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 min-w-[450px] mt-6 py-2'
-                    : STATUS_BUTTON_LABELS[target] === 'Submit for Review'
-                    ? 'bg-barmlo-green text-white hover:bg-barmlo-green/90 min-w-[200px]'
-                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 min-w-[200px]'
-                )}
-              >
-                {STATUS_BUTTON_LABELS[target] === 'Submit for Review' && <PaperAirplaneIcon className="h-5 w-5" />}
-                {STATUS_BUTTON_LABELS[target] === 'Mark Reviewed' && (
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                  </svg>
-                )}
-                {STATUS_BUTTON_LABELS[target] === 'Archive' && <ArchiveBoxIcon className="h-5 w-5" />}
-                <span className={STATUS_BUTTON_LABELS[target] === 'Send to Sales' || STATUS_BUTTON_LABELS[target] === 'Move to Negotiation' ? 'text-lg' : ''}>{STATUS_BUTTON_LABELS[target]}</span>
-              </SubmitButton>
-            </form>
-          ))}
-
-          {canFinalize && (
-            <form action={finalizeAction}>
-              <SubmitButton
-                className="rounded bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 inline-flex items-center gap-2"
-                loadingText="Finalizing-"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                </svg>
-                Finalize &amp; PDF
-              </SubmitButton>
-            </form>
-          )}
-        </div>
-      </header>
+      <QuoteHeader quote={quote} />
 
       {/* Summary section hidden as per request */}
       {/* <section className="rounded border bg-white p-4 shadow-sm dark:bg-gray-800 dark:border-gray-700">
@@ -1451,8 +1396,49 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
         />
       )}
 
-      <div className="flex gap-2">
-        <PrintButton />
+      <div className="flex justify-center gap-2 mb-8 no-print">
+        <DownloadPdfButton 
+          quoteId={quote.id} 
+          generatePdf={generateQuotePdf}
+          className="bg-green-600 hover:bg-green-700 focus:ring-green-600" 
+        />
+      </div>
+
+      <div className="mt-8 pt-6 border-t border-gray-200 no-print">
+        <div className="flex flex-wrap items-center justify-end gap-4">
+          {role && (role === 'QS' || role === 'ADMIN') && <QSEditButton quoteId={quote.id} />}
+
+          {visibleTargets.map((target) => (
+            <form key={target} action={transitionAction} className={STATUS_BUTTON_LABELS[target] === 'Send to Sales' || STATUS_BUTTON_LABELS[target] === 'Move to Negotiation' ? 'w-full' : ''}>
+              <input type="hidden" name="target" value={target} />
+
+              <SubmitButton
+                loadingText=""
+                className={clsx(
+                  'rounded-xl px-8 py-3 text-sm shadow-md transition-all inline-flex items-center justify-center gap-3 font-bold',
+                  (STATUS_BUTTON_LABELS[target] === 'Send to Sales' || STATUS_BUTTON_LABELS[target] === 'Move to Negotiation')
+                    ? 'w-full bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 text-lg py-4'
+                    : STATUS_BUTTON_LABELS[target] === 'Submit for Review'
+                    ? 'bg-green-600 text-white hover:bg-green-700 min-w-[200px]'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 min-w-[200px]'
+                )}
+              >
+                {STATUS_BUTTON_LABELS[target] === 'Submit for Review' && <PaperAirplaneIcon className="h-5 w-5" />}
+                {STATUS_BUTTON_LABELS[target] === 'Mark Reviewed' && (
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                )}
+                {STATUS_BUTTON_LABELS[target] === 'Archive' && <ArchiveBoxIcon className="h-5 w-5" />}
+                <span className={STATUS_BUTTON_LABELS[target] === 'Send to Sales' || STATUS_BUTTON_LABELS[target] === 'Move to Negotiation' ? "text-xl" : "text-lg"}>{STATUS_BUTTON_LABELS[target]}</span>
+              </SubmitButton>
+            </form>
+          ))}
+
+          {canFinalize && (
+            <DownloadPdfButton />
+          )}
+        </div>
       </div>
         </>
       )}

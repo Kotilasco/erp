@@ -30,7 +30,11 @@ export default async function NewRequisitionPage({
   // load quote lines for the project's quote
   const quote = await prisma.quote.findFirst({
     where: { project: { id: projectId } },
-    include: { lines: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      lines: { orderBy: { createdAt: 'asc' } },
+      customer: { select: { displayName: true } },
+      project: { select: { name: true } },
+    },
   });
   if (!quote) return notFound();
 
@@ -110,6 +114,7 @@ export default async function NewRequisitionPage({
     const meta =
       typeof line.metaJson === 'string' ? JSON.parse(line.metaJson || '{}') : (line.metaJson ?? {});
     const category = (meta.section || meta.category || 'Uncategorized') as string;
+    const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
     const alreadyRequested = requestedByLine.get(line.id) ?? 0;
     const approvedExtra = approvedByLine.get(line.id) ?? 0;
     const alreadyPurchased = purchasedByLine.get(line.id) ?? 0;
@@ -120,7 +125,7 @@ export default async function NewRequisitionPage({
       id: line.id,
       qtyOrdered: ordered,
       description: line.description,
-      unit: line.unit ?? null,
+      unit: line.unit ?? unitFromMeta ?? null,
       purchased: alreadyPurchased,
       alreadyRequested: alreadyRequested,
       remaining,
@@ -136,53 +141,46 @@ export default async function NewRequisitionPage({
   // pass grouped to client
   return (
     <div className="min-h-screen bg-slate-50/50 pb-32 font-sans">
-      {/* Premium Header */}
-      <header className="relative overflow-hidden bg-gradient-to-br from-orange-700 via-orange-600 to-orange-800 pb-12 pt-10 text-white shadow-xl">
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-100 contrast-150 mix-blend-overlay"></div>
-        <div className="relative mx-auto max-w-5xl px-6 lg:px-8">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                 <a href={`/projects/${projectId}/requisitions`} className="group flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-white transition-all hover:bg-white/20">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5 transition-transform group-hover:-translate-x-0.5">
-                      <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
-                    </svg>
-                 </a>
-                <h1 className="text-3xl font-bold tracking-tight text-white drop-shadow-sm">
-                  Create Requisition
-                </h1>
-              </div>
-              <p className="ml-11 text-lg text-orange-50 opacity-90">
-                Select items from the quote to request.
-              </p>
-            </div>
-          </div>
+      {/* Replaced Header with Letterhead */}
+      <div className="mx-auto max-w-5xl px-6 pt-6 mb-4 no-print">
+         <a href={`/projects/${projectId}/requisitions`} className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+              <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
+            </svg>
+            Back to Requisitions
+         </a>
+      </div>
+
+      <main className="mx-auto max-w-5xl px-6 lg:px-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+             New Requisition
+          </h1>
+          <p className="mt-2 text-sm text-gray-500">
+             Select items from the quote to create a new requisition.
+          </p>
         </div>
-      </header>
 
-      <main className="relative -mt-8 mx-auto max-w-5xl px-6 lg:px-8">
-         {/* The form is a Server Component scope so we can use server action directly */}
-        <form action={createRequisitionFromQuotePicks} className="space-y-6">
-          {/* hidden projectId for the server action */}
-          <input type="hidden" name="projectId" value={projectId} />
+        <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden p-6">
+          <form action={createRequisitionFromQuotePicks} className="space-y-6">
+            <input type="hidden" name="projectId" value={projectId} />
+            <RequisitionPickerClient
+              clientGrouped={grouped}
+              projectId={projectId}
+              currentRole={currentUser?.role ?? null}
+              requestsByLine={requestsByLine}
+            />
 
-          {/* RequisitionPickerClient renders the inputs (checkbox + qty inputs) with deterministic names */}
-          <RequisitionPickerClient
-            clientGrouped={grouped}
-            projectId={projectId}
-            currentRole={currentUser?.role ?? null}
-            requestsByLine={requestsByLine}
-          />
-
-          <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 flex justify-center px-4">
-            <div className="pointer-events-auto flex items-center gap-4 rounded-2xl bg-gray-900/90 p-2 pr-2 shadow-2xl backdrop-blur-md ring-1 ring-white/10 transition-transform hover:scale-105">
-               <div className="pl-4 text-sm font-medium text-gray-300">
-                  Ready to submit?
-               </div>
-              <CreateRequisitionButton />
+            <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 flex justify-center px-4 no-print">
+              <div className="pointer-events-auto flex items-center gap-4 rounded-2xl bg-gray-900/90 p-2 pr-2 shadow-2xl backdrop-blur-md ring-1 ring-white/10 transition-transform hover:scale-105">
+                 <div className="pl-4 text-sm font-medium text-gray-300">
+                    Ready to submit?
+                 </div>
+                <CreateRequisitionButton />
+              </div>
             </div>
-          </div>
-        </form>
+          </form>
+        </div>
       </main>
     </div>
   );

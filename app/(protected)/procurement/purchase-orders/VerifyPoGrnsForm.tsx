@@ -5,6 +5,15 @@ import { useRouter } from 'next/navigation';
 import Money from '@/components/Money';
 import { verifyMultipleGRNs } from './actions';
 
+import { 
+  CubeIcon, 
+  TruckIcon, 
+  ArchiveBoxIcon, 
+  CurrencyDollarIcon, 
+  CheckCircleIcon, 
+  XCircleIcon 
+} from '@heroicons/react/24/outline';
+
 interface VerifyPoGrnsFormProps {
   poId: string;
   verifierId: string;
@@ -73,7 +82,7 @@ export default function VerifyPoGrnsForm({
 
     try {
       await verifyMultipleGRNs(payload, verifierId);
-      router.refresh();
+      router.push('/dashboard');
     } catch (e: any) {
       console.error(e);
       setError(e.message || 'Failed to verify items');
@@ -111,12 +120,42 @@ export default function VerifyPoGrnsForm({
         <table className="w-full text-sm text-left">
           <thead className="bg-gray-50 text-gray-700 uppercase">
             <tr>
-              <th className="px-4 py-3">Item</th>
-              <th className="px-4 py-3">Receipt / Vendor</th>
-              <th className="px-4 py-3 text-right">Delivered</th>
-              <th className="px-4 py-3 text-right">Price</th>
-              <th className="px-4 py-3 text-right">Accepted</th>
-              <th className="px-4 py-3 text-right">Rejected</th>
+              <th className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <CubeIcon className="h-4 w-4" />
+                  Item
+                </div>
+              </th>
+              <th className="px-4 py-3">
+                <div className="flex items-center gap-1">
+                  <TruckIcon className="h-4 w-4" />
+                  Supplier
+                </div>
+              </th>
+              <th className="px-4 py-3 text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <ArchiveBoxIcon className="h-4 w-4" />
+                  Delivered
+                </div>
+              </th>
+              <th className="px-4 py-3 text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <CurrencyDollarIcon className="h-4 w-4" />
+                  Price
+                </div>
+              </th>
+              <th className="px-4 py-3 text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <CheckCircleIcon className="h-4 w-4" />
+                  Accepted
+                </div>
+              </th>
+              <th className="px-4 py-3 text-right">
+                <div className="flex items-center justify-end gap-1">
+                  <XCircleIcon className="h-4 w-4" />
+                  Rejected
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
@@ -131,11 +170,7 @@ export default function VerifyPoGrnsForm({
                     {item.description}
                   </td>
                   <td className="px-4 py-3 text-gray-500">
-                     <div className="flex flex-col">
-                        <span>{item.receiptNumber}</span>
-                        <span className="text-xs text-gray-400">{item.vendorName}</span>
-                         <span className="text-xs text-gray-400">{new Date(item.receivedAt).toLocaleDateString()}</span>
-                     </div>
+                    {item.vendorName}
                   </td>
                   <td className="px-4 py-3 text-right">{item.qtyDelivered}</td>
                   <td className="px-4 py-3 text-right">
@@ -192,13 +227,13 @@ export default function VerifyPoGrnsForm({
         </div>
       )}
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-6 flex">
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="rounded bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="w-full rounded-xl bg-emerald-600 px-8 py-4 text-lg font-bold uppercase tracking-wide text-white shadow-xl shadow-emerald-900/20 transition-all hover:bg-emerald-700 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:pointer-events-none disabled:opacity-50"
         >
-          {loading ? 'Verifying...' : 'Verify & Approve All'}
+          {loading ? 'Verifying...' : 'Verify'}
         </button>
       </div>
     </div>

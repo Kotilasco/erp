@@ -4,6 +4,7 @@ import ScheduleEditor from './ScheduleEditor.client';
 import { createScheduleFromQuote } from '../../actions';
 import { getProductivitySettings } from '../../actions';
 import SubmitButton from '@/components/SubmitButton';
+import PrintHeader from '@/components/PrintHeader';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
@@ -35,6 +36,7 @@ export default async function ProjectSchedulePage({ params }: { params: Promise<
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 space-y-6">
+      <PrintHeader className="flex" />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Project Name: {project?.quote?.customer?.displayName}

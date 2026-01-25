@@ -3,6 +3,23 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import clsx from 'clsx';
+import {
+  CheckIcon,
+  XMarkIcon,
+  PlusIcon,
+  FlagIcon,
+  CurrencyDollarIcon,
+  CubeIcon,
+  ScaleIcon,
+  CalculatorIcon,
+  ShoppingCartIcon,
+  ChartBarIcon,
+  ClipboardDocumentCheckIcon,
+  ExclamationTriangleIcon,
+  TagIcon,
+  ChatBubbleLeftRightIcon,
+  ClockIcon
+} from '@heroicons/react/24/outline';
 import ClearableNumberInput from './ClearableNumberInput';
 
 type Topup = {
@@ -303,22 +320,21 @@ export default function ProcurementItemsTableClient({
   return (
     <div className="space-y-6">
       {status && (
-        <div className="rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
-          {status}
+        <div className="flex items-center gap-2 rounded border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700">
+          <ExclamationTriangleIcon className="h-5 w-5 flex-shrink-0" />
+          <span>{status}</span>
         </div>
       )}
-      {!hideFinancials && (
-        <div className="rounded border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700">
-          Current total: <span className="font-semibold">{formatter.format(totalCalculated)}</span>
-        </div>
-      )}
+      
       {grouped.map((group) => {
         if (group.items.length === 0) return null;
         return (
         <div key={group.section} className="space-y-4">
            <div className="flex items-center justify-between px-1">
             <h4 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-              <span className="w-1 h-6 bg-orange-500 rounded-full"></span>
+              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-orange-100 text-orange-600">
+                <TagIcon className="w-4 h-4" />
+              </div>
               {group.section}
             </h4>
           </div>
@@ -327,15 +343,37 @@ export default function ProcurementItemsTableClient({
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Item</th>
-                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Quoted Qty</th>
-                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requested</th>
-                  {showVariance && <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Variance</th>}
-                  {!hideFinancials && <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit Price</th>}
-                  {showTopUps && <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Top-up</th>}
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1"><CubeIcon className="w-4 h-4" /> Item</div>
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1"><ScaleIcon className="w-4 h-4" /> Unit</div>
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center justify-end gap-1"><CalculatorIcon className="w-4 h-4" /> Quoted Qty</div>
+                  </th>
+                  <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center justify-end gap-1"><ShoppingCartIcon className="w-4 h-4" /> Requested</div>
+                  </th>
+                  {showVariance && (
+                    <th className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center justify-end gap-1"><ChartBarIcon className="w-4 h-4" /> Variance</div>
+                    </th>
+                  )}
+                  {!hideFinancials && (
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1"><CurrencyDollarIcon className="w-4 h-4" /> Unit Price</div>
+                    </th>
+                  )}
+                  {showTopUps && (
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1"><PlusIcon className="w-4 h-4" /> Top-up</div>
+                    </th>
+                  )}
                   {!hideFinancials && (showReviewControls || Object.values(reviewFlags).some(Boolean)) && (
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Review</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-1"><ClipboardDocumentCheckIcon className="w-4 h-4" /> Review</div>
+                    </th>
                   )}
                 </tr>
               </thead>
@@ -357,27 +395,35 @@ export default function ProcurementItemsTableClient({
                             Top-ups:{' '}
                             {item.topups.map((top) => (
                               <span key={top.id} className="mr-2 inline-flex flex-col">
-                                <span>
+                                <span className="flex items-center gap-1">
                                   +{top.qtyRequested}{' '}
                                   <span
-                                    className={top.approved ? 'text-emerald-600' : 'text-amber-600'}
+                                    className={clsx(
+                                      "flex items-center gap-0.5",
+                                      top.approved ? 'text-emerald-600' : 'text-amber-600'
+                                    )}
                                   >
+                                    {top.approved ? <CheckIcon className="w-3 h-3" /> : <ClockIcon className="w-3 h-3" />}
                                     {top.approved ? 'approved' : 'pending'}
                                   </span>
                                 </span>
-                                <span
-                                  className={top.approved ? 'text-emerald-600' : 'text-amber-600'}
-                                >
-                                  {top.reason ? `note: ${top.reason}` : ''}
-                                </span>
+                                {top.reason && (
+                                  <span className="flex items-center gap-1 text-gray-400 ml-1">
+                                    <ChatBubbleLeftRightIcon className="w-3 h-3" />
+                                    {top.reason}
+                                  </span>
+                                )}
                               </span>
                             ))}
                           </div>
                         )}
                         {/* Display Rejection Reason if present and not currently under review (or if we want to show history) */}
                         {!item.reviewRequested && item.reviewRejectionReason && (
-                             <div className="mt-2 text-xs text-rose-700 bg-rose-50 p-2 rounded border border-rose-200">
-                                <strong>Rejection Reason:</strong> {item.reviewRejectionReason}
+                             <div className="mt-2 text-xs text-rose-700 bg-rose-50 p-2 rounded border border-rose-200 flex items-start gap-1">
+                                <ExclamationTriangleIcon className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <strong>Rejection Reason:</strong> {item.reviewRejectionReason}
+                                </div>
                              </div>
                         )}
                       </td>
@@ -386,7 +432,10 @@ export default function ProcurementItemsTableClient({
                       <td className="px-6 py-4 text-right text-sm font-medium text-gray-900">
                         <div>{item.requestedQty.toLocaleString()}</div>
                         {item.extraQty > 0 && (
-                          <div className="text-xs text-amber-600">+{item.extraQty} pending</div>
+                          <div className="text-xs text-amber-600 flex items-center justify-end gap-1">
+                             <PlusIcon className="w-3 h-3" />
+                             {item.extraQty} pending
+                          </div>
                         )}
                       </td>
                       {showVariance && (
@@ -474,27 +523,29 @@ export default function ProcurementItemsTableClient({
                               <button
                                 type="button"
                                 onClick={() => handleTopUpRequest(item.id)}
-                                className="rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-50 disabled:opacity-60"
+                                className="inline-flex items-center gap-1 rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-500 disabled:opacity-60"
                                 disabled={isPending || readOnly}
                               >
+                                <PlusIcon className="w-3 h-3" />
                                 Request more
                               </button>
                             </div>
                           ) : (
-                            <div className="text-xs text-gray-500">Top-up requests disabled</div>
+                            <div className="text-xs text-gray-500 italic">Top-up requests disabled</div>
                           )}
                           {permissions.canApproveTopUp &&
                             item.topups
                               .filter((t) => !t.approved)
                               .map((t) => (
-                                <div key={t.id} className="mt-2 text-xs text-gray-600">
-                                  Pending {t.qtyRequested}{' '}
+                                <div key={t.id} className="mt-2 text-xs text-gray-600 flex items-center justify-between">
+                                  <span>Pending {t.qtyRequested}</span>
                                   <button
                                     type="button"
-                                    className="text-emerald-600 hover:underline disabled:opacity-50"
+                                    className="flex items-center gap-1 text-emerald-600 hover:text-emerald-700 disabled:opacity-50 font-medium"
                                     disabled={isPending}
                                     onClick={() => handleApproveTopup(t.id, true)}
                                   >
+                                    <CheckIcon className="w-3 h-3" />
                                     Approve
                                   </button>
                                 </div>
@@ -504,7 +555,7 @@ export default function ProcurementItemsTableClient({
                       {showReviewColumn && (
                         <td className="px-6 py-4">
                           {showReviewControls && (
-                            <label className="flex items-center gap-2 text-sm text-gray-800">
+                            <label className="flex items-center gap-2 text-sm text-gray-800 cursor-pointer select-none">
                               <input
                                 type="checkbox"
                                 checked={reviewFlags[item.id] ?? false}
@@ -512,7 +563,8 @@ export default function ProcurementItemsTableClient({
                                 onChange={(e) => handleToggleReview(item, e.target.checked)}
                                 className="h-4 w-4 rounded border-gray-300 text-orange-600 focus:ring-orange-600"
                               />
-                              <span className={reviewFlags[item.id] ? 'text-rose-600' : ''}>
+                              <span className={clsx("flex items-center gap-1", reviewFlags[item.id] ? 'text-rose-600 font-medium' : '')}>
+                                <FlagIcon className={clsx("w-4 h-4", reviewFlags[item.id] ? 'fill-current' : '')} />
                                 Request review
                               </span>
                             </label>
@@ -523,27 +575,35 @@ export default function ProcurementItemsTableClient({
                               <div className="mt-2 flex gap-2">
                                 <button
                                   type="button"
-                                  className="rounded border border-emerald-500 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50"
+                                  className="flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs text-emerald-700 hover:bg-emerald-50 disabled:opacity-50 transition-colors"
                                   disabled={isPending}
                                   onClick={() => handleApproveReview(item.id)}
                                 >
-                                  Approve item
+                                  <CheckIcon className="w-3 h-3" />
+                                  Approve
                                 </button>
                                 <button
                                   type="button"
-                                  className="rounded border border-rose-500 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                                  className="flex items-center gap-1 rounded border border-rose-500 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
                                   disabled={isPending}
                                   onClick={() => handleRejectReview(item)}
                                 >
+                                  <XMarkIcon className="w-3 h-3" />
                                   Reject
                                 </button>
                               </div>
                             )}
                           {item.reviewApproved && (
-                            <div className="mt-1 text-xs font-medium text-emerald-600">Approved</div>
+                            <div className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600">
+                              <CheckIcon className="w-3 h-3" />
+                              Approved
+                            </div>
                           )}
                           {!item.reviewApproved && recentRejected[item.id] && (
-                            <div className="mt-1 text-xs font-medium text-rose-600">Rejected</div>
+                            <div className="mt-1 flex items-center gap-1 text-xs font-medium text-rose-600">
+                              <XMarkIcon className="w-3 h-3" />
+                              Rejected
+                            </div>
                           )}
                         </td>
                       )}
@@ -559,20 +619,23 @@ export default function ProcurementItemsTableClient({
       })}
 
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-sm rounded bg-white p-4 shadow-lg">
-            <h3 className="text-lg font-semibold text-gray-900">Unit price requires review</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center gap-3 text-amber-600 mb-4">
+              <ExclamationTriangleIcon className="w-8 h-8" />
+              <h3 className="text-lg font-bold text-gray-900">Unit price requires review</h3>
+            </div>
             <p className="mt-2 text-sm text-gray-600">
               The unit price entered exceeds the quoted price. Flag the item for review before using
               a higher value.
             </p>
-            <div className="mt-4 flex justify-end">
+            <div className="mt-6 flex justify-end">
               <button
                 type="button"
-                className="rounded bg-barmlo-blue px-4 py-1.5 text-sm text-white"
+                className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 transition-colors"
                 onClick={() => setModalOpen(null)}
               >
-                OK
+                Understood
               </button>
             </div>
           </div>
@@ -580,9 +643,12 @@ export default function ProcurementItemsTableClient({
       )}
 
       {rejectionModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
               <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl transform transition-all">
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">Reject Review Request</h3>
+                  <div className="flex items-center gap-3 text-rose-600 mb-4">
+                    <XMarkIcon className="w-6 h-6" />
+                    <h3 className="text-xl font-bold text-gray-900">Reject Review Request</h3>
+                  </div>
                   <p className="text-sm text-gray-600 mb-4">
                       Please provide a reason for rejecting the review for <strong>{rejectionModal.description}</strong>.
                       This will be visible to the Procurement Officer.
@@ -606,7 +672,7 @@ export default function ProcurementItemsTableClient({
                       </button>
                       <button
                           type="button"
-                          className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-60"
+                          className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-rose-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-rose-500 disabled:opacity-60 flex items-center gap-2"
                           onClick={confirmRejection}
                           disabled={isPending || !rejectionReasonInput.trim()}
                       >
@@ -620,3 +686,5 @@ export default function ProcurementItemsTableClient({
     </div>
   );
 }
+
+

@@ -100,6 +100,7 @@ export async function recordClientPayment(projectId: string, args: {
       }
     }
   }, {
+    maxWait: 10000, // Wait up to 10s for a connection
     timeout: 20000, // Increase timeout to 20s to handle network latency with Neon
   });
 

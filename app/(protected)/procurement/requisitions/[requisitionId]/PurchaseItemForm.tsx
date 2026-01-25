@@ -5,6 +5,8 @@
 import { useState } from 'react';
 import QuantityInput from '@/components/QuantityInput';
 import { requestItemReview } from './actions'; 
+import { ShoppingCartIcon } from '@heroicons/react/24/outline';
+ 
 
 interface Props {
   requisitionId: string;
@@ -131,9 +133,16 @@ export default function PurchaseItemForm({
         <button 
             type="submit" 
             disabled={isPending}
-            className="w-full rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50"
         >
-          {isPending ? 'Processing...' : 'Stage for PO'}
+          {isPending ? (
+            'Processing...'
+          ) : (
+            <>
+              <ShoppingCartIcon className="h-5 w-5" />
+              Purchase
+            </>
+          )}
         </button>
       </div>
     </form>

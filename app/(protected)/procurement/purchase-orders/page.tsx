@@ -3,7 +3,9 @@ import { getCurrentUser } from '@/lib/auth';
 import { projectApprovedSpendMinor } from '@/lib/projectTotals';
 import Link from 'next/link';
 import clsx from 'clsx';
-import { EyeIcon } from '@heroicons/react/24/outline';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
+import PurchaseOrderToolbar from './components/PurchaseOrderToolbar';
+import TablePagination from '@/components/ui/table-pagination';
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
@@ -20,12 +22,16 @@ const STATUS_BADGE: Record<string, string> = {
 export default async function AccountsPOList({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; pageSize?: string }>;
 }) {
   const me = await getCurrentUser();
   if (!me) return <div className="p-6 text-sm text-gray-600">Authentication required.</div>;
 
-  const { status } = await searchParams;
+  const resolvedSearchParams = await searchParams;
+  const { status, q } = resolvedSearchParams;
+  const page = Number(resolvedSearchParams.page) || 1;
+  const pageSize = Number(resolvedSearchParams.pageSize) || 20;
+  
   const isSecurity = me.role === 'SECURITY';
 
   const where: any = {};
@@ -37,31 +43,42 @@ export default async function AccountsPOList({
      where.status = status;
   }
 
-  const pos = await prisma.purchaseOrder.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    include: { 
-      requisition: { 
-        include: { 
-          project: {
-             select: {
-                id: true,
-                projectNumber: true,
-                quote: { select: { customer: { select: { displayName: true } } } }
-             }
-          }
-        } 
-      }, 
-      items: true 
-    },
-    take: 50,
-  });
+  if (q) {
+    where.OR = [
+      { id: { contains: q, mode: 'insensitive' } },
+      { vendor: { contains: q, mode: 'insensitive' } },
+      { requisition: { project: { projectNumber: { contains: q, mode: 'insensitive' } } } },
+      { requisition: { project: { quote: { customer: { displayName: { contains: q, mode: 'insensitive' } } } } } }
+    ];
+  }
+
+  const [pos, total] = await Promise.all([
+    prisma.purchaseOrder.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      include: { 
+        requisition: { 
+          include: { 
+            project: {
+               select: {
+                  id: true,
+                  projectNumber: true,
+                  quote: { select: { customer: { select: { displayName: true } } } }
+               }
+            }
+          } 
+        }, 
+        items: true 
+      },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.purchaseOrder.count({ where }),
+  ]);
 
   // example: show total used for the first project in list
   // Note: This logic seems specific to a "Project View" but is on a general list. 
   // We'll keep it as requested but style it better.
-  const firstProjectId = pos[0]?.requisition.projectId;
-  const used = firstProjectId ? await projectApprovedSpendMinor(firstProjectId) : 0n;
 
   return (
     <div className="p-6 space-y-6">
@@ -72,11 +89,7 @@ export default async function AccountsPOList({
          </div>
       </div>
 
-      {firstProjectId && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-blue-800 dark:border-blue-900/30 dark:bg-blue-900/20 dark:text-blue-300">
-          <span className="font-semibold">Project spend to date:</span> {(Number(used)/100).toFixed(2)}
-        </div>
-      )}
+      <PurchaseOrderToolbar />
 
       <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
         <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
@@ -140,8 +153,8 @@ export default async function AccountsPOList({
                               href={`/procurement/purchase-orders/${po.id}`}
                               className="flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
                            >
-                              <EyeIcon className="h-3.5 w-3.5" />
-                              Details
+                              <ArrowRightIcon className="h-3.5 w-3.5" />
+                              Action
                            </Link>
                         </div>
                       </td>
@@ -151,6 +164,9 @@ export default async function AccountsPOList({
               )}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4">
+          <TablePagination total={total} currentPage={page} pageSize={pageSize} />
         </div>
       </div>
     </div>

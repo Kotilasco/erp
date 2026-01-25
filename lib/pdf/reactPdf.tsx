@@ -1,6 +1,8 @@
 
 // lib/pdf/reactPdf.tsx
 import React from 'react';
+import fs from 'fs';
+import path from 'path';
 import { pdf } from '@react-pdf/renderer';
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { prisma } from '@/lib/db';
@@ -68,22 +70,23 @@ export async function renderReactPdf(quoteId: string): Promise<PdfResult> {
   const lines = linesRaw.map(toPdfLine);
   const q = toPdfQuote(quote);
 
-  // Valid React-PDF element
-  const element = <QuoteDoc quote={q} lines={lines} />;
+  let logoData: string | undefined;
+  try {
+    const logoPath = path.join(process.cwd(), 'public', 'barmlo_logo.jpeg');
+    if (fs.existsSync(logoPath)) {
+      const logoBuffer = fs.readFileSync(logoPath);
+      logoData = `data:image/jpeg;base64,${logoBuffer.toString('base64')}`;
+    }
+  } catch (e) {
+    console.error('Failed to read logo for PDF', e);
+  }
 
-  // in lib/pdf/reactPdf.tsx, right before calling pdf(element):
-  const test = (
-    <Document>
-      <Page>
-        <Text>OK</Text>
-      </Page>
-    </Document>
-  );
-  
+  // Valid React-PDF element
+  const element = <QuoteDoc quote={q} lines={lines} logoData={logoData} />;
 
   // Return Buffer as required by PdfResult
- // const instance = pdf(element);
-  const buffer = await pdf(test).toBuffer(); // if this succeeds, QuoteDoc has invalid children /* await instance.toBuffer(); */
+  const instance = pdf(element);
+  const buffer = await instance.toBuffer();
   const filename = `${q.number || q.id}.pdf`;
 
   return { buffer, filename };

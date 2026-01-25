@@ -15,6 +15,7 @@ import { QUOTE_STATUSES, USER_ROLES, type QuoteStatus, type UserRole } from '@/l
 import { getErrorMessage } from '@/lib/errors';
 import { generatePaymentSchedule } from '../../projects/actions';
 import { generateProjectNumberInTransaction } from '@/lib/project-number';
+import { getPdfRenderer } from '@/lib/pdf';
 
 const quoteInclude = {
   customer: true,
@@ -1764,4 +1765,19 @@ export async function ensurePaymentSchedule(projectId: string) {
       })),
     }),
   ]);
+}
+
+export async function generateQuotePdf(quoteId: string): Promise<ActionResult<{ base64: string; filename: string }>> {
+  return runAction('generateQuotePdf', async () => {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Authentication required');
+    
+    const renderer = await getPdfRenderer();
+    const result = await renderer.render({ quoteId });
+    
+    return {
+      base64: result.buffer.toString('base64'),
+      filename: result.filename
+    };
+  });
 }

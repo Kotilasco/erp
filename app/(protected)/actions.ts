@@ -392,16 +392,21 @@ export async function upsertCustomer(input: {
   const addressJson = typeof input.address === 'string' && input.address.trim().length
     ? JSON.stringify({ line1: input.address.trim() })
     : input.addressJson ?? null;
-  const existingByEmail = email ? await prisma.customer.findFirst({ where: { email } }) : null;
-  if (existingByEmail) {
-    return { customerId: existingByEmail.id };
-  }
-  const existingByNameCity = await prisma.customer.findFirst({
-    where: { displayName, city: city ?? undefined },
+  // Optimize: Check both conditions in one query to save connections
+  const existing = await prisma.customer.findFirst({
+    where: {
+      OR: [
+        ...(email ? [{ email }] : []),
+        { displayName, city: city ?? undefined },
+      ],
+    },
+    select: { id: true },
   });
-  if (existingByNameCity) {
-    return { customerId: existingByNameCity.id };
+
+  if (existing) {
+    return { customerId: existing.id };
   }
+
   const created = await prisma.customer.create({
     data: { displayName, city: city ?? null, email, phone, addressJson: addressJson ?? undefined },
   });

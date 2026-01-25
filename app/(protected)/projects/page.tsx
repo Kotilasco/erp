@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon, DocumentPlusIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon, DocumentPlusIcon, HashtagIcon, UserIcon, MapPinIcon, TagIcon, UserCircleIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -352,21 +352,34 @@ export default async function ProjectsPage({
                     return (
                        <tr key={project.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
                          <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
-                           {project.projectNumber || project.id.slice(0, 8)}
+                           <div className="flex items-center gap-2">
+                             <HashtagIcon className="h-4 w-4 text-gray-400" />
+                             {project.projectNumber || project.id.slice(0, 8)}
+                           </div>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                           {project.quote?.customer?.displayName || 'Unknown'}
+                           <div className="flex items-center gap-2">
+                             <UserIcon className="h-4 w-4 text-gray-400" />
+                             {project.quote?.customer?.displayName || 'Unknown'}
+                           </div>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                           {project.quote?.customer?.city || '-'}
+                           <div className="flex items-center gap-2">
+                             <MapPinIcon className="h-4 w-4 text-gray-400" />
+                             {project.quote?.customer?.city || '-'}
+                           </div>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                            <span className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
+                            <span className="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-700/10 dark:bg-blue-400/10 dark:text-blue-400 dark:ring-blue-400/30">
+                              <TagIcon className="h-3 w-3" />
                               {typeLabel}
                             </span>
                          </td>
                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-white font-medium">
-                            <Money minor={dueAmount} />
+                            <div className="flex items-center gap-1">
+                               <BanknotesIcon className="h-4 w-4 text-gray-400" />
+                               <Money minor={dueAmount} />
+                            </div>
                          </td>
                          <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
@@ -387,13 +400,22 @@ export default async function ProjectsPage({
                    return (
                      <tr key={project.id} className="group hover:bg-blue-50/30 transition-colors dark:hover:bg-gray-700/50">
                        <td className="px-6 py-4 text-sm font-semibold text-gray-900 dark:text-white">
-                         {project.projectNumber || project.id.slice(0, 8)}
+                         <div className="flex items-center gap-2">
+                           <HashtagIcon className="h-4 w-4 text-gray-400" />
+                           {project.projectNumber || project.id.slice(0, 8)}
+                         </div>
                        </td>
                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                         {project.quote?.customer?.displayName || 'Unknown'}
+                         <div className="flex items-center gap-2">
+                           <UserIcon className="h-4 w-4 text-gray-400" />
+                           {project.quote?.customer?.displayName || 'Unknown'}
+                         </div>
                        </td>
                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                         {project.quote?.customer?.city || '-'}
+                         <div className="flex items-center gap-2">
+                           <MapPinIcon className="h-4 w-4 text-gray-400" />
+                           {project.quote?.customer?.city || '-'}
+                         </div>
                        </td>
                        <td className="px-6 py-4 text-center">
                          <div className="flex justify-center">
@@ -401,14 +423,20 @@ export default async function ProjectsPage({
                          </div>
                        </td>
                        <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 font-mono">
-                         {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
+                         <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4 text-gray-400" />
+                            {project.commenceOn ? new Date(project.commenceOn).toLocaleDateString() : '-'}
+                         </div>
                        </td>
                        {!isProjectManager && (
                          <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                             {isSeniorPM && currentTab === 'assignment' ? (
                                <ProjectAssigner projectId={project.id} projectManagers={projectManagers} />
                             ) : (
-                               project.assignedTo?.name || '-'
+                               <div className="flex items-center gap-2">
+                                  <UserCircleIcon className="h-4 w-4 text-gray-400" />
+                                  {project.assignedTo?.name || '-'}
+                               </div>
                             )}
                          </td>
                        )}

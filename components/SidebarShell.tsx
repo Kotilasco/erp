@@ -8,8 +8,9 @@ import type { AuthenticatedUser } from '@/lib/auth';
 import type { QuoteStatus } from '@/lib/workflow';
 import { USER_ROLES } from '@/lib/workflow';
 import Image from 'next/image';
+import { CurrencyDollarIcon, ArrowTrendingUpIcon } from '@heroicons/react/24/outline';
 
-type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' | 'chart-pie' | 'calendar' };
+type NavItem = { label: string; href: string; icon: 'home' | 'quote' | 'sheet' | 'calc' | 'users' | 'clipboard' | 'dashboard' | 'folder' | 'box' | 'desktop' | 'list' | 'plus-document' | 'banknotes' | 'credit-card' | 'truck' | 'map' | 'check' | 'chart-pie' | 'calendar' | 'price-check' | 'top-up' };
 type Role = (typeof USER_ROLES)[number];
 type PageDef = NavItem & { roles?: Role[] };
 
@@ -17,7 +18,8 @@ const PAGE_DEFS: PageDef[] = [
   // Dashboard
   { label: 'Dashboard', href: '/dashboard', icon: 'dashboard' },
   // Approvals: SENIOR_PROCUREMENT
-  { label: 'Approvals', href: '/procurement/approvals', icon: 'check', roles: ['SENIOR_PROCUREMENT'] },
+  { label: 'Price Reviews', href: '/procurement/approvals?view=reviews', icon: 'price-check', roles: ['SENIOR_PROCUREMENT'] },
+  { label: 'Quantity Top-Ups', href: '/procurement/approvals?view=topups', icon: 'top-up', roles: ['SENIOR_PROCUREMENT'] },
   // My Quotes: QS, SENIOR_QS, ADMIN
   { label: 'My Quotes', href: '/quotes', icon: 'list', roles: ['QS', 'SENIOR_QS', 'ADMIN'] },
   // New Quotations: SALES
@@ -89,7 +91,7 @@ const PAGE_DEFS: PageDef[] = [
   // Assets (multipurpose): Security / PM / Admin (hidden for Procurement)
   { label: 'Assets', href: '/assets', icon: 'desktop', roles: ['SENIOR_PROCUREMENT', 'SECURITY', 'PROJECT_OPERATIONS_OFFICER', 'ADMIN'] },
   // Employees: Admin, Managing Director, Project Manager
-  { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER'] },
+  { label: 'Employees', href: '/employees', icon: 'users', roles: ['ADMIN', 'MANAGING_DIRECTOR'] },
   { label: 'Awaiting Delivery', href: '/dispatches?status=ARRIVED', icon: 'truck', roles: ['PROJECT_OPERATIONS_OFFICER', 'ADMIN', 'FOREMAN', 'PROJECT_COORDINATOR', 'DRIVER'] },
   
   // Driver specific
@@ -269,6 +271,10 @@ function Icon({ name, className }: { name: NavItem['icon']; className?: string }
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
           </svg>
         );
+    case 'price-check':
+      return <CurrencyDollarIcon className={className} />;
+    case 'top-up':
+      return <ArrowTrendingUpIcon className={className} />;
   }
 }
 

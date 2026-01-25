@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { RequisitionStatusBadge } from '@/components/ui/requisition-status-badge';
 import TablePagination from '@/components/ui/table-pagination';
 import RequisitionTableToolbar from './components/RequisitionTableToolbar';
-import { ClipboardDocumentCheckIcon, PlusIcon, ShoppingBagIcon } from '@heroicons/react/24/outline';
+import { ClipboardDocumentCheckIcon, PlusIcon, ShoppingBagIcon, HashtagIcon, FolderIcon, UserIcon, CurrencyDollarIcon, CalendarIcon, BoltIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
 
 export const dynamic = 'force-dynamic';
 // Force rebuild
@@ -93,25 +93,29 @@ export default async function RequisitionsPage({
 
   let pageTitle = 'Requisitions';
   let pageDesc = 'Manage purchase requisitions.';
+  let PageIcon = ClipboardDocumentCheckIcon;
 
   if (currentTab === 'funding_needed') {
       pageTitle = 'Create Purchase Order';
       pageDesc = 'Requisitions approved but waiting to be converted into POs.';
+      PageIcon = DocumentTextIcon;
   } else if (currentTab === 'action_purchases') {
       pageTitle = 'Procure';
       pageDesc = 'Items ready to be purchased from approved funding.';
+      PageIcon = ShoppingBagIcon;
   } else if (currentTab === 'pending_approval') {
       pageTitle = 'Pending Approval';
       pageDesc = 'Requisitions waiting for manager approval.';
+      PageIcon = ClipboardDocumentCheckIcon;
   }
 
   return (
     <div className="space-y-8 p-2 sm:p-4 max-w-7xl mx-auto">
       {/* Header Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
-            <ClipboardDocumentCheckIcon className="h-8 w-8 text-barmlo-blue dark:text-blue-400" />
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 dark:bg-indigo-900/30 dark:border-indigo-800">
+            <PageIcon className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
           </div>
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">{pageTitle}</h1>
@@ -131,13 +135,43 @@ export default async function RequisitionsPage({
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ref #</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requester</th>
-                <th scope="col" className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Amount</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                        <HashtagIcon className="h-3.5 w-3.5" />
+                        Ref #
+                    </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                        <FolderIcon className="h-3.5 w-3.5" />
+                        Project
+                    </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                        <UserIcon className="h-3.5 w-3.5" />
+                        Requester
+                    </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center justify-end gap-1">
+                        <CurrencyDollarIcon className="h-3.5 w-3.5" />
+                        Amount
+                    </div>
+                </th>
                 <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
-                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center gap-1">
+                        <CalendarIcon className="h-3.5 w-3.5" />
+                        Date
+                    </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                    <div className="flex items-center justify-center gap-1">
+                        <BoltIcon className="h-3.5 w-3.5" />
+                        Action
+                    </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -182,16 +216,16 @@ export default async function RequisitionsPage({
                     <td className="px-6 py-4 text-center">
                       <Link 
                         href={`/procurement/requisitions/${r.id}`}
-                        className="inline-flex items-center gap-1 rounded border border-emerald-500 px-2 py-1 text-xs font-bold text-emerald-600 transition-colors hover:bg-emerald-50 dark:border-emerald-400 dark:text-emerald-400 dark:hover:bg-emerald-900/20"
+                        className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700 transition-all hover:bg-emerald-100 hover:border-emerald-300 hover:shadow-sm dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
                       >
                         {currentTab === 'action_purchases' ? (
                             <>
-                                <ShoppingBagIcon className="h-3.5 w-3.5" />
+                                <ShoppingBagIcon className="h-4 w-4" />
                                 Procure
                             </>
                         ) : (
                             <>
-                                <PlusIcon className="h-3.5 w-3.5" />
+                                <PlusIcon className="h-4 w-4" />
                                 Create
                             </>
                         )}

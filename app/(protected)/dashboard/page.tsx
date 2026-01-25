@@ -1639,6 +1639,13 @@ export default async function DashboardPage({
 
   // Simplified Senior QS Dashboard
   if (user.role === 'SENIOR_QS') {
+    const reviewCount = await prisma.quote.count({
+      where: {
+        status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION'] },
+        office: user.office ?? undefined,
+      },
+    });
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6">
         <div className="text-center">
@@ -1664,6 +1671,11 @@ export default async function DashboardPage({
             />
           </svg>
           Review Quotations
+          {reviewCount > 0 && (
+            <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              {reviewCount}
+            </span>
+          )}
         </Link>
       </div>
     );
@@ -1709,6 +1721,13 @@ export default async function DashboardPage({
 
   // Simplified Sales Dashboard
   if (user.role === 'SALES') {
+    const newQuotesCount = await prisma.quote.count({
+      where: { status: 'SENT_TO_SALES' }
+    });
+    const pendingEndorsementsCount = await prisma.quote.count({
+      where: { status: 'REVIEWED' }
+    });
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6">
         <div className="text-center">
@@ -1729,6 +1748,9 @@ export default async function DashboardPage({
               />
             </svg>
             New Quotations
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-orange-600">
+              {newQuotesCount}
+            </span>
           </Link>
 
           <Link
@@ -1751,6 +1773,9 @@ export default async function DashboardPage({
               <path strokeWidth="1.5" d="M9 12h6M9 16h6" />
             </svg>
             Pending Endorsements
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-orange-600">
+              {pendingEndorsementsCount}
+            </span>
           </Link>
         </div>
       </div>
@@ -1759,6 +1784,41 @@ export default async function DashboardPage({
 
   // Simplified Sales Accounts Dashboard
   if (user.role === 'SALES_ACCOUNTS') {
+    const [duePaymentsCount, otherPaymentsCount] = await Promise.all([
+      prisma.project.count({
+        where: {
+          OR: [
+            {
+              paymentSchedules: {
+                some: {
+                  OR: [
+                    {
+                      status: { in: ['DUE', 'PARTIAL', 'OVERDUE'] },
+                      dueOn: { lte: new Date() },
+                    },
+                    {
+                      status: { in: ['DUE', 'PARTIAL', 'OVERDUE'] },
+                      label: { contains: 'Deposit', mode: 'insensitive' },
+                    },
+                  ],
+                },
+              },
+            },
+            {
+              paymentSchedules: { none: {} },
+              depositMinor: { gt: 0 },
+              status: { notIn: ['COMPLETED', 'CLOSED'] },
+            },
+          ],
+        },
+      }),
+      prisma.project.count({
+        where: {
+          status: { notIn: ['COMPLETED', 'CLOSED'] },
+        },
+      }),
+    ]);
+
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] gap-8 p-6">
         <div className="text-center">
@@ -1785,11 +1845,14 @@ export default async function DashboardPage({
               />
             </svg>
             Receive Due Payments
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-orange-600">
+              {duePaymentsCount}
+            </span>
           </Link>
 
           <Link
             href="/projects?tab=all_payments"
-            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-blue-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1806,6 +1869,9 @@ export default async function DashboardPage({
               />
             </svg>
             Other Payments
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-blue-600">
+              {otherPaymentsCount}
+            </span>
           </Link>
         </div>
       </div>

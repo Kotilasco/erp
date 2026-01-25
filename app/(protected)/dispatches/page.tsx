@@ -6,7 +6,18 @@ import { redirect } from 'next/navigation';
 import { DispatchStatusBadge } from '@/components/ui/dispatch-status-badge';
 import TablePagination from '@/components/ui/table-pagination';
 import DispatchTableToolbar from './components/DispatchTableToolbar';
-import { TruckIcon, EyeIcon, PlusIcon } from '@heroicons/react/24/outline';
+import { 
+  TruckIcon, 
+  EyeIcon, 
+  PlusIcon,
+  FolderIcon,
+  UserIcon,
+  ClipboardDocumentListIcon,
+  Cog6ToothIcon,
+  HashtagIcon,
+  CheckCircleIcon,
+  CalendarIcon
+} from '@heroicons/react/24/outline';
 import { getPendingDispatchItems, type PendingDispatchItem } from '@/lib/dispatch-logic';
 
 export const dynamic = 'force-dynamic';
@@ -128,10 +139,30 @@ export default async function DispatchesPage({
              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
                  <tr>
-                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
-                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
-                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Pending Items</th>
-                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-2">
+                        <FolderIcon className="h-4 w-4" />
+                        Project
+                      </div>
+                   </th>
+                   <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center gap-2">
+                        <UserIcon className="h-4 w-4" />
+                        Customer
+                      </div>
+                   </th>
+                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <ClipboardDocumentListIcon className="h-4 w-4" />
+                        Pending Items
+                      </div>
+                   </th>
+                   <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <Cog6ToothIcon className="h-4 w-4" />
+                        Action
+                      </div>
+                   </th>
                  </tr>
                </thead>
                <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
@@ -160,13 +191,19 @@ export default async function DispatchesPage({
                           </span>
                        </td>
                        <td className="px-6 py-4 text-center">
-                         <Link 
-                           href={`/projects/${p.id}/dispatches/new`}
-                           className="inline-flex items-center gap-1 rounded border border-blue-500 px-3 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                         >
-                           <PlusIcon className="h-3.5 w-3.5" />
-                           Create Dispatch
-                         </Link>
+                          <form action={async () => {
+                            'use server';
+                            const { createAndRedirectDispatch } = await import('@/app/(protected)/dashboard/actions');
+                            await createAndRedirectDispatch(p.id);
+                          }}>
+                            <button 
+                              type="submit"
+                              className="inline-flex items-center gap-1 rounded border border-blue-500 px-3 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                            >
+                              <PlusIcon className="h-3.5 w-3.5" />
+                              Create Dispatch
+                            </button>
+                          </form>
                        </td>
                      </tr>
                    ))
@@ -177,12 +214,42 @@ export default async function DispatchesPage({
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50/80 backdrop-blur-sm dark:bg-gray-900/50">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Ref #</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Requester</th>
-                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
-                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action</th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <HashtagIcon className="h-4 w-4" />
+                    Ref #
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <FolderIcon className="h-4 w-4" />
+                    Project
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4" />
+                    Requester
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <CheckCircleIcon className="h-4 w-4" />
+                    Status
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4" />
+                    Date
+                  </div>
+                </th>
+                <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <Cog6ToothIcon className="h-4 w-4" />
+                    Action
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">

@@ -37,17 +37,92 @@ html, body, :root {
 }
 
 @media print {
-  /* Hide sidebar, header, and buttons */
-  aside, header, button, .no-print {
+  @page {
+    margin: 0;
+    size: auto;
+  }
+
+  /* Hide sidebar and header only - keep buttons visible as requested */
+  aside, header, .no-print {
     display: none !important;
   }
 
-  /* Ensure content takes full width */
-  main, div[class*="flex-1"] {
+  /* Ensure content takes full width and height, and reset all scroll containers */
+  html, body, main, section, .min-h-dvh, .h-dvh, .overflow-hidden, .overflow-y-auto {
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
     margin: 0 !important;
-    padding: 0 !important;
     width: 100% !important;
     max-width: none !important;
+    position: static !important;
+  }
+
+  /* Force desktop-like width for containers */
+  .container, .max-w-7xl, .max-w-6xl, .max-w-5xl, .max-w-4xl, .max-w-3xl, .max-w-2xl, .max-w-xl {
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  /* Force flex-row on print for elements that might stack */
+  .md\:flex-row {
+    flex-direction: row !important;
+  }
+  
+  .md\:items-start {
+    align-items: flex-start !important;
+  }
+  
+  .md\:items-end {
+    align-items: flex-end !important;
+  }
+  
+  .md\:justify-between {
+    justify-content: space-between !important;
+  }
+  
+  .md\:mt-0 {
+    margin-top: 0 !important;
+  }
+
+  /* Ensure logo retains its size */
+  .w-48 {
+    width: 12rem !important;
+  }
+  .h-24 {
+    height: 6rem !important;
+  }
+
+  /* Reduce base font size for print to fit more content */
+  body {
+    font-size: 11px !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* Reduce heading sizes */
+  h1 { font-size: 18px !important; }
+  h2 { font-size: 16px !important; }
+  h3 { font-size: 14px !important; }
+  p, span, div { font-size: 11px !important; }
+  
+  /* Adjust grid columns to not stack */
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Reduce padding/margins for print */
+  .p-8 { padding: 1rem !important; }
+  .mb-8 { margin-bottom: 1rem !important; }
+  .gap-8 { gap: 1rem !important; }
+
+  /* Add padding to body to prevent content from touching edges since page margin is 0 */
+  body {
+    padding: 10mm !important;
+  }
+  
+  /* Remove background images/patterns if any */
+  div[class*="absolute inset-0"] {
+    display: none !important;
   }
 
   /* Reset background colors for printing */
@@ -63,5 +138,23 @@ html, body, :root {
   /* Hide scrollbars */
   ::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Page break rules */
+  table {
+    page-break-inside: auto;
+    break-inside: auto;
+  }
+  tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    page-break-after: auto;
+    break-after: auto;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tfoot {
+    display: table-footer-group;
   }
 }

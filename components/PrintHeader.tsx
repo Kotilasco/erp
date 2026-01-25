@@ -1,9 +1,10 @@
 import { HomeIcon, EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
+import { cn } from '@/lib/utils';
 
-export default function PrintHeader() {
+export default function PrintHeader({ className }: { className?: string }) {
   return (
-    <div className="hidden print:flex flex-row justify-between items-start mb-8 border-b-2 border-barmlo-blue pb-4 w-full">
+    <div className={cn("hidden print:flex flex-row justify-between items-start mb-8 border-b-2 border-barmlo-blue pb-4 w-full", className)}>
       <div className="flex flex-col items-center">
         <div className="relative w-48 h-24">
             <Image src="/barmlo_logo.jpeg" alt="Barmlo Logo" fill className="object-contain" />

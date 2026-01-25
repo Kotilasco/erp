@@ -9,6 +9,12 @@ import {
   PlusIcon,
   EyeIcon,
   PencilSquareIcon,
+  UserGroupIcon,
+  MapPinIcon,
+  CalendarDaysIcon,
+  UserCircleIcon,
+  TagIcon,
+  BoltIcon,
 } from '@heroicons/react/24/outline';
 import QuoteTableToolbar from './components/QuoteTableToolbar';
 import QuotePagination from './components/QuotePagination';
@@ -158,12 +164,42 @@ export default async function QuotesPage(props: { searchParams: { [key: string]:
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
             <thead className="bg-gray-50 dark:bg-gray-900/50">
               <tr>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Customer</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Location</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Date</th>
-                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Logged By</th>
-                <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
-                <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Action(s)</th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <UserGroupIcon className="h-4 w-4" />
+                    Customer
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <MapPinIcon className="h-4 w-4" />
+                    Location
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <CalendarDaysIcon className="h-4 w-4" />
+                    Date
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center gap-2">
+                    <UserCircleIcon className="h-4 w-4" />
+                    Logged By
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <TagIcon className="h-4 w-4" />
+                    Status
+                  </div>
+                </th>
+                <th scope="col" className="px-4 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <div className="flex items-center justify-center gap-2">
+                    <BoltIcon className="h-4 w-4" />
+                    Action(s)
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">

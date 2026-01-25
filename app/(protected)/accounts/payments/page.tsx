@@ -2,8 +2,18 @@ import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { EyeIcon } from '@heroicons/react/24/outline';
+import { 
+  EyeIcon, 
+  BriefcaseIcon, 
+  UserIcon, 
+  DocumentCheckIcon, 
+  BanknotesIcon, 
+  CurrencyDollarIcon, 
+  BoltIcon 
+} from '@heroicons/react/24/outline';
 import { SearchInput } from '@/components/ui/search-input';
+import TablePagination from '@/components/ui/table-pagination';
+import { PageSizeSelector } from '@/components/ui/page-size-selector';
 
 const formatMoney = (minor: bigint | number) => {
   return new Intl.NumberFormat('en-US', {
@@ -15,7 +25,7 @@ const formatMoney = (minor: bigint | number) => {
 export default async function PaymentsDashboard({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; pageSize?: string }>;
 }) {
   const me = await getCurrentUser();
 
@@ -26,9 +36,9 @@ export default async function PaymentsDashboard({
     redirect('/dashboard');
   }
 
-  const { page, q } = await searchParams;
+  const { page, q, pageSize } = await searchParams;
   const currentPage = Number(page) || 1;
-  const itemsPerPage = 10;
+  const itemsPerPage = Number(pageSize) || 10;
   const skip = (currentPage - 1) * itemsPerPage;
 
   // Build Where Clause
@@ -69,8 +79,11 @@ export default async function PaymentsDashboard({
            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Project Payments</h1>
            <p className="text-gray-500">Select a project to view payment history and record new payments.</p>
         </div>
-        <div className="w-full sm:w-72">
-            <SearchInput placeholder="Search BM number or customer..." />
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+            <PageSizeSelector />
+            <div className="w-full sm:w-72">
+                <SearchInput placeholder="Search BM number or customer..." />
+            </div>
         </div>
       </div>
 
@@ -79,12 +92,42 @@ export default async function PaymentsDashboard({
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50/80 backdrop-blur-sm">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Project</th>
-                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Customer</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Verified Contract</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Paid to Date</th>
-                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">Balance</th>
-                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Action</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <BriefcaseIcon className="h-4 w-4" />
+                    Project
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="flex items-center gap-1">
+                    <UserIcon className="h-4 w-4" />
+                    Customer
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="flex items-center justify-end gap-1">
+                    <DocumentCheckIcon className="h-4 w-4" />
+                    Verified Contract
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="flex items-center justify-end gap-1">
+                    <BanknotesIcon className="h-4 w-4" />
+                    Paid to Date
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-right text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="flex items-center justify-end gap-1">
+                    <CurrencyDollarIcon className="h-4 w-4" />
+                    Balance
+                  </div>
+                </th>
+                <th className="px-6 py-4 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <div className="flex items-center justify-center gap-1">
+                    <BoltIcon className="h-4 w-4" />
+                    Action
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -142,43 +185,11 @@ export default async function PaymentsDashboard({
           </table>
         </div>
         
-        {/* Pagination */}
-        {totalPages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
-                <Link
-                   href={{ query: { q, page: Math.max(1, currentPage - 1) } }}
-                   className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 ${currentPage === 1 ? 'pointer-events-none opacity-50' : ''}`}
-                >
-                   Previous
-                </Link>
-                <div className="hidden sm:flex items-center gap-1">
-                   {Array.from({length: Math.min(5, totalPages)}, (_, i) => {
-                      // Simple generic pagination logic for display, centers around current if possible
-                      let p = i + 1;
-                      if (totalPages > 5 && currentPage > 3) {
-                         p = currentPage - 2 + i;
-                         if (p > totalPages) p = totalPages - (4 - i);
-                      }
-                      return p; // simplified for speed, can be improved
-                   }).map(p => (
-                       <Link
-                          key={p}
-                          href={{ query: { q, page: p } }}
-                          className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium ${currentPage === p ? 'bg-indigo-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                       >
-                          {p}
-                       </Link>
-                   ))}
-                </div>
-                <span className="sm:hidden text-sm font-medium text-gray-700">Page {currentPage} of {totalPages}</span>
-                <Link
-                   href={{ query: { q, page: Math.min(totalPages, currentPage + 1) } }}
-                   className={`inline-flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 ${currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}`}
-                >
-                   Next
-                </Link>
-            </div>
-        )}
+        <TablePagination
+            currentPage={currentPage}
+            pageSize={itemsPerPage}
+            totalItems={totalItems}
+        />
       </section>
     </div>
   );

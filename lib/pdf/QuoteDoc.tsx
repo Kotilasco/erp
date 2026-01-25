@@ -43,7 +43,7 @@ type PdfQuote = {
 const money = (minor: number, currency: string) =>
   `${currency === 'USD' ? 'US$' : ''}${(minor / 100).toFixed(2)}`;
 
-export default function QuoteDoc({ quote, lines }: { quote: PdfQuote; lines: PdfLine[] }) {
+export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; lines: PdfLine[]; logoData?: string }) {
   const currency = String(quote.currency || 'USD');
   const number = quote.number ? String(quote.number) : `#${quote.id.slice(0, 6)}`;
   const customerName = quote.customer?.displayName ? String(quote.customer.displayName) : '';
@@ -57,8 +57,10 @@ export default function QuoteDoc({ quote, lines }: { quote: PdfQuote; lines: Pdf
         {/* Header Section */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 2, borderBottomColor: '#581c87', paddingBottom: 10 }}>
           <View style={{ alignItems: 'center' }}>
-             {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            <Image src={process.cwd() + "/public/barmlo_logo.jpeg"} style={{ width: 150, height: 60, objectFit: 'contain' }} />
+            {/* eslint-disable-next-line jsx-a11y/alt-text */}
+            {logoData ? (
+              <Image src={logoData} style={{ width: 150, height: 60, objectFit: 'contain' }} />
+            ) : null}
             <Text style={{ color: '#f97316', fontStyle: 'italic', fontSize: 10, marginTop: 4, fontWeight: 'medium' }}>Your happiness is our pride</Text>
           </View>
           

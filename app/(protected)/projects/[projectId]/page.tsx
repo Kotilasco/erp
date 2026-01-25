@@ -27,7 +27,6 @@ import { recordClientPayment } from '@/app/(protected)/accounts/actions';
 import SubmitButton from '@/components/SubmitButton';
 import { setFlashMessage } from '@/lib/flash.server';
 import ScheduleBlock from './_Schedule';
-import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -74,21 +73,6 @@ async function recordPurchase(
     },
   });
   revalidatePath(`/projects/${reqProject.projectId}`);
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const m: Record<string, string> = {
-    PENDING: 'bg-amber-100 text-amber-800',
-    APPROVED: 'bg-emerald-100 text-emerald-800',
-    REJECTED: 'bg-red-100 text-red-800',
-  };
-  return (
-    <span
-      className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-semibold ${m[status] || 'bg-gray-100 text-gray-700'}`}
-    >
-      {status}
-    </span>
-  );
 }
 
 async function createDispatch(

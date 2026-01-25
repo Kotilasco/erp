@@ -5,6 +5,21 @@ import Link from 'next/link';
 import clsx from 'clsx';
 import { fromMinor } from '@/helpers/money';
 import FundingDecisionActions from './FundingDecisionActions';
+import {
+  BuildingOffice2Icon,
+  BuildingOfficeIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+  FolderIcon,
+  HashtagIcon,
+  InformationCircleIcon,
+  UserIcon,
+  UsersIcon,
+  CubeIcon,
+  BeakerIcon,
+  CheckCircleIcon,
+} from '@heroicons/react/24/outline';
 
 export default async function FundingRequestDetailPage({
   params,
@@ -53,40 +68,61 @@ export default async function FundingRequestDetailPage({
       </div>
 
       <div className="grid gap-6">
-        <section className="rounded border bg-white p-4 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Request Information</h2>
-          <div className="grid gap-4 md:grid-cols-2 text-sm">
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Project:</span>
-                <Link href={`/projects/${proj.id}`} className="text-indigo-600 hover:underline font-medium">
+        <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <InformationCircleIcon className="h-5 w-5 text-indigo-600" />
+            Request Information
+          </h2>
+          <div className="grid gap-x-12 gap-y-6 md:grid-cols-2 text-sm">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <FolderIcon className="h-4 w-4 text-gray-400" />
+                  Project:
+                </span>
+                <Link href={`/projects/${proj.id}`} className="text-indigo-600 hover:underline font-semibold bg-indigo-50 px-2 py-0.5 rounded">
                   {proj.projectNumber || proj.quote?.number || proj.id}
                 </Link>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Customer:</span>
-                <span className="font-medium">{proj.quote?.customer?.displayName || '—'}</span>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <UsersIcon className="h-4 w-4 text-gray-400" />
+                  Customer:
+                </span>
+                <span className="font-medium text-gray-900">{proj.quote?.customer?.displayName || '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Office:</span>
-                <span>{proj.office || '—'}</span>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <BuildingOfficeIcon className="h-4 w-4 text-gray-400" />
+                  Office:
+                </span>
+                <span className="font-medium text-gray-900">{proj.office || '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Requisition ID:</span>
-                <span className="font-medium">{req.id}</span>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <DocumentTextIcon className="h-4 w-4 text-gray-400" />
+                  Requisition ID:
+                </span>
+                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">{req.id}</span>
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Request ID:</span>
-                <span className="font-medium">{funding.id}</span>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <HashtagIcon className="h-4 w-4 text-gray-400" />
+                  Request ID:
+                </span>
+                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">{funding.id}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Status:</span>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <InformationCircleIcon className="h-4 w-4 text-gray-400" />
+                  Status:
+                </span>
                 <span
                   className={clsx(
-                    'rounded px-1.5 py-0.5 text-xs font-semibold',
+                    'rounded-full px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1',
                     funding.status === 'APPROVED' && 'bg-emerald-100 text-emerald-700',
                     funding.status === 'REJECTED' && 'bg-rose-100 text-rose-700',
                     (funding.status === 'PENDING' || funding.status === 'REQUESTED') && 'bg-amber-100 text-amber-700'
@@ -95,57 +131,89 @@ export default async function FundingRequestDetailPage({
                   {funding.status}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Amount Requested:</span>
-                <span className="font-semibold text-lg">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <CurrencyDollarIcon className="h-4 w-4 text-gray-400" />
+                  Amount Requested:
+                </span>
+                <span className="font-bold text-lg text-gray-900 bg-gray-50 px-2 rounded">
                   <Money minor={funding.amountMinor} />
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Requested By:</span>
-                <span>{funding.requestedBy?.name ?? funding.requestedBy?.email ?? funding.submittedBy?.name ?? funding.submittedBy?.email ?? '—'}</span>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <UserIcon className="h-4 w-4 text-gray-400" />
+                  Requested By:
+                </span>
+                <span className="font-medium text-gray-900">{funding.requestedBy?.name ?? funding.requestedBy?.email ?? funding.submittedBy?.name ?? funding.submittedBy?.email ?? '—'}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Requested At:</span>
-                <span>{new Date(funding.requestedAt).toLocaleString()}</span>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
+                <span className="flex items-center gap-2 text-gray-500">
+                  <ClockIcon className="h-4 w-4 text-gray-400" />
+                  Requested At:
+                </span>
+                <span className="font-medium text-gray-900">{new Date(funding.requestedAt).toLocaleString()}</span>
               </div>
             </div>
           </div>
         </section>
       </div>
 
-      <section className="rounded border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold mb-4">Requisition Items</h2>
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+      <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+        <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+          <CubeIcon className="h-5 w-5 text-indigo-600" />
+          Requisition Items
+        </h2>
+        <div className="overflow-hidden rounded-lg border border-gray-200">
+          <table className="min-w-full text-sm divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-3 py-2 text-left">Description</th>
-                <th className="px-3 py-2 text-right">Qty</th>
-                <th className="px-3 py-2 text-left">Unit</th>
-                <th className="px-3 py-2 text-right">Est. Price</th>
-                <th className="px-3 py-2 text-right">Total</th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <CubeIcon className="h-4 w-4" /> Description
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                  <div className="flex items-center justify-end gap-1">
+                    <HashtagIcon className="h-4 w-4" /> Qty
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <BeakerIcon className="h-4 w-4" /> Unit
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                  <div className="flex items-center justify-end gap-1">
+                    <CurrencyDollarIcon className="h-4 w-4" /> Est. Price
+                  </div>
+                </th>
+                <th className="px-4 py-3 text-right font-semibold text-gray-600">
+                  <div className="flex items-center justify-end gap-1">
+                    <CurrencyDollarIcon className="h-4 w-4" /> Total
+                  </div>
+                </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 bg-white">
               {req.items.map((item) => (
-                <tr key={item.id}>
-                  <td className="px-3 py-2">{item.description}</td>
-                  <td className="px-3 py-2 text-right">{item.qtyRequested ?? item.qty}</td>
-                  <td className="px-3 py-2 text-left">{item.unit ?? '-'}</td>
-                  <td className="px-3 py-2 text-right">
+                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
+                  <td className="px-4 py-3 text-right text-gray-700">{item.qtyRequested ?? item.qty}</td>
+                  <td className="px-4 py-3 text-left text-gray-500">{item.unit ?? '-'}</td>
+                  <td className="px-4 py-3 text-right text-gray-700 font-mono">
                     <Money minor={item.requestedUnitPriceMinor ?? item.estPriceMinor} />
                   </td>
-                  <td className="px-3 py-2 text-right">
+                  <td className="px-4 py-3 text-right font-semibold text-gray-900 font-mono">
                     <Money minor={item.amountMinor} />
                   </td>
                 </tr>
               ))}
             </tbody>
-            <tfoot className="bg-gray-50 font-semibold">
+            <tfoot className="bg-gray-50 font-semibold border-t border-gray-200">
               <tr>
-                <td colSpan={4} className="px-3 py-2 text-right">Total Requested:</td>
-                <td className="px-3 py-2 text-right">
+                <td colSpan={4} className="px-4 py-3 text-right text-gray-700">Total Requested:</td>
+                <td className="px-4 py-3 text-right text-lg text-indigo-700 font-bold font-mono">
                   <Money minor={funding.amountMinor} />
                 </td>
               </tr>
@@ -155,8 +223,11 @@ export default async function FundingRequestDetailPage({
       </section>
 
       {canApprove && (funding.status === 'PENDING' || funding.status === 'REQUESTED') && (
-        <section className="rounded border bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-semibold mb-4">Actions</h2>
+        <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5 text-indigo-600" />
+            Actions
+          </h2>
           <FundingDecisionActions fundingId={funding.id} />
         </section>
       )}

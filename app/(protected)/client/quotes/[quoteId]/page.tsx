@@ -12,6 +12,16 @@ import { getErrorMessage } from '@/lib/errors';
 import { fromMinor } from '@/helpers/money';
 import { NEGOTIATION_BADGE_CLASSES } from '@/app/(protected)/quotes/[quoteId]/page';
 import SubmitButton from '@/components/SubmitButton';
+import Image from 'next/image';
+import { PhoneIcon, HomeIcon, EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/solid';
+import { 
+  DocumentTextIcon, 
+  TagIcon, 
+  HashtagIcon, 
+  CurrencyDollarIcon, 
+  InformationCircleIcon, 
+  PencilSquareIcon 
+} from '@heroicons/react/24/outline';
 
 export const runtime = 'nodejs';
 
@@ -239,14 +249,84 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
 
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Project Name: {quote.customer?.displayName ?? '-'}</h1>
-          <div className="text-sm text-gray-600">
-            Status: {STATUS_LABELS[quote.status] ?? quote.status}
+      <div className="bg-white p-8 shadow-sm border border-gray-200 rounded-lg print:border-none print:shadow-none">
+        {/* Top Section: Logo & Contact */}
+        <div className="flex flex-col md:flex-row justify-between items-start mb-6">
+          <div className="flex flex-col items-center md:items-start">
+             <div className="relative w-48 h-24 mb-2">
+                <Image src="/barmlo_logo.jpeg" alt="Barmlo Logo" fill className="object-contain" />
+             </div>
+             <p className="text-orange-500 italic font-medium text-sm">Your happiness is our pride</p>
+          </div>
+
+          <div className="flex flex-col gap-2 text-sm text-blue-900 mt-4 md:mt-0 text-right md:items-end">
+             <div className="flex items-center gap-2 justify-end">
+                <PhoneIcon className="w-4 h-4 text-blue-900" />
+                <span className="font-bold italic">+263782939350, +263787555007</span>
+             </div>
+             <div className="flex items-center gap-2 justify-end">
+                <HomeIcon className="w-4 h-4 text-blue-900" />
+                <span className="font-bold italic">132 J Chinamano Ave Harare</span>
+             </div>
+             <div className="flex items-center gap-2 justify-end">
+                <EnvelopeIcon className="w-4 h-4 text-blue-900" />
+                <span className="font-bold italic">info@barmlo.co.zw</span>
+             </div>
+             <div className="flex items-center gap-2 justify-end">
+                <GlobeAltIcon className="w-4 h-4 text-blue-900" />
+                <span className="font-bold italic">www.barmlo.co.zw</span>
+             </div>
           </div>
         </div>
-      </header>
+
+        {/* Divider */}
+        <div className="w-full h-0.5 bg-blue-900 mb-4"></div>
+
+        {/* TIN / Vendor & Title */}
+        <div className="flex flex-col md:flex-row justify-between items-start mb-8">
+           <div className="text-sm font-bold text-gray-700 space-y-1">
+              <p>TIN NO: 2000873176</p>
+              <p>VENDOR NO: 718689</p>
+           </div>
+           <div className="mt-4 md:mt-0">
+              <h2 className="text-3xl font-bold text-gray-500 uppercase tracking-wide">QUOTATION</h2>
+           </div>
+        </div>
+
+        {/* Info Boxes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+           {/* Customer Info */}
+           <div className="border border-gray-300">
+              <div className="bg-blue-100/50 px-2 py-1 border-b border-gray-300 font-bold text-gray-700 text-sm">CUSTOMER INFO</div>
+              <div className="p-2 text-sm space-y-1">
+                 <p><span className="font-bold text-gray-700">Name:</span> {quote.customer?.displayName}</p>
+                 <p><span className="font-bold text-gray-700">Address:</span> {quote.customer?.city || 'Harare'}</p>
+                 <p><span className="font-bold text-gray-700">Phone, E-mail:</span> {quote.customer?.phone || quote.customer?.email || '-'}</p>
+                 <p><span className="font-bold text-gray-700">Ref:</span> {quote.description || 'PROPOSED HOUSE CONSTRUCTION'}</p>
+              </div>
+           </div>
+
+           {/* Quote Details */}
+           <div className="border border-gray-300">
+              <div className="grid grid-cols-2 border-b border-gray-300 bg-blue-100/50 text-center font-bold text-gray-700 text-sm">
+                 <div className="px-2 py-1 border-r border-gray-300">QUOTE #</div>
+                 <div className="px-2 py-1">DATE</div>
+              </div>
+              <div className="grid grid-cols-2 border-b border-gray-300 text-center text-sm">
+                 <div className="px-2 py-1 border-r border-gray-300">{quote.number || quote.id.slice(0, 8)}</div>
+                 <div className="px-2 py-1">{new Date(quote.createdAt).toLocaleDateString()}</div>
+              </div>
+              <div className="grid grid-cols-2 border-b border-gray-300 bg-blue-100/50 text-center font-bold text-gray-700 text-sm">
+                 <div className="px-2 py-1 border-r border-gray-300">CUSTOMER ID</div>
+                 <div className="px-2 py-1">VALID UNTIL</div>
+              </div>
+              <div className="grid grid-cols-2 text-center text-sm">
+                 <div className="px-2 py-1 border-r border-gray-300">{quote.customer?.id.slice(0, 5) || 'CUST01'}</div>
+                 <div className="px-2 py-1">{new Date(new Date(quote.createdAt).getTime() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+              </div>
+           </div>
+        </div>
+      </div>
 
       {/* <section className="rounded border bg-white p-4 shadow-sm">
         <div className="grid gap-2 text-sm md:grid-cols-2">
@@ -270,13 +350,43 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
           <table className="w-full text-sm">
             <thead className="bg-gray-100 text-left">
               <tr>
-                <th className="px-3 py-2">Description</th>
-                <th className="px-3 py-2">Unit</th>
-                <th className="px-3 py-2 text-right">Qty</th>
-                <th className="px-3 py-2 text-right">Current Rate</th>
-                <th className="px-3 py-2 text-right">Status</th>
+                <th className="px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <DocumentTextIcon className="h-4 w-4 text-gray-500" />
+                    <span>Description</span>
+                  </div>
+                </th>
+                <th className="px-3 py-2">
+                  <div className="flex items-center gap-1">
+                    <TagIcon className="h-4 w-4 text-gray-500" />
+                    <span>Unit</span>
+                  </div>
+                </th>
+                <th className="px-3 py-2 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <HashtagIcon className="h-4 w-4 text-gray-500" />
+                    <span>Qty</span>
+                  </div>
+                </th>
+                <th className="px-3 py-2 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <CurrencyDollarIcon className="h-4 w-4 text-gray-500" />
+                    <span>Current Rate</span>
+                  </div>
+                </th>
+                <th className="px-3 py-2 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <InformationCircleIcon className="h-4 w-4 text-gray-500" />
+                    <span>Status</span>
+                  </div>
+                </th>
                 {quote.status === 'NEGOTIATION' && (
-                  <th className="px-3 py-2 text-right">Proposed Rate</th>
+                  <th className="px-3 py-2 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <PencilSquareIcon className="h-4 w-4 text-gray-500" />
+                      <span>Proposed Rate</span>
+                    </div>
+                  </th>
                 )}
               </tr>
             </thead>
@@ -395,10 +505,10 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
         </section>
 
         {canSubmitProposal && (
-          <div className="flex justify-center mt-6">
+          <div className="mt-8">
             <SubmitButton
               loadingText="Submitting..."
-              className="bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 w-full max-w-4xl py-3 text-lg font-bold rounded-xl transition-all"
+              className="w-full rounded-xl bg-orange-500 py-4 text-lg font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg"
             >
               Submit Proposal
             </SubmitButton>
