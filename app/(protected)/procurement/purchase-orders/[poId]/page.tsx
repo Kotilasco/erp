@@ -67,6 +67,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
   const isProcurement = me.role === 'PROCUREMENT' || me.role === 'SENIOR_PROCUREMENT' || me.role === 'ADMIN';
   const isAccounts = me.role === 'SALES_ACCOUNTS' || (me.role as string).startsWith('ACCOUNT') || me.role === 'ADMIN';
   const isSecurity = me.role === 'SECURITY' || me.role === 'ADMIN';
+  const isSecurityUser = me.role === 'SECURITY';
 
   const receivedByItem = new Map<string, number>();
   po.goodsReceivedNotes.forEach((grn) => {
@@ -100,7 +101,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
 
   return (
     <div className="min-h-screen bg-gray-50/50 px-4 py-8 print:bg-white print:p-0">
-      <div className="mx-auto w-full max-w-5xl space-y-6 print:max-w-none">
+      <div className="mx-auto w-full max-w-[90rem] space-y-6 print:max-w-none">
         
         {/* Navigation and Toolbar */}
         <div className="flex items-center justify-between print:hidden">
@@ -127,12 +128,13 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                 createdAt: po.createdAt,
                 submittedBy: po.createdBy
               }}
-              title="Purchase Order"
+              title={isSecurityUser ? "Goods Delivery Note" : "Purchase Order"}
               recipientLabel="Vendor"
               recipientIdLabel="Vendor Ref"
               recipientId={po.supplierId || po.vendor}
             />
 
+            {!isSecurityUser && (
             <div className="mt-8">
               <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase border-b pb-2">Order Items</h2>
               <table className="min-w-full divide-y divide-gray-300">
@@ -185,6 +187,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                 </tfoot>
               </table>
             </div>
+            )}
 
             {po.note && (
                 <div className="mt-8 border-t pt-4">
@@ -228,9 +231,6 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                   <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">
                     <span>Receive Goods</span>
                   </CardTitle>
-                  <CardDescription className="text-sm text-emerald-700">
-                    Record the delivery of items. Verification will be done by Accounts.
-                  </CardDescription>
                 </CardHeader>
                 <CardContent className="px-6 py-6">
                   <form
@@ -268,56 +268,104 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                     }}
                     className="space-y-6"
                   >
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                         <div>
-                        <label htmlFor="receivedAt" className="block text-sm font-medium text-gray-700">Received Date</label>
-                        <input type="datetime-local" name="receivedAt" id="receivedAt" defaultValue={new Date().toISOString().slice(0, 16)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
+                        <label htmlFor="receivedAt" className="block text-base font-semibold text-gray-700 mb-1">Received Date</label>
+                        <input type="datetime-local" name="receivedAt" id="receivedAt" defaultValue={new Date().toISOString().slice(0, 16)} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-3 px-4" />
                         </div>
                         <div>
-                        <label htmlFor="note" className="block text-sm font-medium text-gray-700">Note</label>
-                        <input type="text" name="note" id="note" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
+                        <label htmlFor="note" className="block text-base font-semibold text-gray-700 mb-1">Note</label>
+                        <input type="text" name="note" id="note" className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-3 px-4" />
                         </div>
                     </div>
 
                     <div className="border-t border-gray-200 pt-4">
                         <h3 className="text-sm font-medium text-gray-900 mb-4">Items to Receive</h3>
+                        
+                        {isSecurityUser ? (
+                          <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 sm:rounded-lg">
+                            <table className="min-w-full divide-y divide-gray-300">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-6">Item</th>
+                                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Supplier</th>
+                                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Contact</th>
+                                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Quantity</th>
+                                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Price</th>
+                                  <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Receipt</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200 bg-white">
+                                {po.items.map((item) => (
+                                  <tr key={item.id}>
+                                    <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                                      {item.description}
+                                      <div className="mt-1 text-xs text-gray-500">Ordered: {item.qty} {item.unit}</div>
+                                    </td>
+                                    <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
+                                      <input type="text" name={`vendor-${item.id}`} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Vendor Name *" required />
+                                    </td>
+                                    <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
+                                      <input type="text" name={`phone-${item.id}`} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Phone" />
+                                    </td>
+                                    <td className="px-3 py-4 text-sm text-gray-500 align-top">
+                                      <input type="number" step="any" name={`delivered-${item.id}`} className="block w-32 rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="0" />
+                                    </td>
+                                    <td className="px-3 py-4 text-sm text-gray-500 align-top">
+                                      <div className="relative rounded-lg shadow-sm">
+                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                          <span className="text-gray-500 sm:text-base">$</span>
+                                        </div>
+                                        <input type="number" step="0.01" name={`price-${item.id}`} className="block w-full rounded-lg border-gray-300 pl-8 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Price" />
+                                      </div>
+                                    </td>
+                                    <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
+                                      <input type="text" name={`receipt-${item.id}`} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Receipt # *" required />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        ) : (
                         <div className="space-y-6">
                         {po.items.map((item) => (
                             <div key={item.id} className="grid grid-cols-1 gap-4 sm:grid-cols-6 bg-gray-50 p-4 rounded-lg">
                             <div className="sm:col-span-6 font-medium text-sm text-gray-900">{item.description} (Ordered: {item.qty} {item.unit})</div>
                             
                             <div className="sm:col-span-1">
-                                <label className="block text-xs font-medium text-gray-500">Qty Delivered</label>
-                                <input type="number" step="any" name={`delivered-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" placeholder="0" />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Qty Delivered</label>
+                                <input type="number" step="any" name={`delivered-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" placeholder="0" />
                             </div>
                             
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-medium text-gray-500">Vendor Name</label>
-                                <input type="text" name={`vendor-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" required />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
+                                <input type="text" name={`vendor-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" required />
                             </div>
 
                             <div className="sm:col-span-1">
-                                <label className="block text-xs font-medium text-gray-500">Receipt #</label>
-                                <input type="text" name={`receipt-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" required />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Receipt #</label>
+                                <input type="text" name={`receipt-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" required />
                             </div>
 
                             <div className="sm:col-span-1">
-                                <label className="block text-xs font-medium text-gray-500">Vendor Phone</label>
-                                <input type="text" name={`phone-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Phone</label>
+                                <input type="text" name={`phone-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" />
                             </div>
 
                             <div className="sm:col-span-1">
-                                <label className="block text-xs font-medium text-gray-500">Unit Price</label>
-                                <input type="number" step="0.01" name={`price-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
+                                <input type="number" step="0.01" name={`price-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" />
                             </div>
                             </div>
                         ))}
                         </div>
+                        )}
                     </div>
 
-                    <div className="flex justify-end pt-4">
-                        <SubmitButton className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
-                        Submit Delivery
+                    <div className="pt-4">
+                        <SubmitButton className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-base font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+                        Goods Received
                         </SubmitButton>
                     </div>
                   </form>
