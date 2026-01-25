@@ -791,16 +791,7 @@ export default async function RequisitionDetailPage({
         {/* Staging & Purchases Section */}
         {showStagePurchases && (
             <Card className="border-0 shadow-md ring-1 ring-gray-900/5">
-              <CardHeader className="border-b border-gray-100 bg-gradient-to-r from-gray-50 via-white to-gray-50 py-8 text-center">
-                 <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="rounded-full bg-indigo-50 p-3 ring-1 ring-indigo-500/10">
-                      <ShoppingBagIcon className="h-8 w-8 text-indigo-600" />
-                    </div>
-                    <h2 className="text-3xl font-black uppercase tracking-tight text-gray-900 sm:text-4xl">
-                       Purchase Order
-                     </h2>
-                  </div>
-               </CardHeader>
+              {/* Header Removed */}
               
               <CardContent className="space-y-8 p-6">
                 {/* Staged Items List */}
