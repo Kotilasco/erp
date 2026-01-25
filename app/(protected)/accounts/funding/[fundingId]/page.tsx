@@ -4,6 +4,7 @@ import Money from '@/components/Money';
 import Link from 'next/link';
 import clsx from 'clsx';
 import { fromMinor } from '@/helpers/money';
+import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
 import FundingDecisionActions from './FundingDecisionActions';
 import {
   BuildingOffice2Icon,
@@ -59,104 +60,20 @@ export default async function FundingRequestDetailPage({
   const proj = req.project!;
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Funding Request Details</h1>
+    <div className="space-y-6 p-6 mx-auto max-w-7xl">
+      <div className="flex items-center justify-end no-print">
         <Link href="/accounts" className="text-sm text-indigo-600 hover:underline">
           &larr; Back to Accounts
         </Link>
       </div>
 
-      <div className="grid gap-6">
-        <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-            <InformationCircleIcon className="h-5 w-5 text-indigo-600" />
-            Request Information
-          </h2>
-          <div className="grid gap-x-12 gap-y-6 md:grid-cols-2 text-sm">
-            <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <FolderIcon className="h-4 w-4 text-gray-400" />
-                  Project:
-                </span>
-                <Link href={`/projects/${proj.id}`} className="text-indigo-600 hover:underline font-semibold bg-indigo-50 px-2 py-0.5 rounded">
-                  {proj.projectNumber || proj.quote?.number || proj.id}
-                </Link>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <UsersIcon className="h-4 w-4 text-gray-400" />
-                  Customer:
-                </span>
-                <span className="font-medium text-gray-900">{proj.quote?.customer?.displayName || '—'}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <BuildingOfficeIcon className="h-4 w-4 text-gray-400" />
-                  Office:
-                </span>
-                <span className="font-medium text-gray-900">{proj.office || '—'}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <DocumentTextIcon className="h-4 w-4 text-gray-400" />
-                  Requisition ID:
-                </span>
-                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">{req.id}</span>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <HashtagIcon className="h-4 w-4 text-gray-400" />
-                  Request ID:
-                </span>
-                <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded text-gray-700">{funding.id}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <InformationCircleIcon className="h-4 w-4 text-gray-400" />
-                  Status:
-                </span>
-                <span
-                  className={clsx(
-                    'rounded-full px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1',
-                    funding.status === 'APPROVED' && 'bg-emerald-100 text-emerald-700',
-                    funding.status === 'REJECTED' && 'bg-rose-100 text-rose-700',
-                    (funding.status === 'PENDING' || funding.status === 'REQUESTED') && 'bg-amber-100 text-amber-700'
-                  )}
-                >
-                  {funding.status}
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <CurrencyDollarIcon className="h-4 w-4 text-gray-400" />
-                  Amount Requested:
-                </span>
-                <span className="font-bold text-lg text-gray-900 bg-gray-50 px-2 rounded">
-                  <Money minor={funding.amountMinor} />
-                </span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <UserIcon className="h-4 w-4 text-gray-400" />
-                  Requested By:
-                </span>
-                <span className="font-medium text-gray-900">{funding.requestedBy?.name ?? funding.requestedBy?.email ?? funding.submittedBy?.name ?? funding.submittedBy?.email ?? '—'}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-50 pb-2">
-                <span className="flex items-center gap-2 text-gray-500">
-                  <ClockIcon className="h-4 w-4 text-gray-400" />
-                  Requested At:
-                </span>
-                <span className="font-medium text-gray-900">{new Date(funding.requestedAt).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="mb-6">
+        <PurchaseOrderHeader
+          customer={proj.quote?.customer ?? {}}
+          project={proj}
+          requisition={req}
+          title="Funding Request"
+        />
       </div>
 
       <section className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
