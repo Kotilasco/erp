@@ -5,6 +5,7 @@ import { createScheduleFromQuote } from '../../actions';
 import { getProductivitySettings } from '../../actions';
 import SubmitButton from '@/components/SubmitButton';
 import PrintHeader from '@/components/PrintHeader';
+import QuoteHeader from '@/components/QuoteHeader';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 
@@ -30,18 +31,31 @@ export default async function ProjectSchedulePage({ params }: { params: Promise<
     getProductivitySettings(projectId),
     prisma.project.findUnique({
       where: { id: projectId },
-      select: { quote: { select: { customer: { select: { displayName: true } } } } },
+      include: {
+        quote: {
+          include: {
+            customer: true,
+            project: true,
+          },
+        },
+      },
     }),
   ]);
 
   return (
     <div className="min-h-screen bg-gray-50/50 p-4 sm:p-6 space-y-6">
-      <PrintHeader className="flex" />
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Project Name: {project?.quote?.customer?.displayName}
-        </h1>
-      </div>
+      {project?.quote ? (
+        <QuoteHeader quote={project.quote} title="Work Schedule" />
+      ) : (
+        <>
+          <PrintHeader className="flex" />
+          <div className="flex items-center justify-between">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+              Project Name: {project?.quote?.customer?.displayName}
+            </h1>
+          </div>
+        </>
+      )}
       <ScheduleEditor
         projectId={projectId}
         schedule={schedule ?? null}
