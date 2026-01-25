@@ -6,6 +6,7 @@ import { createRequisitionFromQuotePicks } from '@/app/(protected)/projects/acti
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/auth';
 import { CreateRequisitionButton } from './CreateRequisitionButton';
+import QuoteHeader from '@/components/QuoteHeader';
 
 type LineRow = {
   id: string;
@@ -32,8 +33,8 @@ export default async function NewRequisitionPage({
     where: { project: { id: projectId } },
     include: {
       lines: { orderBy: { createdAt: 'asc' } },
-      customer: { select: { displayName: true } },
-      project: { select: { name: true } },
+      customer: true,
+      project: true,
     },
   });
   if (!quote) return notFound();
@@ -142,7 +143,7 @@ export default async function NewRequisitionPage({
   return (
     <div className="min-h-screen bg-slate-50/50 pb-32 font-sans">
       {/* Replaced Header with Letterhead */}
-      <div className="mx-auto max-w-5xl px-6 pt-6 mb-4 no-print">
+      <div className="mx-auto max-w-7xl px-6 pt-6 mb-4 no-print">
          <a href={`/projects/${projectId}/requisitions`} className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
               <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
@@ -151,17 +152,10 @@ export default async function NewRequisitionPage({
          </a>
       </div>
 
-      <main className="mx-auto max-w-5xl px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-             New Requisition
-          </h1>
-          <p className="mt-2 text-sm text-gray-500">
-             Select items from the quote to create a new requisition.
-          </p>
-        </div>
+      <main className="mx-auto max-w-7xl px-6 lg:px-8">
+        <QuoteHeader quote={quote} title="Purchase Requisition" />
 
-        <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden p-6">
+        <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden p-6 mt-6">
           <form action={createRequisitionFromQuotePicks} className="space-y-6">
             <input type="hidden" name="projectId" value={projectId} />
             <RequisitionPickerClient

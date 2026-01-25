@@ -8,6 +8,7 @@ import { notFound, redirect } from 'next/navigation';
 import { submitRequisitionToProcurement } from '@/app/(protected)/projects/actions';
 import Link from 'next/link';
 import SubmitButton from '@/components/SubmitButton';
+import QuoteHeader from '@/components/QuoteHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   ArrowLeftIcon, 
@@ -38,7 +39,16 @@ export default async function ProjectRequisitionDetailPage({
           quoteLine: { select: { metaJson: true } },
         },
       },
-      project: { include: { quote: { select: { number: true, customer: { select: { displayName: true } } } } } },
+      project: {
+        include: {
+          quote: {
+            include: {
+              customer: true,
+              project: true,
+            },
+          },
+        },
+      },
       submittedBy: { select: { name: true } },
     },
   });
@@ -87,7 +97,7 @@ export default async function ProjectRequisitionDetailPage({
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
-      <div className="mx-auto max-w-5xl px-6 pt-6 mb-4 no-print">
+      <div className="mx-auto max-w-7xl px-6 pt-6 mb-4 no-print">
          <Link href={`/projects/${projectId}/requisitions`} className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
               <path fillRule="evenodd" d="M17 10a.75.75 0 01-.75.75H5.612l4.158 3.96a.75.75 0 11-1.04 1.08l-5.5-5.25a.75.75 0 010-1.08l5.5-5.25a.75.75 0 111.04 1.08L5.612 9.25H16.25A.75.75 0 0117 10z" clipRule="evenodd" />
@@ -96,36 +106,10 @@ export default async function ProjectRequisitionDetailPage({
          </Link>
       </div>
 
-      <main className="mx-auto max-w-5xl px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="space-y-6">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="min-w-0 flex-1">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
-                {req.project?.name}
-              </h2>
-              <div className="mt-1 flex flex-col sm:mt-0 sm:flex-row sm:flex-wrap sm:space-x-6">
-                 <div className="mt-2 flex items-center text-sm text-gray-500">
-                    Requisition #{req.id.slice(0, 8)}
-                 </div>
-                 {req.submittedBy && (
-                    <div className="mt-2 flex items-center text-sm text-gray-500">
-                        Submitted by {req.submittedBy.name}
-                    </div>
-                 )}
-              </div>
-            </div>
-            <div className="mt-4 flex md:ml-4 md:mt-0">
-                 <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium border ${
-                  req.status === 'DRAFT' ? 'bg-gray-100 text-gray-800 border-gray-200' :
-                  req.status === 'SUBMITTED' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-                  req.status === 'APPROVED' ? 'bg-green-100 text-green-800 border-green-200' :
-                  'bg-gray-100 text-gray-800 border-gray-200'
-                }`}>
-                  {req.status}
-                </span>
-            </div>
-          </div>
-
+          <QuoteHeader quote={req.project.quote} title="Purchase Requisition" />
+          
           <div className="bg-white shadow-sm ring-1 ring-gray-900/5 sm:rounded-xl overflow-hidden p-6">
             <div className="space-y-6">
             <div className="overflow-x-auto">
