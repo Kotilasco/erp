@@ -134,6 +134,79 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
               recipientId={po.supplierId || po.vendor}
             />
 
+            {isSecurityUser && po.goodsReceivedNotes.length > 0 && (
+              <div className="mt-8">
+                <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase border-b pb-2">Goods Delivery Note</h2>
+                
+                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="rounded-lg border border-gray-200 p-4">
+                    <div className="grid grid-cols-2 border-b border-gray-200">
+                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600 border-r border-gray-200">Supplier</div>
+                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600">Contact</div>
+                    </div>
+                    <div className="grid grid-cols-2">
+                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].vendorName || vendorName}</div>
+                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].vendorPhone || vendorPhone || 'N/A'}</div>
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-gray-200 p-4">
+                    <div className="grid grid-cols-2 border-b border-gray-200">
+                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600 border-r border-gray-200">Receipt</div>
+                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600">Received Date</div>
+                    </div>
+                    <div className="grid grid-cols-2">
+                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].receiptNumber || 'N/A'}</div>
+                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].receivedAt ? new Date(po.goodsReceivedNotes[0].receivedAt).toLocaleString() : 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <table className="min-w-full divide-y divide-gray-300">
+                  <thead>
+                    <tr>
+                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Item</th>
+                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Unit</th>
+                      <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Qty Delivered</th>
+                      <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Unit Price</th>
+                      <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {po.goodsReceivedNotes[0].items.map((gi) => {
+                      const unitPriceMinor = gi.priceMinor ?? 0n;
+                      const amountMinor = BigInt(Math.round(Number(unitPriceMinor) * gi.qtyDelivered));
+                      return (
+                        <tr key={gi.id}>
+                          <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{gi.description}</td>
+                          <td className="px-3 py-4 text-left text-sm text-gray-500">{gi.unit || ''}</td>
+                          <td className="px-3 py-4 text-right text-sm text-gray-500">{gi.qtyDelivered}</td>
+                          <td className="px-3 py-4 text-right text-sm text-gray-500"><Money amount={unitPriceMinor} /></td>
+                          <td className="px-3 py-4 text-right text-sm text-gray-900 font-semibold"><Money amount={amountMinor} /></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <th scope="row" colSpan={4} className="hidden pl-4 pr-3 pt-6 text-right text-sm font-semibold text-gray-900 sm:table-cell sm:pl-0">
+                        Total
+                      </th>
+                      <td className="pl-3 pr-4 pt-6 text-right text-sm font-semibold text-gray-900 sm:pr-0">
+                        <Money amount={po.goodsReceivedNotes[0].items.reduce((sum, gi) => sum + BigInt(Math.round(Number(gi.priceMinor ?? 0n) * gi.qtyDelivered)), 0n)} />
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+
+                {po.goodsReceivedNotes[0].note && (
+                  <div className="mt-6 border-t pt-4">
+                    <h3 className="text-sm font-semibold text-gray-900">Delivery Note:</h3>
+                    <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">{po.goodsReceivedNotes[0].note}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {!isSecurityUser && (
             <div className="mt-8">
               <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase border-b pb-2">Order Items</h2>
