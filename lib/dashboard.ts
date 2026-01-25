@@ -39,7 +39,14 @@ export async function fetchCardData() {
         };
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to fetch card data.');
+        return {
+            numberOfQuotes: 0,
+            numberOfCustomers: 0,
+            numberOfPendingQuotes: 0,
+            numberOfProjects: 0,
+            numberOfPendingProjects: 0,
+            totalRevenue: 0,
+        };
     }
 }
 
@@ -80,7 +87,11 @@ export async function fetchRevenueData() {
         return data;
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to fetch revenue data.');
+        return [
+            { name: 'Jan', revenue: 0 },
+            { name: 'Feb', revenue: 0 },
+            { name: 'Mar', revenue: 0 },
+        ];
     }
 }
 
@@ -88,22 +99,30 @@ export async function fetchRecentQuotes() {
     try {
         const quotes = await prisma.quote.findMany({
             take: 5,
-            orderBy: {
-                createdAt: 'desc',
-            },
-            include: {
-                customer: true,
-                lines: true, // To calculate total if needed, or use a pre-calculated field if available
+            orderBy: { createdAt: 'desc' },
+            select: {
+                id: true,
+                status: true,
+                createdAt: true,
+                customer: { select: { displayName: true } },
             },
         });
 
-        return quotes.map((quote) => {
-            // Calculate total from lines if not stored on quote
-            // Note: Schema has lineTotalMinor on QuoteLine. 
-            // Quote doesn't seem to have a totalAmount field in the schema I saw, 
-            // but let's check if we can sum lines.
-            const totalMinor = quote.lines.reduce((sum, line) => sum + Number(line.lineTotalMinor), 0);
+        const ids = quotes.map(q => q.id);
+        const totals: Record<string, number> = {};
+        if (ids.length > 0) {
+            const sums = await prisma.quoteLine.groupBy({
+                by: ['quoteId'],
+                where: { quoteId: { in: ids } },
+                _sum: { lineTotalMinor: true },
+            });
+            sums.forEach(s => {
+                totals[s.quoteId] = Number(s._sum.lineTotalMinor || 0);
+            });
+        }
 
+        return quotes.map((quote) => {
+            const totalMinor = totals[quote.id] || 0;
             return {
                 id: quote.id,
                 customer: quote.customer.displayName,
@@ -114,6 +133,6 @@ export async function fetchRecentQuotes() {
         });
     } catch (error) {
         console.error('Database Error:', error);
-        throw new Error('Failed to fetch recent quotes.');
+        return [];
     }
 }
