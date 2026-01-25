@@ -7,9 +7,10 @@ type QuoteHeaderProps = {
     customer: Customer;
     project: Project | null;
   };
+  title?: string;
 };
 
-export default function QuoteHeader({ quote }: QuoteHeaderProps) {
+export default function QuoteHeader({ quote, title = 'Quotation' }: QuoteHeaderProps) {
   const customer = quote.customer;
   const project = quote.project;
 
@@ -44,7 +45,7 @@ export default function QuoteHeader({ quote }: QuoteHeaderProps) {
           <p className="font-bold italic">info@barmlo.co.zw</p>
           <p className="font-bold italic">www.barmlo.co.zw</p>
           
-          <h1 className="text-3xl font-bold text-gray-500 mt-8 uppercase tracking-widest">Quotation</h1>
+          <h1 className="text-3xl font-bold text-gray-500 mt-8 uppercase tracking-widest">{title}</h1>
         </div>
       </div>
 

@@ -901,7 +901,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
 
   return (
     <div className="space-y-6">
-      <QuoteHeader quote={quote} />
+      <QuoteHeader quote={quote} title={isSales ? "Sales Endorsement" : undefined} />
 
       {/* Summary section hidden as per request */}
       {/* <section className="rounded border bg-white p-4 shadow-sm dark:bg-gray-800 dark:border-gray-700">
@@ -912,7 +912,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
       )} */}
 
       {canSalesEndorse && (
-        <div className="mx-auto max-w-3xl space-y-4 py-10">
+        <div className="space-y-4 py-6">
           <div className="rounded-xl bg-blue-50 p-4 border border-blue-100 dark:bg-blue-900/20 dark:border-blue-800 flex items-center justify-center gap-3">
              <ClipboardDocumentCheckIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             <h3 className="font-bold text-blue-900 dark:text-blue-100 uppercase tracking-wider text-sm">Sales Endorsement</h3>
