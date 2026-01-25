@@ -31,6 +31,7 @@ import { setFlashMessage } from '@/lib/flash.server';
 import { markAsPurchased, submitRequisition, deleteStagedPurchase, cancelItemReview, rejectItemReview } from './actions';
 import { createPartialPOFromPurchases } from '@/app/(protected)/projects/actions';
 import PrintButton from '@/components/PrintButton';
+import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   CheckBadgeIcon,
@@ -71,7 +72,7 @@ export default async function RequisitionDetailPage({
       project: {
         include: {
           quote: {
-            include: { customer: { select: { displayName: true } } },
+            include: { customer: true },
           },
         },
       },
@@ -493,8 +494,18 @@ export default async function RequisitionDetailPage({
          </Link>
       </div>
 
-      <main className="mx-auto max-w-5xl px-6 lg:px-8">
+      <main className="mx-auto max-w-7xl px-6 lg:px-8">
         <div className="space-y-6">
+          {isProcurement ? (
+            <div className="mb-6">
+               <PurchaseOrderHeader 
+                 customer={req.project.quote.customer}
+                 project={req.project}
+                 requisition={req}
+                 title="Purchase Order"
+               />
+            </div>
+          ) : (
           <div className="md:flex md:items-center md:justify-between">
             <div className="min-w-0 flex-1">
               <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
@@ -526,10 +537,11 @@ export default async function RequisitionDetailPage({
                   </span>
             </div>
           </div>
+          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 mb-6">
-               <PrintButton />
+               {!isProcurement && <PrintButton />}
                {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
                 <form action={submitRequisition.bind(null, req.id)}>
                   <SubmitButton className="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-orange-500 transition-all">
