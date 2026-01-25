@@ -22,13 +22,14 @@ export async function createPurchaseOrder(
 
   const requestedMinor = items.reduce((sum, item) => sum + BigInt(Math.round(item.unitPriceMajor * 100)) * BigInt(item.quantity), BigInt(0));
 
-  await prisma.$transaction(async (tx) => {
+  const poId = await prisma.$transaction(async (tx) => {
     // Create PO
     const po = await tx.purchaseOrder.create({
       data: {
         status: 'SUBMITTED', // Created by procurement, waiting for approval (or auto-approve if implemented)
         vendor: vendorDetails.name,
         requestedMinor,
+        totalMinor: requestedMinor,
         projectId: req.projectId,
         createdById: userId,
         requisitionId: req.id,
@@ -76,10 +77,14 @@ export async function createPurchaseOrder(
       where: { id: requisitionId },
       data: { status: 'ORDERED' },
     });
+
+    return po.id;
   });
 
   revalidatePath('/procurement/purchase-orders');
   revalidatePath('/dashboard');
+
+  return poId;
 }
 
 export async function approvePO(poId: string, approverId: string) {

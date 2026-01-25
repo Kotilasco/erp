@@ -1,15 +1,14 @@
-
-// app/(protected)/procurement/purchase-orders/[poId]/page.tsx
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { placeOrder, receiveGoods } from '../actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import VerifyPoGrnsForm from '../VerifyPoGrnsForm';
 import SubmitButton from '@/components/SubmitButton';
 import Link from 'next/link';
 import Money from '@/components/Money';
-import { ArrowLeftIcon, ClipboardDocumentListIcon, ShoppingBagIcon, UserIcon, PhoneIcon, DocumentTextIcon, TruckIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
+import PrintButton from '@/components/PrintButton';
 
 function POStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -38,10 +37,27 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: poId },
     include: { 
-      items: true, 
-      requisition: { include: { project: true } },
+      items: { include: { quoteLine: { include: { product: true } } } }, 
+      requisition: { 
+        include: { 
+          project: { 
+            include: { 
+              quote: { 
+                include: { customer: true } 
+              } 
+            } 
+          } 
+        } 
+      },
+      project: {
+        include: {
+          quote: {
+            include: { customer: true }
+          }
+        }
+      },
       goodsReceivedNotes: { include: { items: true }, orderBy: { createdAt: 'desc' } },
-      purchases: true, // Fetch staged items to correlate
+      purchases: true, 
       createdBy: { select: { name: true, email: true } },
       decidedBy: { select: { name: true, email: true } },
     },
@@ -52,14 +68,11 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
   const isAccounts = me.role === 'SALES_ACCOUNTS' || (me.role as string).startsWith('ACCOUNT') || me.role === 'ADMIN';
   const isSecurity = me.role === 'SECURITY' || me.role === 'ADMIN';
 
-  // Calculate received quantities (Verified 'Accepted' + Pending 'Delivered')
   const receivedByItem = new Map<string, number>();
   po.goodsReceivedNotes.forEach((grn) => {
     grn.items.forEach((grnItem) => {
       if (grnItem.poItemId) {
         const current = receivedByItem.get(grnItem.poItemId) ?? 0;
-        // If Pending, we count what was Delivered (occupying the slot)
-        // If Verified, we count what was Accepted (rejected items are freed up)
         const used = grn.status === 'PENDING' ? grnItem.qtyDelivered : grnItem.qtyAccepted;
         receivedByItem.set(grnItem.poItemId, current + used);
       }
@@ -71,470 +84,247 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
     return used >= item.qty;
   });
 
-  const pendingGrnItems =
-    isAccounts
-      ? po.goodsReceivedNotes
-          .filter((g) => g.status === 'PENDING')
-          .flatMap((grn) =>
-            grn.items.map((item) => ({
-              grnId: grn.id,
-              grnItemId: item.id,
-              description: item.description,
-              qtyDelivered: item.qtyDelivered,
-              priceMinor: item.priceMinor ? Number(item.priceMinor) : 0,
-              varianceMinor: item.varianceMinor ? Number(item.varianceMinor) : 0,
-              receiptNumber: grn.receiptNumber || 'N/A',
-              vendorName: grn.vendorName || 'N/A',
-              receivedAt: grn.receivedAt ? grn.receivedAt.toISOString() : '',
-            })),
-          )
-      : [];
+  const project = po.requisition?.project || po.project;
+  const customer = project?.quote?.customer;
+  const displayCustomer = customer || { displayName: 'Unknown Customer', city: '', email: '', phone: '' };
 
-  const heading = isAccounts ? 'Goods Approvals' : isSecurity ? 'Goods Delivery Note' : 'Purchase Order';
+  const vendorName = po.vendor || 'Unknown Vendor';
+  const vendorPhone = po.purchases?.[0]?.vendorPhone || '';
+  const vendorDisplay = {
+    displayName: vendorName,
+    phone: vendorPhone,
+    email: '', 
+    city: '',
+    addressJson: null
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 px-4 py-8">
-      <div className="mx-auto w-full space-y-6">
-        <Card className="mb-8 overflow-hidden rounded-2xl border-0 bg-white shadow-xl ring-1 ring-gray-900/5">
-            <div className="border-b border-gray-100 bg-gradient-to-r from-gray-50 via-white to-gray-50 py-8 text-center">
-                <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="rounded-full bg-indigo-50 p-3 ring-1 ring-indigo-500/10">
-                        <ShoppingBagIcon className="h-8 w-8 text-indigo-600" />
-                    </div>
-                    <h1 className="text-3xl font-black uppercase tracking-tight text-gray-900 sm:text-4xl">
-                        {heading}
-                    </h1>
-                    <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-gray-500">
-                         <span className="font-mono font-bold text-indigo-600">#{po.id.slice(0, 8).toUpperCase()}</span>
-                         <span className="text-gray-300">|</span>
-                         <span className="font-medium text-gray-900">{po.vendor || 'Vendor Pending'}</span>
-                         <span className="text-gray-300">|</span>
-                         <span>
-                            Project: <span className="font-medium text-gray-900">{po.requisition?.project?.projectNumber || po.requisition?.projectId?.slice(0, 8) || 'N/A'}</span>
-                         </span>
-                    </div>
-                     <div className="mt-4">
-                        <POStatusBadge status={po.status} />
-                     </div>
-                </div>
+    <div className="min-h-screen bg-gray-50/50 px-4 py-8 print:bg-white print:p-0">
+      <div className="mx-auto w-full max-w-5xl space-y-6 print:max-w-none">
+        
+        {/* Navigation and Toolbar */}
+        <div className="flex items-center justify-between print:hidden">
+            <Link
+              href="/procurement/purchase-orders"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:text-gray-900"
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+              Back to POs
+            </Link>
+            <div className="flex items-center gap-3">
+               <POStatusBadge status={po.status} />
+               <PrintButton />
             </div>
-             <div className="flex items-center justify-between bg-gray-50/50 px-6 py-3">
-                <div className="text-sm text-gray-500">
+        </div>
+
+        {/* Main PO Document */}
+        <div className="bg-white p-8 shadow-sm rounded-xl border border-gray-200 print:shadow-none print:border-none print:p-0">
+            <PurchaseOrderHeader 
+              customer={vendorDisplay}
+              project={project}
+              requisition={{
+                id: po.id,
+                createdAt: po.createdAt,
+                submittedBy: po.createdBy
+              }}
+              title="Purchase Order"
+              recipientLabel="Vendor"
+              recipientIdLabel="Vendor Ref"
+              recipientId={po.supplierId || po.vendor}
+            />
+
+            <div className="mt-8">
+              <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase border-b pb-2">Order Items</h2>
+              <table className="min-w-full divide-y divide-gray-300">
+                <thead>
+                  <tr>
+                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">
+                      Description
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                      Qty
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                      Unit Price
+                    </th>
+                    <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+                      Amount
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {po.items.map((item) => (
+                    <tr key={item.id}>
+                      <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
+                        {item.description}
+                        {item.quoteLine?.product?.sku && (
+                          <span className="block font-normal text-gray-500 text-xs">SKU: {item.quoteLine.product.sku}</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-4 text-right text-sm text-gray-500">
+                        {item.qty} {item.unit}
+                      </td>
+                      <td className="px-3 py-4 text-right text-sm text-gray-500">
+                        <Money amount={item.unitPriceMinor} />
+                      </td>
+                      <td className="px-3 py-4 text-right text-sm text-gray-500">
+                        <Money amount={item.totalMinor} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <th scope="row" colSpan={3} className="hidden pl-4 pr-3 pt-6 text-right text-sm font-semibold text-gray-900 sm:table-cell sm:pl-0">
+                      Total
+                    </th>
+                    <td className="pl-3 pr-4 pt-6 text-right text-sm font-semibold text-gray-900 sm:pr-0">
+                      <Money amount={po.totalMinor > 0n ? po.totalMinor : po.requestedMinor} />
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {po.note && (
+                <div className="mt-8 border-t pt-4">
+                    <h3 className="text-sm font-semibold text-gray-900">Notes:</h3>
+                    <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">{po.note}</p>
                 </div>
-                 <div className="flex gap-3">
-                    <Link
-                      href="/procurement/purchase-orders"
-                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm transition-all hover:bg-gray-50 hover:text-gray-900"
-                    >
-                      <ArrowLeftIcon className="h-4 w-4" />
-                      Back to POs
-                    </Link>
-                 </div>
-             </div>
-        </Card>
+            )}
+        </div>
 
-        {isProcurement && po.status === 'APPROVED' && (
-          <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <CardHeader className="border-b border-gray-200 bg-gray-50/60 px-6 py-4">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-800">
-                Place Order
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-500">
-                Mark this PO as purchased after placing the order with the vendor.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-6 py-4">
-              <form
-                action={async () => {
-                  'use server';
-                  await placeOrder(poId, me.id!);
-                  revalidatePath(`/procurement/purchase-orders/${poId}`);
-                }}
-              >
-                <SubmitButton className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-orange-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2">
-                  Place Order (Mark as PURCHASED)
-                </SubmitButton>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {isSecurity && !isPOFullyReceived && (
-          <Card className="rounded-2xl border border-emerald-200 bg-white shadow-md">
-            <CardHeader className="flex flex-col gap-1 border-b border-emerald-100/60 bg-emerald-50/60 px-6 py-4">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">
-                <span>Receive Goods</span>
-              </CardTitle>
-              <CardDescription className="text-sm text-emerald-700">
-                Record the delivery of items. Verification will be done by Accounts.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="px-6 py-6">
-              <form
-                action={async (fd) => {
-                  'use server';
-
-                  const rawItems = po.items
-                    .map((item) => {
-                      const qty = Number(fd.get(`delivered-${item.id}`) || 0);
-                      return {
-                        poItemId: item.id,
-                        qtyDelivered: qty,
-                        vendorName: String(fd.get(`vendor-${item.id}`) || '').trim(),
-                        receiptNumber: String(fd.get(`receipt-${item.id}`) || '').trim(),
-                        vendorPhone: String(fd.get(`phone-${item.id}`) || '').trim(),
-                        unitPriceMajor: Number(fd.get(`price-${item.id}`) || 0),
-                      };
-                    })
-                    .filter((i) => i.qtyDelivered > 0);
-
-                  if (rawItems.length === 0) throw new Error('Enter at least one delivery quantity');
-
-                  for (const item of rawItems) {
-                    if (!item.vendorName) throw new Error('Vendor Name is required for all delivered items');
-                    if (!item.receiptNumber) throw new Error('Receipt Number is required for all delivered items');
-                  }
-
-                  const details = {
-                    receivedAt: String(fd.get('receivedAt') || new Date().toISOString()),
-                    note: String(fd.get('note') || ''),
-                  };
-
-                  await receiveGoods(poId, rawItems, me.id!, details);
-                  revalidatePath(`/procurement/purchase-orders/${poId}`);
-                }}
-                className="space-y-6"
-              >
-                <div className="grid grid-cols-1 gap-6 rounded-xl border border-emerald-100 bg-emerald-50/40 p-6 shadow-sm">
-                  <div className="flex items-center gap-2 mb-2 border-b border-emerald-200 pb-2">
-                     <TruckIcon className="h-5 w-5 text-emerald-700" />
-                     <h3 className="text-lg font-bold text-emerald-800">Receive Goods</h3>
-                  </div>
-                  <div className="space-y-3 max-w-xs">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-emerald-900">
-                      Date Received
-                    </label>
-                    <input
-                      name="receivedAt"
-                      type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                      className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 transition-all hover:border-emerald-300 shadow-sm"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm ring-1 ring-gray-900/5">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="border-b bg-gray-50/80">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[200px]">
-                            Item Description
-                          </th>
-                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600 w-[100px]">
-                            Ordered
-                          </th>
-                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600 w-[100px]">
-                            Used
-                          </th>
-                          <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[180px]">
-                            <div className="flex items-center gap-1">
-                                <UserIcon className="h-4 w-4" />
-                                Supplier
-                            </div>
-                          </th>
-                          <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[140px]">
-                            <div className="flex items-center gap-1">
-                                <PhoneIcon className="h-4 w-4" />
-                                Contact
-                            </div>
-                          </th>
-                          <th className="px-4 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[140px]">
-                            <div className="flex items-center gap-1">
-                                <DocumentTextIcon className="h-4 w-4" />
-                                # Purchase Order
-                            </div>
-                          </th>
-                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-emerald-700 min-w-[120px]">
-                            Qty In
-                          </th>
-                          <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wider text-gray-600 min-w-[120px]">
-                            Unit Price
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {po.items.map((item) => {
-                          const used = receivedByItem.get(item.id) ?? 0;
-                          const remaining = Math.max(0, item.qty - used);
-                          const isComplete = remaining <= 0;
-
-                          const staged = po.purchases.find(
-                            (p) => p.requisitionItemId === item.requisitionItemId,
-                          );
-
-                          const prefillVendor = staged?.vendor ?? '';
-                          const prefillPhone = staged?.vendorPhone ?? '';
-
-                          return (
-                            <tr
-                              key={item.id}
-                              className={`group transition-colors hover:bg-slate-50 ${isComplete ? 'bg-gray-50/50' : ''}`}
-                            >
-                              <td className="px-6 py-4">
-                                <div className="font-medium text-gray-900">{item.description}</div>
-                                {isComplete && (
-                                  <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-                                    <ShoppingBagIcon className="h-3 w-3" />
-                                    Order Complete
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-4 text-right text-gray-600 font-medium">
-                                {item.qty} {item.unit ?? ''}
-                              </td>
-                              <td className="px-4 py-4 text-right text-gray-500">{used}</td>
-                              <td className="px-4 py-4">
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <UserIcon className="h-4 w-4 text-gray-400" />
-                                    </div>
-                                    <input
-                                      name={`vendor-${item.id}`}
-                                      disabled={isComplete}
-                                      readOnly
-                                      defaultValue={!isComplete ? prefillVendor : ''}
-                                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 px-3 text-sm text-gray-600 cursor-not-allowed shadow-sm"
-                                      placeholder={isComplete ? '-' : 'Supplier'}
-                                    />
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <PhoneIcon className="h-4 w-4 text-gray-400" />
-                                    </div>
-                                    <input
-                                      name={`phone-${item.id}`}
-                                      disabled={isComplete}
-                                      readOnly
-                                      defaultValue={!isComplete ? prefillPhone : ''}
-                                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 px-3 text-sm text-gray-600 cursor-not-allowed shadow-sm"
-                                      placeholder={isComplete ? '-' : 'Phone'}
-                                    />
-                                </div>
-                              </td>
-                              <td className="px-4 py-4">
-                                <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <DocumentTextIcon className="h-4 w-4 text-gray-400" />
-                                    </div>
-                                    <input
-                                      name={`receipt-${item.id}`}
-                                      disabled={isComplete}
-                                      readOnly
-                                      defaultValue={po.id.slice(0, 8).toUpperCase()}
-                                      className="h-10 w-full rounded-lg border border-gray-200 bg-gray-50 pl-10 px-3 text-sm text-gray-600 cursor-not-allowed shadow-sm"
-                                    />
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 text-right">
-                                <div className="relative">
-                                  <input
-                                    name={`delivered-${item.id}`}
-                                    type="number"
-                                    step="0.01"
-                                    min={0}
-                                    max={remaining > 0 ? remaining : undefined}
-                                    placeholder={isComplete ? 'Done' : '0'}
-                                    disabled={isComplete}
-                                    className={`h-10 w-full rounded-lg border bg-white px-3 text-right text-sm font-medium outline-none transition-all focus:ring-2 disabled:bg-gray-50 disabled:text-gray-400 shadow-sm ${
-                                      remaining > 0
-                                        ? 'border-emerald-200 text-emerald-700 placeholder:text-emerald-200 focus:border-emerald-500 focus:ring-emerald-500'
-                                        : 'border-gray-200 text-gray-400'
-                                    }`}
-                                  />
-                                </div>
-                              </td>
-                              <td className="px-4 py-4 text-right">
-                                <div className="relative">
-                                  <span
-                                    className={`absolute left-3 top-1/2 -translate-y-1/2 text-xs ${
-                                      isComplete ? 'text-gray-300' : 'text-gray-400'
-                                    }`}
-                                  >
-                                    $
-                                  </span>
-                                  <input
-                                    name={`price-${item.id}`}
-                                    type="number"
-                                    step="0.01"
-                                    placeholder="0.00"
-                                    disabled={isComplete}
-                                    className="h-10 w-full rounded-lg border border-gray-200 bg-white pl-6 pr-3 text-right text-sm outline-none transition-all focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 disabled:bg-gray-50 disabled:text-gray-400 shadow-sm"
-                                  />
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                <div className="space-y-3 p-1">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-gray-700">
-                    Delivery Notes (Optional)
-                  </label>
-                  <textarea
-                    name="note"
-                    placeholder="Any additional comments about the delivery condition, weather, etc..."
-                    className="flex min-h-[80px] w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 transition-all"
-                  />
-                </div>
-                <div className="pt-6">
-                  <SubmitButton className="inline-flex h-16 w-full items-center justify-center rounded-xl bg-emerald-600 px-8 text-lg font-bold uppercase tracking-wide text-white shadow-xl shadow-emerald-900/20 transition-all hover:bg-emerald-700 hover:scale-[1.01] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 disabled:pointer-events-none disabled:opacity-50">
-                    Receive
-                  </SubmitButton>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {isSecurity && isPOFullyReceived && (
-          <Card className="rounded-xl border border-green-200 bg-green-50/70">
-            <CardHeader className="px-6 py-4">
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-green-800">
-                <span>✅ Order Complete</span>
-              </CardTitle>
-              <CardDescription className="mt-1 text-sm text-green-700">
-                All items in this Purchase Order have been fully received and/or verified.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-
-        {isAccounts && pendingGrnItems.length > 0 && (
-          <div className="space-y-4">
-            <VerifyPoGrnsForm poId={params.poId} verifierId={me.id!} items={pendingGrnItems} />
-          </div>
-        )}
-
-        {!isAccounts && po.goodsReceivedNotes.length > 0 && (
-          <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
-            <CardHeader className="border-b bg-gray-50 px-4 py-3">
-              <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-700">
-                Goods Received Notes
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4">
-              <div className="space-y-4">
-                {po.goodsReceivedNotes.map((grn) => (
-                  <div
-                    key={grn.id}
-                    className="rounded-lg border border-gray-200 bg-gray-50/50 p-4"
+        {/* Action Cards (Hidden in Print) */}
+        <div className="space-y-6 print:hidden">
+            {isProcurement && po.status === 'APPROVED' && (
+              <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
+                <CardHeader className="border-b border-gray-200 bg-gray-50/60 px-6 py-4">
+                  <CardTitle className="text-sm font-semibold uppercase tracking-wide text-gray-800">
+                    Place Order
+                  </CardTitle>
+                  <CardDescription className="text-sm text-gray-500">
+                    Mark this PO as purchased after placing the order with the vendor.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-6 py-4">
+                  <form
+                    action={async () => {
+                      'use server';
+                      await placeOrder(poId, me.id!);
+                      revalidatePath(`/procurement/purchase-orders/${poId}`);
+                    }}
                   >
-                    <div className="mb-2 flex items-start justify-between">
-                      <div>
-                        <div className="text-sm font-semibold text-gray-900">
-                          GRN {grn.id.slice(0, 8)}
+                    <SubmitButton className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-orange-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2">
+                      Place Order (Mark as PURCHASED)
+                    </SubmitButton>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+
+            {isSecurity && !isPOFullyReceived && (
+              <Card className="rounded-2xl border border-emerald-200 bg-white shadow-md">
+                <CardHeader className="flex flex-col gap-1 border-b border-emerald-100/60 bg-emerald-50/60 px-6 py-4">
+                  <CardTitle className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-emerald-800">
+                    <span>Receive Goods</span>
+                  </CardTitle>
+                  <CardDescription className="text-sm text-emerald-700">
+                    Record the delivery of items. Verification will be done by Accounts.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="px-6 py-6">
+                  <form
+                    action={async (fd) => {
+                      'use server';
+
+                      const rawItems = po.items
+                        .map((item) => {
+                          const qty = Number(fd.get(`delivered-${item.id}`) || 0);
+                          return {
+                            poItemId: item.id,
+                            qtyDelivered: qty,
+                            vendorName: String(fd.get(`vendor-${item.id}`) || '').trim(),
+                            receiptNumber: String(fd.get(`receipt-${item.id}`) || '').trim(),
+                            vendorPhone: String(fd.get(`phone-${item.id}`) || '').trim(),
+                            unitPriceMajor: Number(fd.get(`price-${item.id}`) || 0),
+                          };
+                        })
+                        .filter((i) => i.qtyDelivered > 0);
+
+                      if (rawItems.length === 0) throw new Error('Enter at least one delivery quantity');
+
+                      for (const item of rawItems) {
+                        if (!item.vendorName) throw new Error('Vendor Name is required for all delivered items');
+                        if (!item.receiptNumber) throw new Error('Receipt Number is required for all delivered items');
+                      }
+
+                      const details = {
+                        receivedAt: String(fd.get('receivedAt') || new Date().toISOString()),
+                        note: String(fd.get('note') || ''),
+                      };
+                      
+                      await receiveGoods(poId, rawItems, me.id!, details);
+                      revalidatePath(`/procurement/purchase-orders/${poId}`);
+                    }}
+                    className="space-y-6"
+                  >
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                        <label htmlFor="receivedAt" className="block text-sm font-medium text-gray-700">Received Date</label>
+                        <input type="datetime-local" name="receivedAt" id="receivedAt" defaultValue={new Date().toISOString().slice(0, 16)} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
                         </div>
-                        <div className="text-xs text-gray-500">
-                          Received:{' '}
-                          {grn.receivedAt
-                            ? new Date(grn.receivedAt).toLocaleString()
-                            : '-'}
+                        <div>
+                        <label htmlFor="note" className="block text-sm font-medium text-gray-700">Note</label>
+                        <input type="text" name="note" id="note" className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
                         </div>
-                        <div className="mt-1 text-xs text-gray-500">
-                          Vendor:{' '}
-                          <span className="font-medium text-gray-700">
-                            {grn.vendorName || 'N/A'}
-                          </span>{' '}
-                          • Phone:{' '}
-                          <span className="font-medium text-gray-700">
-                            {grn.vendorPhone || 'N/A'}
-                          </span>{' '}
-                          • Receipt:{' '}
-                          <span className="font-medium text-gray-700">
-                            {grn.receiptNumber || 'N/A'}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-800">
-                        {grn.status}
-                      </span>
                     </div>
-                    {grn.note && (
-                      <p className="mb-2 text-sm text-gray-600">{grn.note}</p>
-                    )}
-                    <div className="mt-2 overflow-hidden rounded-md border border-gray-200 bg-white">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-2 py-2 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              Item
-                            </th>
-                            <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              Delivered
-                            </th>
-                            <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              Price
-                            </th>
-                            <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              P&amp;L
-                            </th>
-                            <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              Accepted
-                            </th>
-                            <th className="px-2 py-2 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">
-                              Rejected
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {grn.items.map((item) => (
-                            <tr key={item.id} className="border-t">
-                              <td className="px-2 py-1">{item.description}</td>
-                              <td className="px-2 py-1 text-right">
-                                {item.qtyDelivered}
-                              </td>
-                              <td className="px-2 py-1 text-right">
-                                {item.priceMinor ? <Money minor={item.priceMinor} /> : '-'}
-                              </td>
-                              <td
-                                className={`px-2 py-1 text-right font-medium ${
-                                  item.varianceMinor &&
-                                  Number(item.varianceMinor) < 0
-                                    ? 'text-red-600'
-                                    : 'text-green-600'
-                                }`}
-                              >
-                                {item.varianceMinor ? (
-                                  <Money minor={item.varianceMinor} />
-                                ) : (
-                                  '-'
-                                )}
-                              </td>
-                              <td className="px-2 py-1 text-right">
-                                {item.qtyAccepted}
-                              </td>
-                              <td className="px-2 py-1 text-right">
-                                {item.qtyRejected}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+
+                    <div className="border-t border-gray-200 pt-4">
+                        <h3 className="text-sm font-medium text-gray-900 mb-4">Items to Receive</h3>
+                        <div className="space-y-6">
+                        {po.items.map((item) => (
+                            <div key={item.id} className="grid grid-cols-1 gap-4 sm:grid-cols-6 bg-gray-50 p-4 rounded-lg">
+                            <div className="sm:col-span-6 font-medium text-sm text-gray-900">{item.description} (Ordered: {item.qty} {item.unit})</div>
+                            
+                            <div className="sm:col-span-1">
+                                <label className="block text-xs font-medium text-gray-500">Qty Delivered</label>
+                                <input type="number" step="any" name={`delivered-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" placeholder="0" />
+                            </div>
+                            
+                            <div className="sm:col-span-2">
+                                <label className="block text-xs font-medium text-gray-500">Vendor Name</label>
+                                <input type="text" name={`vendor-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" required />
+                            </div>
+
+                            <div className="sm:col-span-1">
+                                <label className="block text-xs font-medium text-gray-500">Receipt #</label>
+                                <input type="text" name={`receipt-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" required />
+                            </div>
+
+                            <div className="sm:col-span-1">
+                                <label className="block text-xs font-medium text-gray-500">Vendor Phone</label>
+                                <input type="text" name={`phone-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
+                            </div>
+
+                            <div className="sm:col-span-1">
+                                <label className="block text-xs font-medium text-gray-500">Unit Price</label>
+                                <input type="number" step="0.01" name={`price-${item.id}`} className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 sm:text-sm" />
+                            </div>
+                            </div>
+                        ))}
+                        </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
+
+                    <div className="flex justify-end pt-4">
+                        <SubmitButton className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-emerald-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">
+                        Submit Delivery
+                        </SubmitButton>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            )}
+        </div>
       </div>
     </div>
   );

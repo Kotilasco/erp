@@ -8,16 +8,22 @@ type PurchaseOrderHeaderProps = {
   requisition: {
     id: string;
     createdAt: Date;
-    submittedBy?: { name: string | null } | null;
+    submittedBy?: { name: string | null; email?: string | null } | null;
   };
   title?: string;
+  recipientLabel?: string;
+  recipientIdLabel?: string;
+  recipientId?: string | null;
 };
 
 export default function PurchaseOrderHeader({ 
   customer, 
   project, 
   requisition,
-  title = 'Purchase Order' 
+  title = 'Purchase Order',
+  recipientLabel = 'Customer Info',
+  recipientIdLabel = 'Customer ID',
+  recipientId
 }: PurchaseOrderHeaderProps) {
   // Calculate valid until date (30 days from created at) - or maybe not needed for PO?
   // Usually POs don't have "Valid Until" in the same way Quotes do, but maybe "Delivery Date"?
@@ -29,9 +35,9 @@ export default function PurchaseOrderHeader({
   validUntil.setDate(validUntil.getDate() + 30);
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:bg-gray-800 dark:border-gray-700 mb-6">
+    <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm dark:bg-gray-800 dark:border-gray-700 mb-6 print:border-none print:shadow-none print:p-0 print:mb-4">
       {/* Top Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start mb-8 border-b-2 border-orange-500 pb-6">
+      <div className="flex flex-col md:flex-row justify-between items-start mb-8 border-b-2 border-orange-500 pb-6 print:mb-4 print:pb-4">
         <div className="flex flex-col items-start">
           <div className="relative w-48 h-20 mb-2">
             <Image 
@@ -64,7 +70,7 @@ export default function PurchaseOrderHeader({
         {/* Customer Info Box */}
         <div className="border border-gray-300 dark:border-gray-600">
           <div className="bg-blue-50 dark:bg-blue-900/30 p-2 border-b border-gray-300 dark:border-gray-600">
-            <h3 className="font-bold text-gray-800 dark:text-gray-100 uppercase text-sm">Customer Info</h3>
+            <h3 className="font-bold text-gray-800 dark:text-gray-100 uppercase text-sm">{recipientLabel}</h3>
           </div>
           <div className="p-4 space-y-2 text-sm text-gray-700 dark:text-gray-300">
             <div className="grid grid-cols-[80px_1fr] gap-2">
@@ -108,7 +114,7 @@ export default function PurchaseOrderHeader({
           </div>
           <div className="grid grid-cols-2 border-b border-gray-300 dark:border-gray-600">
             <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-center font-bold text-gray-800 dark:text-gray-100 uppercase text-sm border-r border-gray-300 dark:border-gray-600">
-              Customer ID
+              {recipientIdLabel}
             </div>
             <div className="p-2 bg-blue-50 dark:bg-blue-900/30 text-center font-bold text-gray-800 dark:text-gray-100 uppercase text-sm">
               Submitted By
@@ -116,10 +122,10 @@ export default function PurchaseOrderHeader({
           </div>
           <div className="grid grid-cols-2">
             <div className="p-2 text-center text-sm text-gray-700 dark:text-gray-300 border-r border-gray-300 dark:border-gray-600">
-              {customer.id ? customer.id.slice(0, 8) : 'N/A'}
+              {recipientId || (customer.id ? customer.id.slice(0, 8) : 'N/A')}
             </div>
             <div className="p-2 text-center text-sm text-gray-700 dark:text-gray-300">
-              {requisition.submittedBy?.name || 'N/A'}
+              {requisition.submittedBy?.name || requisition.submittedBy?.email || 'N/A'}
             </div>
           </div>
         </div>

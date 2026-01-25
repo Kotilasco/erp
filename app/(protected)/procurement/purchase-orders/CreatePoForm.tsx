@@ -44,17 +44,19 @@ export default function CreatePoForm({
         unitPriceMajor: Number(formData.get(`price-${item.id}`)),
       }));
 
-      await createPurchaseOrder(
+      const poId = await createPurchaseOrder(
         requisitionId, 
         userId, 
         orderedItems, 
         { name: vendorName, phone: vendorPhone }
       );
       
-      // Redirect happens in server action (via revalidatePath probably shouldn't redirect there).
-      // If server action doesn't redirect, we can do it here.
-      // The server action just revalidates. Let's redirect to list or dashboard.
-      router.push('/procurement/purchase-orders'); 
+      // Redirect to the new PO page
+      if (poId) {
+        router.push(`/procurement/purchase-orders/${poId}`);
+      } else {
+        router.push('/procurement/purchase-orders');
+      } 
     } catch (e: any) {
       setError(e.message);
     }
