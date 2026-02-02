@@ -171,31 +171,23 @@ export default async function ProjectDispatchesPage(props: {
                  {isPM && !opsLocked && (
                     <div className="flex gap-2">
                         {/* 1. Standard Dispatch (Requisitions) */}
-                        {(dispatchableItems.length > 0) && (
-                            <form action={async () => {
-                                'use server';
-                                const { createAndRedirectDispatch } = await import('@/app/(protected)/dashboard/actions');
-                                await createAndRedirectDispatch(projectId);
-                            }}>
-                                 <SubmitButton 
-                                    className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
-                                 >
-                                    Create Dispatch
-                                 </SubmitButton>
-                            </form>
+                        {dispatchableItems.length > 0 && (
+                          <Link
+                            href={`/projects/${projectId}/dispatches/new`}
+                            className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
+                          >
+                            Create Dispatch
+                          </Link>
                         )}
 
                         {/* 2. Stock Dispatch */}
-                        {(multipurposeInventory.length > 0) && (
-                            <form action={async () => {
-                                'use server';
-                                const { createAndRedirectStockDispatch } = await import('@/app/(protected)/projects/actions');
-                                await createAndRedirectStockDispatch(projectId);
-                            }}>
-                                <SubmitButton className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700">
-                                    {user.role === 'PROJECT_OPERATIONS_OFFICER' ? 'Dispatch Work Tools' : 'Dispatch from Stock'}
-                                </SubmitButton>
-                            </form>
+                        {multipurposeInventory.length > 0 && (
+                          <Link
+                            href={`/projects/${projectId}/dispatches/stock`}
+                            className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
+                          >
+                            {user.role === 'PROJECT_OPERATIONS_OFFICER' ? 'Dispatch Work Tools' : 'Dispatch from Stock'}
+                          </Link>
                         )}
 
                         {/* 2. Assets Dispatch */}

@@ -1,0 +1,6 @@
+Only in /c/Users/ze9167867/Desktop/erp_bamlo-frica: .env
+Only in /c/Users/ze9167867/Desktop/erp_bamlo-frica: build_error.log
+Only in /c/Users/ze9167867/Desktop/erp_bamlo-frica: lint.log
+Only in /c/Users/ze9167867/Desktop/erp_bamlo-frica: tsc.log
+Only in /c/Users/ze9167867/Desktop/erp_bamlo-frica: tsc_after_prisma.log
+Only in /c/Users/ze9167867/Desktop/erp_bamlo-frica: tsc_errors.log

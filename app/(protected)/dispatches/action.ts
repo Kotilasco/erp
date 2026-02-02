@@ -4,6 +4,39 @@
 import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+
+export async function deleteDispatch(dispatchId: string) {
+  const me = await getCurrentUser();
+  if (!me) throw new Error('Auth required');
+
+  // Allow Admin or Project Operations Officer
+  if (me.role !== 'ADMIN' && me.role !== 'PROJECT_OPERATIONS_OFFICER') {
+    throw new Error('Permission denied');
+  }
+
+  const dispatch = await prisma.dispatch.findUnique({
+    where: { id: dispatchId },
+    select: { status: true }
+  });
+
+  if (!dispatch) throw new Error('Dispatch not found');
+  if (dispatch.status !== 'DRAFT') throw new Error('Cannot delete dispatch that is not in DRAFT status');
+
+  // Delete dispatch items first to avoid Foreign Key constraint violation
+  await prisma.$transaction(async (tx) => {
+    await tx.dispatchItem.deleteMany({
+      where: { dispatchId }
+    });
+
+    await tx.dispatch.delete({
+      where: { id: dispatchId }
+    });
+  });
+
+  revalidatePath('/dispatches');
+  redirect('/dispatches');
+}
 
 function assertSecurity(role?: string | null) {
   if (role !== 'SECURITY' && role !== 'ADMIN') {
@@ -151,82 +184,82 @@ function assertSecurity(role?: string | null) {
 } */
 
 
- /*  export async function markItemHandedOut(itemId: string) {
-  const me = await getCurrentUser();
-  if (!me) throw new Error('Authentication required');
-  assertSecurity(me.role);
+/*  export async function markItemHandedOut(itemId: string) {
+ const me = await getCurrentUser();
+ if (!me) throw new Error('Authentication required');
+ assertSecurity(me.role);
 
-  const res = await prisma.$transaction(async (tx) => {
-    const item = await tx.dispatchItem.findUnique({
-      where: { id: itemId },
-      select: {
-        id: true,
-        qty: true,
-        inventoryItemId: true,
-        purchaseId: true,
-        dispatch: { select: { id: true, status: true, projectId: true } },
-      },
-    });
-    if (!item) throw new Error('Dispatch item not found');
+ const res = await prisma.$transaction(async (tx) => {
+   const item = await tx.dispatchItem.findUnique({
+     where: { id: itemId },
+     select: {
+       id: true,
+       qty: true,
+       inventoryItemId: true,
+       purchaseId: true,
+       dispatch: { select: { id: true, status: true, projectId: true } },
+     },
+   });
+   if (!item) throw new Error('Dispatch item not found');
 
-    const allowed = ['SUBMITTED', 'IN_TRANSIT']; // adjust as needed
-    if (!item.dispatch || !allowed.includes(item.dispatch.status)) {
-      throw new Error(`Dispatch is not in a state that allows handing out (status=${item.dispatch?.status ?? 'N/A'})`);
-    }
+   const allowed = ['SUBMITTED', 'IN_TRANSIT']; // adjust as needed
+   if (!item.dispatch || !allowed.includes(item.dispatch.status)) {
+     throw new Error(`Dispatch is not in a state that allows handing out (status=${item.dispatch?.status ?? 'N/A'})`);
+   }
 
-    const qtyToHand = Number(item.qty ?? 0);
-    if (!(qtyToHand > 0)) throw new Error('Invalid dispatch quantity');
+   const qtyToHand = Number(item.qty ?? 0);
+   if (!(qtyToHand > 0)) throw new Error('Invalid dispatch quantity');
 
-    // mark handed out on the item
-    await tx.dispatchItem.update({
-      where: { id: item.id },
-      data: { handedOutAt: new Date(), handedOutById: me.id ?? null },
-    });
+   // mark handed out on the item
+   await tx.dispatchItem.update({
+     where: { id: item.id },
+     data: { handedOutAt: new Date(), handedOutById: me.id ?? null },
+   });
 
-    // determine inventory item id (explicit link or via purchase)
-    let inventoryId: string | null = item.inventoryItemId ?? null;
-    if (!inventoryId && item.purchaseId) {
-      const inv = await tx.inventoryItem.findFirst({ where: { purchaseId: item.purchaseId }, select: { id: true } });
-      inventoryId = inv?.id ?? null;
-    }
+   // determine inventory item id (explicit link or via purchase)
+   let inventoryId: string | null = item.inventoryItemId ?? null;
+   if (!inventoryId && item.purchaseId) {
+     const inv = await tx.inventoryItem.findFirst({ where: { purchaseId: item.purchaseId }, select: { id: true } });
+     inventoryId = inv?.id ?? null;
+   }
 
-    if (!inventoryId) {
-      throw new Error('Dispatch item is not linked to an inventory record; cannot decrement stock');
-    }
+   if (!inventoryId) {
+     throw new Error('Dispatch item is not linked to an inventory record; cannot decrement stock');
+   }
 
-    // atomically decrement quantity (ensures not negative)
-    const updated = await tx.inventoryItem.updateMany({
-      where: {
-        id: inventoryId,
-        quantity: { gte: qtyToHand },
-      },
-      data: {
-        quantity: { decrement: qtyToHand },
-        // keep both qty/quantity fields in sync if you have both
-        qty: { decrement: qtyToHand },
-      },
-    });
+   // atomically decrement quantity (ensures not negative)
+   const updated = await tx.inventoryItem.updateMany({
+     where: {
+       id: inventoryId,
+       quantity: { gte: qtyToHand },
+     },
+     data: {
+       quantity: { decrement: qtyToHand },
+       // keep both qty/quantity fields in sync if you have both
+       qty: { decrement: qtyToHand },
+     },
+   });
 
-    if (updated.count === 0) {
-      throw new Error('Insufficient stock to hand out the requested quantity');
-    }
+   if (updated.count === 0) {
+     throw new Error('Insufficient stock to hand out the requested quantity');
+   }
 
-    return {
-      ok: true,
-      inventoryId,
-      handedQty: qtyToHand,
-      dispatchId: item.dispatch?.id ?? null,
-      projectId: item.dispatch?.projectId ?? null,
-    };
-  });
+   return {
+     ok: true,
+     inventoryId,
+     handedQty: qtyToHand,
+     dispatchId: item.dispatch?.id ?? null,
+     projectId: item.dispatch?.projectId ?? null,
+   };
+ });
 
-  // revalidate appropriate pages
-  if (res.dispatchId) revalidatePath(`/dispatches/${res.dispatchId}`);
-  if (res.projectId) revalidatePath(`/projects/${res.projectId}`);
-  revalidatePath('/dispatches');
-  revalidatePath('/inventory');
+ // revalidate appropriate pages
+ if (res.dispatchId) revalidatePath(`/dispatches/${res.dispatchId}`);
+ if (res.projectId) revalidatePath(`/projects/${res.projectId}`);
+ revalidatePath('/dispatches');
+ revalidatePath('/inventory');
 
-  return res;
+ return res;
 } */
 
 

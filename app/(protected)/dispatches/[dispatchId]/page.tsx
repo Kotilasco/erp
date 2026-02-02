@@ -2,6 +2,7 @@
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
 import { updateDispatchItems, submitDispatch, markDispatchItemHandedOut } from '@/app/(protected)/projects/actions';
+import { deleteDispatch } from '@/app/(protected)/dispatches/action';
 import LoadingButton from '@/components/LoadingButton';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
@@ -126,21 +127,32 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
       </div>
 
       {canEdit ? (
-        <form action={saveAction} className="space-y-6">
-          <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
+        <div className="space-y-6">
+          <form id="dispatch-form" action={saveAction} className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">
              <TableContent dispatch={dispatch} canEdit={true} isSecurity={isSecurity} />
-          </div>
+          </form>
           
-          <div className="flex gap-3 justify-end">
-            <LoadingButton type="submit" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
-                Save Draft
-            </LoadingButton>
-            <LoadingButton formAction={submitAction} className="bg-emerald-600 text-white hover:bg-emerald-700 border-transparent shadow-sm">
-                <DocumentCheckIcon className="h-4 w-4 mr-2" />
-                Submit to Security
-            </LoadingButton>
+          <div className="flex gap-3 justify-end items-center">
+             <form action={async () => {
+                'use server';
+                await deleteDispatch(dispatch.id);
+             }}>
+                <LoadingButton type="submit" className="bg-rose-600 text-white hover:bg-rose-700 border-transparent shadow-sm">
+                  Delete Draft
+                </LoadingButton>
+             </form>
+
+             <div className="flex gap-3">
+              <LoadingButton form="dispatch-form" type="submit" className="bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
+                  Save Draft
+              </LoadingButton>
+              <LoadingButton form="dispatch-form" formAction={submitAction} className="bg-emerald-600 text-white hover:bg-emerald-700 border-transparent shadow-sm">
+                  <DocumentCheckIcon className="h-4 w-4 mr-2" />
+                  Submit to Security
+              </LoadingButton>
+             </div>
           </div>
-        </form>
+        </div>
       ) : (
         <div className="space-y-6">
           <div className="rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800 p-4">

@@ -56,7 +56,7 @@ export default async function GlobalNegotiationPnLPage() {
                  </div>
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
                     <GlobeAltIcon className="h-8 w-8 text-gray-400" />
-                    Negotiation Gains
+                    Negotiation Variance
                 </h1>
                 <p className="text-gray-500 mt-1">
                     Revenue impact from post-quote negotiations across {projectCount} projects.

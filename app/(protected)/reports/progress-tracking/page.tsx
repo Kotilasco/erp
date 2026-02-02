@@ -74,7 +74,7 @@ export default async function GlobalProgressTrackingPage() {
            </div>
            <h1 className="text-3xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
               <GlobeAltIcon className="h-8 w-8 text-gray-400" />
-              Global Task Progress
+              Consolidated Task Progress Report
            </h1>
            <p className="text-gray-500 mt-2">
              Tracking completion status of all active projects.

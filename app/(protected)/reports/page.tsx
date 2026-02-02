@@ -34,7 +34,7 @@ export default async function GlobalReportsPage() {
 
   const reports: Report[] = [
     {
-      title: "Global Task Progress",
+      title: "Consolidated Task Progress Report",
       description: "Aggregate tracking of schedule tasks and completion status across all projects.",
       href: `/reports/progress-tracking`,
       icon: ChartBarSquareIcon,
@@ -61,7 +61,7 @@ export default async function GlobalReportsPage() {
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT']
     },
     {
-      title: "Negotiation Gains (Global)",
+      title: "Negotiation Variance",
       description: "Total revenue impact from post-quote negotiations across the organization.",
       href: `/reports/profit-loss-negotiation`,
       icon: ArrowTrendingDownIcon,
@@ -106,6 +106,16 @@ export default async function GlobalReportsPage() {
       color: "text-orange-600",
       bgColor: "bg-orange-50",
       roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
+      disabled: false
+    },
+    {
+      title: "Material Utilization",
+      description: "Track dispatched materials, returns, and on-site usage per project.",
+      href: `/reports/material-utilization`,
+      icon: ScaleIcon,
+      color: "text-orange-600",
+      bgColor: "bg-orange-50",
+      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'STORE_KEEPER', 'ACCOUNTING_CLERK'],
       disabled: false
     },
     {
@@ -164,7 +174,7 @@ export default async function GlobalReportsPage() {
                     <div className="mt-6 flex items-center gap-4 text-sm font-medium text-gray-500">
                         <div className="flex items-center gap-1 hover:text-gray-900">
                             <DocumentDuplicateIcon className="h-4 w-4" />
-                            View Global Report
+                            View Report
                         </div>
                     </div>
                 )}

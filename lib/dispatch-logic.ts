@@ -14,14 +14,15 @@ export type PendingDispatchItem = {
  */
 export async function getPendingDispatchItems(userId: string, role: string): Promise<PendingDispatchItem[]> {
     const isPM = role === 'PROJECT_OPERATIONS_OFFICER';
-    // If user is PM, filter by assigned projects
-    // If not PM (e.g. Admin/Security?), maybe show all?
-    // Logic from dashboard: role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: userId } : {}
-    // But strictly, let's follow the args.
+    const isOtherPrivileged = ['ADMIN', 'PROCUREMENT', 'SENIOR_PROCUREMENT', 'SECURITY', 'STORE_KEEPER'].includes(role);
 
     const myProjects = await prisma.project.findMany({
         where: {
+            // If POO, only assigned to them.
+            // If other privileged roles, everything.
+            // (If neither, maybe they shouldn't see anything, but we'll follow the role check)
             ...(isPM ? { assignedToId: userId } : {}),
+            ...(isOtherPrivileged ? {} : !isPM ? { id: 'none' } : {}), // Fallback safety
             status: { not: 'COMPLETED' },
         },
         select: { id: true, projectNumber: true, quote: { select: { customer: true } } },

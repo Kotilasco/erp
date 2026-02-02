@@ -86,8 +86,8 @@ export default async function GlobalPnLPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
             <Card title="Total Contract Value" icon={CurrencyDollarIcon} value={globalSummary.contractValueMinor} variant="neutral" />
-            <Card title="Negotiation Delta" icon={ArrowTrendingDownIcon} value={globalSummary.negotiationVarianceMinor} variant="variance" />
-            <Card title="Procurement Delta" icon={ShoppingCartIcon} value={globalSummary.procurementVarianceMinor} variant="variance" />
+            <Card title="Negotiation Variance" icon={ArrowTrendingDownIcon} value={globalSummary.negotiationVarianceMinor} variant="variance" />
+            <Card title="Procurement Variance" icon={ShoppingCartIcon} value={globalSummary.procurementVarianceMinor} variant="variance" />
             <Card title="Usage Variance" icon={ExclamationTriangleIcon} value={globalSummary.usageVarianceMinor} variant="variance" />
             <Card title="Returns Value" icon={ArchiveBoxIcon} value={globalSummary.returnsValueMinor} variant="variance" />
         </div>

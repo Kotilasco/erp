@@ -42,8 +42,79 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
 
     // --- 1. Negotiation Variance ---
     const negotiation = project.quote?.negotiations?.[0];
-    if (negotiation) {
-        // Implementation for negotiation variance logic (currently 0 per original logic)
+    if (negotiation && negotiation.originalVersion && negotiation.proposedVersion) {
+        try {
+            const originalData = JSON.parse(negotiation.originalVersion.snapshotJson);
+            const proposedData = JSON.parse(negotiation.proposedVersion.snapshotJson);
+
+            // Safe BigInt parser helper
+            const toBigInt = (val: any) => {
+                if (!val) return 0n;
+                return BigInt(val);
+            };
+
+            const getLines = (data: any) => Array.isArray(data.lines) ? data.lines : [];
+
+            const originalLines = getLines(originalData);
+            const proposedLines = getLines(proposedData);
+
+            // Calculate Totals
+            const originalTotal = originalLines.reduce((acc: bigint, l: any) => acc + toBigInt(l.lineTotalMinor), 0n);
+            const proposedTotal = proposedLines.reduce((acc: bigint, l: any) => acc + toBigInt(l.lineTotalMinor), 0n);
+
+            const variance = proposedTotal - originalTotal;
+            negotiationVarianceMinor += variance;
+
+            // Generate Detailed Items
+            const originalMap = new Map(originalLines.map((l: any) => [l.id, l]));
+
+            for (const propLine of proposedLines) {
+                const origLine = originalMap.get(propLine.id);
+                const propTotal = toBigInt(propLine.lineTotalMinor);
+                const origTotal = origLine ? toBigInt(origLine.lineTotalMinor) : 0n;
+
+                const lineVariance = propTotal - origTotal;
+
+                if (lineVariance !== 0n) {
+                    items.push({
+                        id: propLine.id,
+                        description: `Negotiation: ${propLine.description || 'Item'}`,
+                        category: 'NEGOTIATION',
+                        varianceMinor: lineVariance,
+                        details: `Original: ${Number(origTotal) / 100}, Final: ${Number(propTotal) / 100}`,
+                        structuredDetails: {
+                            estUnitPriceMinor: origTotal, // Using total context for simplicity in this distinct view
+                            actualUnitPriceMinor: propTotal,
+                            quantity: 1 // Abstract quantity for line total diff
+                        }
+                    });
+                }
+
+                if (origLine) originalMap.delete(propLine.id); // Handled
+            }
+
+            // Handle deleted lines (in original but not in proposed)
+            for (const [id, origLine] of originalMap) {
+                const origTotal = toBigInt(origLine.lineTotalMinor);
+                const lineVariance = 0n - origTotal; // Loss of revenue
+
+                items.push({
+                    id: origLine.id,
+                    description: `Negotiation (Removed): ${origLine.description}`,
+                    category: 'NEGOTIATION',
+                    varianceMinor: lineVariance,
+                    details: `Removed. Original Value: ${Number(origTotal) / 100}`,
+                    structuredDetails: {
+                        estUnitPriceMinor: origTotal,
+                        actualUnitPriceMinor: 0n,
+                        quantity: 1
+                    }
+                });
+            }
+
+        } catch (e) {
+            console.error('Error calculating negotiation variance for project ' + project.id, e);
+        }
     }
 
     // --- 2. Procurement Variance ---
