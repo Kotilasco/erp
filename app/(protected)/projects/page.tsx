@@ -9,7 +9,7 @@ import Money from '@/components/Money';
 import TablePagination from '@/components/ui/table-pagination';
 import { Prisma, PaymentScheduleStatus } from '@prisma/client';
 import ProjectTableToolbar from './components/ProjectTableToolbar';
-import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon, DocumentPlusIcon, HashtagIcon, UserIcon, MapPinIcon, TagIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, BriefcaseIcon, BanknotesIcon, CalendarIcon, DocumentPlusIcon, HashtagIcon, UserIcon, MapPinIcon, TagIcon, UserCircleIcon, WrenchScrewdriverIcon } from '@heroicons/react/24/outline';
 
 import { ProjectAssigner } from './project-assigner';
 
@@ -452,13 +452,22 @@ export default async function ProjectsPage({
                                  Create Schedule
                                 </Link>
                               ) : (
-                                <Link 
-                                   href={`/projects/${project.id}/requisitions/new`}
-                                   className="inline-flex items-center gap-1 rounded border border-green-500 px-2 py-1 text-xs font-bold text-green-600 transition-colors hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/20"
-                                >
-                                   <DocumentPlusIcon className="h-3.5 w-3.5" />
-                                   Create Requisition
-                                </Link>
+                                 <div className="flex flex-col gap-1 items-stretch">
+                                   <Link 
+                                      href={`/projects/${project.id}/requisitions/new`}
+                                      className="inline-flex items-center gap-1 rounded border border-green-500 px-2 py-1 text-xs font-bold text-green-600 transition-colors hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/20"
+                                   >
+                                      <DocumentPlusIcon className="h-3.5 w-3.5" />
+                                      Create Requisition
+                                   </Link>
+                                    <Link 
+                                      href={`/projects/${project.id}/dispatches/stock`}
+                                      className="inline-flex items-center gap-1 rounded border border-blue-500 px-2 py-1 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                   >
+                                      <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
+                                      Dispatch Tools
+                                   </Link>
+                                 </div>
                               )}
                             </div>
                           </td>
