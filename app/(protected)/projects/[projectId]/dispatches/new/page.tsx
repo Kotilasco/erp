@@ -4,6 +4,7 @@ import { getProjectDispatchableItems } from '../../dispatch-actions';
 import DispatchSelector from './DispatchSelector';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import QuoteHeader from '@/components/QuoteHeader';
 
 export default async function NewDispatchPage({ 
   params 
@@ -15,7 +16,7 @@ export default async function NewDispatchPage({
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
-      quote: { include: { customer: true } },
+      quote: { include: { customer: true, project: true } },
     },
   });
 
@@ -26,26 +27,27 @@ export default async function NewDispatchPage({
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Header */}
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between border-b border-gray-200 pb-6">
-          <div className="flex-1 min-w-0">
-            <nav className="flex items-center text-sm font-medium text-gray-500 mb-4">
-              <Link 
-                href={`/projects/${projectId}/dispatches`} 
-                className="hover:text-green-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
-              >
-                <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-green-600" />
-                Back to Dispatches
-              </Link>
-            </nav>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">New Material Dispatch</h1>
-            <div className="mt-2 flex items-center text-sm text-gray-500">
-              <span className="font-medium text-gray-700">Project:</span>
-              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-                {project.quote?.customer?.displayName || 'Project'}
-              </span>
+        {/* Navigation */}
+        <div className="flex flex-col gap-4">
+          <nav className="flex items-center text-sm font-medium text-gray-500">
+            <Link 
+              href={`/projects/${projectId}/dispatches`} 
+              className="hover:text-green-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-green-600" />
+              Back to Dispatches
+            </Link>
+          </nav>
+
+          {/* Header */}
+          {project.quote ? (
+            <QuoteHeader quote={project.quote} title="Dispatch Form" />
+          ) : (
+            <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dispatch Form</h1>
+              <p className="mt-2 text-gray-500">Project: {project.name}</p>
             </div>
-          </div>
+          )}
         </div>
 
         <DispatchSelector 

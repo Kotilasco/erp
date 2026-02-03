@@ -3,12 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createDispatch } from '../../dispatch-actions';
-import { 
-  PlusIcon, 
-  MinusIcon, 
-  TrashIcon, 
-  ArrowPathIcon 
-} from '@heroicons/react/24/outline';
 import { toast } from 'sonner';
 
 interface DispatchableItem {
@@ -31,28 +25,32 @@ export default function DispatchSelector({
   const [note, setNote] = useState('');
   const [selectedItems, setSelectedItems] = useState<Array<{ id: string; qty: number }>>([]);
 
-  const toggleItem = (item: DispatchableItem) => {
-    setSelectedItems(prev => {
-      const exists = prev.find(i => i.id === item.id);
-      if (exists) {
-        return prev.filter(i => i.id !== item.id);
-      } else {
-        return [...prev, { id: item.id, qty: item.remaining }];
-      }
-    });
+  const getQty = (id: string) => {
+    return selectedItems.find(i => i.id === id)?.qty || 0;
   };
 
   const updateQty = (id: string, qty: number) => {
     const item = availableItems.find(i => i.id === id);
     if (!item) return;
 
+    // Ensure qty is within bounds
     const safeQty = isNaN(qty) ? 0 : Math.max(0, Math.min(qty, item.remaining));
-    setSelectedItems(prev => prev.map(i => i.id === id ? { ...i, qty: safeQty } : i));
+
+    setSelectedItems(prev => {
+      const existing = prev.find(i => i.id === id);
+      if (safeQty === 0) {
+        return prev.filter(i => i.id !== id);
+      }
+      if (existing) {
+        return prev.map(i => i.id === id ? { ...i, qty: safeQty } : i);
+      }
+      return [...prev, { id, qty: safeQty }];
+    });
   };
 
   const handleSubmit = async () => {
     if (selectedItems.length === 0) {
-      toast.error('Select at least one item');
+      toast.error('Enter a quantity for at least one item');
       return;
     }
 
@@ -71,7 +69,7 @@ export default function DispatchSelector({
 
       const res = await createDispatch(projectId, { note, items });
       if (res.ok) {
-        toast.success('Draft dispatch created');
+        toast.success('Dispatch created successfully');
         router.push(`/projects/${projectId}/dispatches/${res.dispatchId}`);
         router.refresh();
       } else {
@@ -85,134 +83,104 @@ export default function DispatchSelector({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Available Items */}
+    <div className="space-y-8">
+      {/* Table Section */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
-          <h2 className="text-lg font-bold text-gray-900">Available for Dispatch</h2>
-        </div>
-        <div className="p-6 space-y-4">
-          {availableItems.length === 0 && (
-            <p className="text-gray-500 text-sm italic text-center py-8">No items currently available for dispatch (received via GRN but not yet dispatched).</p>
-          )}
-          {availableItems.map(item => {
-            const isSelected = selectedItems.find(si => si.id === item.id);
-            return (
-              <div 
-                key={item.id} 
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${isSelected ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}`}
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="font-bold text-gray-900 truncate">{item.description}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    <span className="font-medium text-green-600">Available:</span> {item.remaining} {item.unit}
-                  </p>
-                </div>
-                <button 
-                  onClick={() => toggleItem(item)}
-                  className={`absolute bottom-4 right-4 rounded-full p-2 text-white shadow-lg transition-all ${
-                    isSelected 
-                      ? "bg-green-600 hover:bg-green-700 hover:shadow-green-200" 
-                      : "bg-gray-200 hover:bg-gray-300"
-                  }`}
-                >
-                  {isSelected ? 'Deselect' : 'Select'}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        {availableItems.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-gray-500 text-sm italic">No items currently available for dispatch.</p>
+            <p className="text-gray-400 text-xs mt-1">Items become available after they are received via GRN.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                    Description
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">
+                    Unit
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-32">
+                    Available
+                  </th>
+                  <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-40">
+                    Dispatch Qty
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {availableItems.map(item => {
+                  const currentQty = getQty(item.id);
+                  const isSelected = currentQty > 0;
+                  
+                  return (
+                    <tr 
+                      key={item.id} 
+                      className={`transition-colors ${isSelected ? 'bg-green-50/30' : 'hover:bg-gray-50'}`}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-gray-900">{item.description}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{item.unit || '-'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {item.remaining}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <input
+                          type="number"
+                          min="0"
+                          max={item.remaining}
+                          step="any"
+                          value={currentQty || ''}
+                          placeholder="0"
+                          onChange={(e) => updateQty(item.id, parseFloat(e.target.value))}
+                          className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm p-2 border text-center font-bold ${
+                            isSelected ? 'bg-white border-green-300 text-green-700' : 'bg-gray-50'
+                          }`}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Selected Items & Submission */}
-      <div className="space-y-6">
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50">
-            <h2 className="text-lg font-bold text-gray-900">Items to Dispatch</h2>
-          </div>
-          <div className="p-6 space-y-4">
-            {selectedItems.length === 0 && (
-              <div className="text-center py-8">
-                <p className="text-gray-500 text-sm italic">No items selected yet.</p>
-                <p className="text-gray-400 text-xs mt-1">Select items from the list to get started.</p>
-              </div>
-            )}
-            {selectedItems.map(si => {
-              const item = availableItems.find(i => i.id === si.id)!;
-              return (
-                <div key={si.id} className="flex flex-col sm:flex-row sm:items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-gray-900 truncate">{item.description}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">{item.unit}</p>
-                  </div>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                      <button 
-                        className="p-2 hover:bg-gray-50 text-gray-600 transition-colors"
-                        onClick={() => updateQty(si.id, si.qty - 1)}
-                      >
-                        <MinusIcon className="h-4 w-4" />
-                      </button>
-                      <input 
-                        type="number" 
-                        value={isNaN(si.qty) ? '' : si.qty} 
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? 0 : parseFloat(e.target.value);
-                          updateQty(si.id, val);
-                        }}
-                        className="w-16 text-center border-x border-gray-200 py-1 text-sm font-bold text-gray-900 focus:outline-none"
-                      />
-                      <button 
-                        className="p-2 hover:bg-gray-50 text-gray-600 transition-colors"
-                        onClick={() => updateQty(si.id, si.qty + 1)}
-                      >
-                        <PlusIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <button 
-                      className="p-2 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                      onClick={() => toggleItem(item)}
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Footer / Action Section */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
+        <div>
+          <label className="block text-sm font-bold text-gray-700 mb-2">Dispatch Note (Optional)</label>
+          <textarea 
+            placeholder="e.g. Dispatched to site for Phase 1..." 
+            rows={3}
+            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder:text-gray-400 text-sm"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+          />
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="p-6 space-y-6">
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-gray-700">Dispatch Note (optional)</label>
-              <textarea 
-                placeholder="e.g. Loading for foundations..." 
-                rows={3}
-                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder:text-gray-400 text-sm"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-              />
-            </div>
-            <button 
-              className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-sm font-bold text-white shadow-lg transition-all ${
-                loading || selectedItems.length === 0
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-green-600 hover:bg-green-700 hover:shadow-green-200"
-              }`}
-              disabled={loading || selectedItems.length === 0}
-              onClick={handleSubmit}
-            >
-              {loading ? (
-                <>
-                  <ArrowPathIcon className="h-5 w-5 animate-spin" />
-                  Creating Draft...
-                </>
-              ) : (
-                'Create Draft Dispatch'
-              )}
-            </button>
-          </div>
+        <div className="pt-4 border-t border-gray-100">
+          <button 
+            onClick={handleSubmit}
+            disabled={loading || selectedItems.length === 0}
+            className={`
+              w-full flex items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-white shadow-md transition-all
+              ${loading || selectedItems.length === 0
+                ? "bg-gray-300 cursor-not-allowed shadow-none"
+                : "bg-green-600 hover:bg-green-700 hover:shadow-lg hover:shadow-green-200"
+              }
+            `}
+          >
+            {loading ? 'Processing...' : 'Dispatch'}
+          </button>
         </div>
       </div>
     </div>
