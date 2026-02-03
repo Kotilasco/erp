@@ -111,6 +111,10 @@ export default async function DispatchesPage({
     total = t;
   }
 
+  const hasMultipurposeStock = await prisma.inventoryItem.count({
+    where: { category: 'MULTIPURPOSE', qty: { gt: 0 } }
+  }) > 0;
+
   const totalPages = Math.ceil(total / size);
 
   return (
@@ -199,13 +203,15 @@ export default async function DispatchesPage({
                                <PlusIcon className="h-3.5 w-3.5" />
                                Create Dispatch
                              </Link>
-                             <Link
-                               href={`/projects/${p.id}/dispatches/stock`}
-                               className="inline-flex items-center gap-1 rounded border border-blue-500 px-3 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                             >
-                               <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
-                               Dispatch Tools
-                             </Link>
+                             {hasMultipurposeStock && (
+                               <Link
+                                 href={`/projects/${p.id}/dispatches/stock`}
+                                 className="inline-flex items-center gap-1 rounded border border-blue-500 px-3 py-1.5 text-xs font-bold text-blue-600 transition-colors hover:bg-blue-50 dark:border-blue-400 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                               >
+                                 <WrenchScrewdriverIcon className="h-3.5 w-3.5" />
+                                 Dispatch Tools
+                               </Link>
+                             )}
                        </td>
                      </tr>
                    ))
