@@ -136,8 +136,8 @@ export async function markDispatchReceived(
 export async function getProjectDispatchableItems(projectId: string) {
   const approvedReqItems = await prisma.procurementRequisitionItem.findMany({
     where: {
-      requisition: { 
-        projectId: projectId, 
+      requisition: {
+        projectId: projectId,
         status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED', 'COMPLETED'] }
       },
     },
@@ -152,9 +152,9 @@ export async function getProjectDispatchableItems(projectId: string) {
 
   const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
     where: {
-      grn: { 
+      grn: {
         status: 'VERIFIED',
-        purchaseOrder: { requisition: { projectId } }
+        purchaseOrder: { project: { id: projectId } }
       }
     },
     include: {
@@ -162,12 +162,28 @@ export async function getProjectDispatchableItems(projectId: string) {
     }
   });
 
+  const purchases = await prisma.purchase.findMany({
+    where: {
+      requisition: { projectId }
+    }
+  });
+
   const receivedQtyByReqItem = new Map<string, number>();
+
+  // Add from GRNs
   for (const grnItem of verifiedGrnItems) {
     if (grnItem.poItem?.requisitionItemId) {
-        const rid = grnItem.poItem.requisitionItemId;
-        const current = receivedQtyByReqItem.get(rid) ?? 0;
-        receivedQtyByReqItem.set(rid, current + grnItem.qtyAccepted);
+      const rid = grnItem.poItem.requisitionItemId;
+      const current = receivedQtyByReqItem.get(rid) ?? 0;
+      receivedQtyByReqItem.set(rid, current + grnItem.qtyAccepted);
+    }
+  }
+
+  // Add from Purchases
+  for (const p of purchases) {
+    if (p.requisitionItemId) {
+      const current = receivedQtyByReqItem.get(p.requisitionItemId) ?? 0;
+      receivedQtyByReqItem.set(p.requisitionItemId, current + p.qty);
     }
   }
 
@@ -176,12 +192,12 @@ export async function getProjectDispatchableItems(projectId: string) {
       const dispatched = dispatchedItems
         .filter((di) => di.requisitionItemId === ri.id)
         .reduce((sum, di) => sum + Number(di.qty), 0);
-      
+
       const received = receivedQtyByReqItem.get(ri.id) ?? 0;
       const remaining = received - dispatched;
-      
+
       if (remaining <= 0) return null;
-      
+
       return {
         id: ri.id,
         description: ri.description,
@@ -192,5 +208,5 @@ export async function getProjectDispatchableItems(projectId: string) {
     })
     .filter((item): item is NonNullable<typeof item> => item !== null);
 
-    return dispatchableItems;
+  return dispatchableItems;
 }
