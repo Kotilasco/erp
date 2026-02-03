@@ -47,7 +47,7 @@ export default function ReviewActionsClient({ reviewFormId, sendForReviewAction 
         <button
           type="submit"
           disabled={isLoading}
-          className="inline-flex items-center gap-2 rounded bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center gap-2 rounded bg-green-600 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition disabled:cursor-not-allowed disabled:opacity-60"
         >
           {isLoading && (
             <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -94,7 +94,7 @@ export default function ReviewActionsClient({ reviewFormId, sendForReviewAction 
             <div className="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
               <button
                 type="button"
-                className="inline-flex w-full justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 sm:ml-3 sm:w-auto"
+                className="inline-flex w-full justify-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 sm:ml-3 sm:w-auto"
                 onClick={confirmSend}
               >
                 Yes, Send for Review

@@ -385,7 +385,7 @@ export default async function ProjectsPage({
                             <div className="flex items-center justify-center gap-2">
                               <Link 
                                  href={`/projects/${project.id}/receive-payment?amount=${Number(dueAmount)/100}&type=${typeLabel.toLowerCase()}`}
-                                 className="inline-flex items-center justify-center gap-1 rounded border border-orange-600 bg-orange-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-orange-500 hover:border-orange-500 shadow-sm"
+                                 className="inline-flex items-center justify-center gap-1 rounded border border-green-600 bg-green-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-green-500 hover:border-green-500 shadow-sm"
                               >
                                  <BanknotesIcon className="h-3.5 w-3.5" />
                                  Receive Payment
@@ -444,17 +444,17 @@ export default async function ProjectsPage({
                           <td className="px-6 py-4 text-center">
                             <div className="flex items-center justify-center gap-2">
                               {isProjectManager && currentTab === 'unplanned' ? (
-                                <Link 
-                                   href={`/projects/${project.id}/schedule`}
-                                   className="inline-flex items-center gap-1 rounded border border-orange-600 bg-orange-600 px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-orange-500 shadow-sm"
+                                <Link
+                                 href={`/projects/${project.id}/schedule`}
+                                 className="inline-flex items-center justify-center gap-1 rounded border border-green-600 bg-green-600 px-2 py-1 text-xs font-bold text-white transition-colors hover:bg-green-500 hover:border-green-500 shadow-sm"
                                 >
-                                   <CalendarIcon className="h-3.5 w-3.5" />
-                                   Create Schedule
+                                 <CalendarIcon className="h-3.5 w-3.5" />
+                                 Create Schedule
                                 </Link>
                               ) : (
                                 <Link 
                                    href={`/projects/${project.id}/requisitions/new`}
-                                   className="inline-flex items-center gap-1 rounded border border-orange-500 px-2 py-1 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50 dark:border-orange-400 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                                   className="inline-flex items-center gap-1 rounded border border-green-500 px-2 py-1 text-xs font-bold text-green-600 transition-colors hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/20"
                                 >
                                    <DocumentPlusIcon className="h-3.5 w-3.5" />
                                    Create Requisition

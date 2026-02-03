@@ -72,10 +72,10 @@ export async function renderReactPdf(quoteId: string): Promise<PdfResult> {
 
   let logoData: string | undefined;
   try {
-    const logoPath = path.join(process.cwd(), 'public', 'barmlo_logo.jpeg');
+    const logoPath = path.join(process.cwd(), 'public', 'barmlo_logo.png');
     if (fs.existsSync(logoPath)) {
       const logoBuffer = fs.readFileSync(logoPath);
-      logoData = `data:image/jpeg;base64,${logoBuffer.toString('base64')}`;
+      logoData = `data:image/png;base64,${logoBuffer.toString('base64')}`;
     }
   } catch (e) {
     console.error('Failed to read logo for PDF', e);

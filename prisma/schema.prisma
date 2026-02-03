@@ -926,6 +926,7 @@ enum ProjectStatus {
   DEPOSIT_PENDING
   SCHEDULING_PENDING
   CREATED
+  CANCELLED
 }
 
 enum PaymentScheduleStatus {

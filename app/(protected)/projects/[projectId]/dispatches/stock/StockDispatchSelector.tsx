@@ -106,8 +106,8 @@ export default function StockDispatchSelector({
                   onClick={() => toggleItem(item)}
                   className={`ml-4 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
                     isSelected 
-                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200" 
-                      : "bg-orange-600 text-white hover:bg-orange-700 shadow-sm"
+                      ? "bg-green-600 text-white hover:bg-green-700 shadow-sm" 
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                   }`}
                 >
                   {isSelected ? 'Deselect' : 'Select'}
@@ -183,7 +183,7 @@ export default function StockDispatchSelector({
               <textarea 
                 placeholder="e.g. Tools for site team..." 
                 rows={3}
-                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 text-sm"
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder:text-gray-400 text-sm"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
@@ -192,7 +192,7 @@ export default function StockDispatchSelector({
               className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-sm font-bold text-white shadow-lg transition-all ${
                 loading || selectedItems.length === 0
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-orange-600 hover:bg-orange-700 hover:shadow-orange-200"
+                  : "bg-green-600 hover:bg-green-700 hover:shadow-green-200"
               }`}
               disabled={loading || selectedItems.length === 0}
               onClick={handleSubmit}

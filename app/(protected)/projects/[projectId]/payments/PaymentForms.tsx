@@ -212,7 +212,7 @@ function PaymentForm({
         <button
           type="submit"
           disabled={loading || !amount || !ref}
-          className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-6 py-2 text-sm font-bold text-white shadow-sm hover:bg-orange-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center gap-2 rounded-md bg-green-600 px-6 py-2 text-sm font-bold text-white shadow-sm hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {loading ? (
             <span className="flex items-center gap-2">

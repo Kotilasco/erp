@@ -178,7 +178,7 @@ export default async function ProjectRequisitionDetailPage({
                   {canSubmit ? (
                     <form action={submitRequisitionToProcurement.bind(null, requisitionId)} className="w-full sm:w-auto">
                       <SubmitButton
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-6 py-3 text-sm font-bold text-white shadow-md transition-all hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                         loadingText="Submitting..."
                       >
                         Submit Requisition

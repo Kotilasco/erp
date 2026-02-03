@@ -203,7 +203,7 @@ export default function EmployeePerformanceView({ employees }: { employees: Empl
 
                         {empB && (
                             <div className="mt-6 flex flex-col items-center text-center">
-                                <div className="h-20 w-20 rounded-full bg-orange-100 flex items-center justify-center text-orange-700 font-bold text-2xl ring-4 ring-white mb-3">
+                                <div className="h-20 w-20 rounded-full bg-green-100 flex items-center justify-center text-green-700 font-bold text-2xl ring-4 ring-white mb-3">
                                     {empB.name.charAt(0)}
                                 </div>
                                 <h3 className="text-lg font-bold text-gray-900">{empB.name}</h3>
@@ -258,7 +258,7 @@ function StatRow({ label, valA, valB, winner, unit = '' }: { label: string, valA
     if (winner === 'A' || (winner === 'High is Good' && valA > valB)) {
         colorA = 'bg-indigo-500';
     } else if (winner === 'B' || (winner === 'High is Good' && valB > valA)) {
-        colorB = 'bg-orange-500';
+        colorB = 'bg-green-500';
     } else if (winner === 'Draw' || valA === valB) {
         colorA = 'bg-gray-400';
         colorB = 'bg-gray-400';
@@ -273,7 +273,7 @@ function StatRow({ label, valA, valB, winner, unit = '' }: { label: string, valA
             <div className="flex justify-between text-sm font-semibold mb-1">
                 <span className={winner === 'A' || (winner === 'High is Good' && valA > valB) ? 'text-indigo-600' : 'text-gray-500'}>{valA}{unit}</span>
                 <span className="text-gray-400 font-medium text-xs uppercase">{label}</span>
-                <span className={winner === 'B' || (winner === 'High is Good' && valB > valA) ? 'text-orange-600' : 'text-gray-500'}>{valB}{unit}</span>
+                <span className={winner === 'B' || (winner === 'High is Good' && valB > valA) ? 'text-green-600' : 'text-gray-500'}>{valB}{unit}</span>
             </div>
             <div className="flex w-full h-2 rounded-full overflow-hidden bg-gray-100">
                 <div style={{ width: `${valA === 0 && valB === 0 ? 50 : (valA / (valA + valB)) * 100}%` }} className={`h-full ${colorA} transition-all duration-500`}></div>

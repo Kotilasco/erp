@@ -24,13 +24,13 @@ export default function MaterialUtilizationTabs({
                         className={`
                             group inline-flex items-center gap-2 border-b-2 py-4 px-1 text-sm font-medium transition-colors
                             ${activeTab === 'STOCK'
-                                ? 'border-orange-500 text-orange-600'
+                                ? 'border-green-500 text-green-600'
                                 : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'}
                         `}
                     >
-                        <ArchiveBoxIcon className={`h-5 w-5 ${activeTab === 'STOCK' ? 'text-orange-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
+                        <ArchiveBoxIcon className={`h-5 w-5 ${activeTab === 'STOCK' ? 'text-green-500' : 'text-gray-400 group-hover:text-gray-500'}`} />
                         <span>Stock Dispatches</span>
-                        <span className={`ml-2 rounded-full py-0.5 px-2.5 text-xs font-medium ${activeTab === 'STOCK' ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-900'}`}>
+                        <span className={`ml-2 rounded-full py-0.5 px-2.5 text-xs font-medium ${activeTab === 'STOCK' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-900'}`}>
                             {stockItems.length}
                         </span>
                     </button>

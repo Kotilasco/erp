@@ -704,6 +704,7 @@ export async function createMultipurposeDispatch(projectId: string) {
 export async function createDispatchFromSelectedInventory(
   projectId: string,
   items: { inventoryItemId: string; qty: number }[],
+  note?: string | null,
 ) {
   const user = await getCurrentUser();
   if (!user) return { ok: false, error: 'Auth required' } as const;
@@ -735,7 +736,15 @@ export async function createDispatchFromSelectedInventory(
 
   try {
     const dispatchId = await prisma.$transaction(async (tx) => {
-      const d = await tx.dispatch.create({ data: { projectId, status: 'DRAFT', createdById: user.id ?? null }, select: { id: true } });
+      const d = await tx.dispatch.create({ 
+        data: { 
+          projectId, 
+          status: 'DRAFT', 
+          createdById: user.id ?? null,
+          note: note || null,
+        }, 
+        select: { id: true } 
+      });
       for (const sel of clean) {
         const s = byId.get(sel.id)!;
         await tx.dispatchItem.create({

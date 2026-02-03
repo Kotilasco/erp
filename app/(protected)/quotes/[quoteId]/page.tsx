@@ -1417,7 +1417,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
                 className={clsx(
                   'rounded-xl px-8 py-3 text-sm shadow-md transition-all inline-flex items-center justify-center gap-3 font-bold',
                   (STATUS_BUTTON_LABELS[target] === 'Send to Sales' || STATUS_BUTTON_LABELS[target] === 'Move to Negotiation')
-                    ? 'w-full bg-orange-500 text-white hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 text-lg py-4'
+                    ? 'w-full bg-green-600 text-white hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 text-lg py-4'
                     : STATUS_BUTTON_LABELS[target] === 'Submit for Review'
                     ? 'bg-green-600 text-white hover:bg-green-700 min-w-[200px]'
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 min-w-[200px]'

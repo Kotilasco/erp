@@ -45,11 +45,11 @@ export class PuppeteerRenderer implements PdfRenderer {
     const currency = quote.currency ?? "USD";
 
     // Read logo
-    const logoPath = path.join(process.cwd(), "public", "barmlo_logo.jpeg");
+    const logoPath = path.join(process.cwd(), "public", "barmlo_logo.png");
     let logoBase64 = "";
     if (fs.existsSync(logoPath)) {
       const logoBuffer = fs.readFileSync(logoPath);
-      logoBase64 = `data:image/jpeg;base64,${logoBuffer.toString("base64")}`;
+      logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
     }
 
     // Group lines

@@ -121,7 +121,7 @@ export default async function AddEmployeePage() {
         <div className="mt-8 flex justify-end">
           <button
             type="submit"
-            className="rounded-lg bg-orange-500 px-6 py-2.5 text-white text-sm font-bold hover:bg-orange-600 shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 active:scale-95"
+            className="rounded-lg bg-green-600 px-6 py-2.5 text-white text-sm font-bold hover:bg-green-700 shadow-md transition-all hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-95"
           >
             Create Employee
           </button>

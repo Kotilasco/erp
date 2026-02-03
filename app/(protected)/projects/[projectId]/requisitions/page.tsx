@@ -117,7 +117,7 @@ export default async function ProjectRequisitionsPage({
             <Link
                 href={`/projects/${projectId}/requisitions/new`}
                 aria-disabled={opsLocked}
-                className={`inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-orange-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 active:scale-95 ${opsLocked ? 'pointer-events-none opacity-50' : ''}`}
+                className={`inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 active:scale-95 ${opsLocked ? 'pointer-events-none opacity-50' : ''}`}
             >
                 <PlusIcon className="h-5 w-5 stroke-2" />
                 Create Requisition

@@ -41,7 +41,7 @@ export default function PurchaseOrderHeader({
         <div className="flex flex-col items-start">
           <div className="relative w-48 h-20 mb-2">
             <Image 
-              src="/barmlo_logo.jpeg" 
+              src="/barmlo_logo.png" 
               alt="Barmlo Logo" 
               fill 
               className="object-contain object-left" 

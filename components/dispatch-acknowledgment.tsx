@@ -115,7 +115,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
          <button 
            onClick={handleConfirmPickup}
            disabled={loading}
-           className="w-full flex justify-center items-center gap-2 bg-orange-500 text-white px-6 py-6 rounded-2xl hover:bg-orange-600 disabled:opacity-50 text-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
+           className="w-full flex justify-center items-center gap-2 bg-green-500 text-white px-6 py-6 rounded-2xl hover:bg-green-600 disabled:opacity-50 text-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
          >
             {loading ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -130,7 +130,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
          <button 
            onClick={handleMarkArrived}
            disabled={loading}
-           className="w-full flex justify-center items-center gap-2 bg-orange-500 text-white px-6 py-6 rounded-2xl hover:bg-orange-600 disabled:opacity-50 text-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
+           className="w-full flex justify-center items-center gap-2 bg-green-500 text-white px-6 py-6 rounded-2xl hover:bg-green-600 disabled:opacity-50 text-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
          >
            <TruckIcon className="h-7 w-7" />
            {loading ? 'Updating...' : 'Mark as Arrived at Site'}
@@ -140,7 +140,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
        {canAcknowledge && !showAckForm && (
          <button 
            onClick={() => setShowAckForm(true)}
-           className="w-full flex justify-center items-center gap-2 bg-orange-500 text-white px-6 py-6 rounded-2xl hover:bg-orange-600 text-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
+           className="w-full flex justify-center items-center gap-2 bg-green-500 text-white px-6 py-6 rounded-2xl hover:bg-green-600 text-xl font-bold shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all"
          >
            <CheckCircleIcon className="h-7 w-7" />
            Accept Delivery
@@ -197,7 +197,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
                 <button 
                    onClick={handleAcknowledge}
                    disabled={loading}
-                   className="px-4 py-2 text-sm font-medium text-white bg-orange-600 rounded-md hover:bg-orange-700 disabled:opacity-50"
+                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
                    {loading ? 'Processing...' : 'Confirm & Sign'}
                 </button>
@@ -240,7 +240,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
                         <button
                             onClick={confirmPickupAction}
                             disabled={loading}
-                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {loading && (
                                 <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
@@ -287,10 +287,10 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
                              Cancel
                          </button>
                          <button
-                             onClick={markArrivedAction}
-                             disabled={loading}
-                             className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                         >
+                            onClick={markArrivedAction}
+                            disabled={loading}
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
                              {loading && (
                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                              )}
@@ -336,10 +336,10 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
                              Cancel
                          </button>
                          <button
-                             onClick={acknowledgeAction}
-                             disabled={loading}
-                             className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                         >
+                            onClick={acknowledgeAction}
+                            disabled={loading}
+                            className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
                              {loading && (
                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                              )}

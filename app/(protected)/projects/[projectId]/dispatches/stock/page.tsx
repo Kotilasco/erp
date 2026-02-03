@@ -36,9 +36,9 @@ export default async function NewStockDispatchPage({
             <nav className="flex items-center text-sm font-medium text-gray-500 mb-4">
               <Link 
                 href={`/projects/${projectId}/dispatches`} 
-                className="hover:text-orange-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
+                className="hover:text-green-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
               >
-                <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-orange-600" />
+                <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-green-600" />
                 Back to Dispatches
               </Link>
             </nav>

@@ -174,7 +174,7 @@ export default async function ProjectDispatchesPage(props: {
                         {dispatchableItems.length > 0 && (
                           <Link
                             href={`/projects/${projectId}/dispatches/new`}
-                            className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
+                            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
                           >
                             Create Dispatch
                           </Link>
@@ -184,7 +184,7 @@ export default async function ProjectDispatchesPage(props: {
                         {multipurposeInventory.length > 0 && (
                           <Link
                             href={`/projects/${projectId}/dispatches/stock`}
-                            className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700"
+                            className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700"
                           >
                             {user.role === 'PROJECT_OPERATIONS_OFFICER' ? 'Dispatch Work Tools' : 'Dispatch from Stock'}
                           </Link>
@@ -199,7 +199,7 @@ export default async function ProjectDispatchesPage(props: {
                                  if (!res.ok) throw new Error(res.error);
                                  redirect(`/projects/${projectId}/dispatches/${res.dispatchId}`);
                             }}>
-                                 <SubmitButton className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700">
+                                 <SubmitButton className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700">
                                     Create Dispatch from Assets
                                  </SubmitButton>
                             </form>
@@ -245,7 +245,7 @@ export default async function ProjectDispatchesPage(props: {
                       <td className="px-4 py-3 text-center">
                         <Link 
                             href={`/projects/${projectId}/dispatches/${d.id}`} 
-                            className="inline-flex items-center gap-1 rounded border border-orange-500 px-2 py-1 text-xs font-bold text-orange-600 transition-colors hover:bg-orange-50 dark:border-orange-400 dark:text-orange-400 dark:hover:bg-orange-900/20"
+                            className="inline-flex items-center gap-1 rounded border border-green-500 px-2 py-1 text-xs font-bold text-green-600 transition-colors hover:bg-green-50 dark:border-green-400 dark:text-green-400 dark:hover:bg-green-900/20"
                         >
                             <EyeIcon className="h-3.5 w-3.5" />
                             View

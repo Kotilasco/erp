@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { format, parseISO } from 'date-fns';
+import { CalendarIcon } from '@heroicons/react/24/outline';
 import SubmitButton from '@/components/SubmitButton';
 
 type ProjectDefaults = {
@@ -15,6 +17,51 @@ type Props = {
   defaults: ProjectDefaults;
   grandTotal: number;
 };
+
+function FormattedDatePicker({
+  label,
+  value,
+  onChange,
+  name,
+  min,
+  required,
+}: {
+  label: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  name: string;
+  min?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
+      <span>{label}</span>
+      <div className="relative mt-1">
+        <input
+          type="date"
+          name={name}
+          value={value}
+          onChange={onChange}
+          min={min}
+          required={required}
+          className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+          onClick={(e) => {
+            // @ts-ignore - showPicker is a newer API
+            if (typeof e.currentTarget.showPicker === 'function') {
+              e.currentTarget.showPicker();
+            }
+          }}
+        />
+        <div className="flex h-[38px] w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm shadow-sm transition-shadow peer-focus:border-indigo-500 peer-focus:ring-2 peer-focus:ring-indigo-200 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:peer-focus:ring-indigo-900">
+          <span className={value ? 'text-gray-900 dark:text-white' : 'text-gray-500'}>
+            {value ? format(parseISO(value), 'd MMMM yyyy') : 'Select date'}
+          </span>
+          <CalendarIcon className="h-5 w-5 text-gray-400" />
+        </div>
+      </div>
+    </label>
+  );
+}
 
 export default function SalesEndorsementForm({ action, defaults, grandTotal }: Props) {
   const [values, setValues] = useState({
@@ -67,18 +114,14 @@ export default function SalesEndorsementForm({ action, defaults, grandTotal }: P
 
   return (
     <form action={action} className="mt-4 grid gap-4 md:grid-cols-2">
-      <label className="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
-        <span>Commencement date</span>
-        <input
-          type="date"
-          name="commenceOn"
-          value={values.commenceOn}
-          onChange={handleChange}
-          required
-          min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-          className="mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-gray-900 dark:border-gray-700 dark:text-white dark:focus:ring-indigo-900 transition-shadow"
-        />
-      </label>
+      <FormattedDatePicker
+        label="Commencement date"
+        name="commenceOn"
+        value={values.commenceOn}
+        onChange={handleChange}
+        required
+        min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+      />
 
       <label className="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
         <span>Deposit (major)</span>
@@ -108,18 +151,14 @@ export default function SalesEndorsementForm({ action, defaults, grandTotal }: P
         />
       </label>
 
-      <label className="flex flex-col text-sm font-medium text-gray-700 dark:text-gray-300">
-        <span>Installment Due Date</span>
-        <input
-          name="installmentDueDate"
-          type="date"
-          value={values.installmentDueDate}
-          onChange={handleChange}
-          required
-          min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
-          className="mt-1 rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200 dark:bg-gray-900 dark:border-gray-700 dark:text-white dark:focus:ring-indigo-900 transition-shadow"
-        />
-      </label>
+      <FormattedDatePicker
+        label="Installment Due Date"
+        name="installmentDueDate"
+        value={values.installmentDueDate}
+        onChange={handleChange}
+        required
+        min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+      />
 
       <div className="md:col-span-2 flex justify-center mt-4 flex-col items-center">
         {error && (
@@ -130,7 +169,7 @@ export default function SalesEndorsementForm({ action, defaults, grandTotal }: P
         <SubmitButton
           className={`rounded-xl px-6 py-3 text-sm font-bold text-white shadow-md transition-all w-full ${
             isValid
-              ? 'bg-orange-500 hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5'
+              ? 'bg-green-600 hover:bg-green-700 hover:shadow-lg hover:-translate-y-0.5'
               : 'bg-gray-300 cursor-not-allowed'
           }`}
           loadingText="Saving..."

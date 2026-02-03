@@ -221,13 +221,16 @@ export default async function ApprovalsPage({
                                {req.items.length}
                             </td>
                             <td className="px-6 py-4 text-center">
-                               <Link 
-                                  href={`/procurement/requisitions/${req.id}`}
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-600 border border-transparent rounded-lg text-xs font-bold text-white shadow-sm transition-all hover:bg-orange-700 hover:shadow-md focus:ring-2 focus:ring-orange-500 focus:ring-offset-1"
-                               >
-                                  <EyeIcon className="h-4 w-4" />
-                                  Review
-                               </Link>
+                              <form action={handleApprove}>
+                                  <input type="hidden" name="id" value={req.id} />
+                                  <button
+                                  type="submit"
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 border border-transparent rounded-lg text-xs font-bold text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
+                                  >
+                                      <CheckCircleIcon className="h-4 w-4" />
+                                      Approve
+                                  </button>
+                              </form>
                             </td>
                          </tr>
                        ))

@@ -62,7 +62,7 @@ export default function QuotePagination({ total, currentPage, pageSize }: Props)
                id="pageSize"
                value={pageSize}
                onChange={(e) => handlePageSizeChange(e.target.value)}
-               className="h-8 rounded-md border-gray-300 text-sm focus:border-orange-500 focus:ring-orange-500 py-1 pl-2 pr-8"
+               className="h-8 rounded-md border-gray-300 text-sm focus:border-green-500 focus:ring-green-500 py-1 pl-2 pr-8"
              >
                {[10, 20, 50, 100].map(size => (
                  <option key={size} value={size}>{size}</option>

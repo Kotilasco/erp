@@ -100,20 +100,20 @@ export default function DispatchSelector({
             return (
               <div 
                 key={item.id} 
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${isSelected ? 'bg-orange-50 border-orange-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}`}
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all duration-200 ${isSelected ? 'bg-green-50 border-green-200 shadow-sm' : 'bg-white border-gray-100 hover:border-gray-200'}`}
               >
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-gray-900 truncate">{item.description}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    <span className="font-medium text-orange-600">Available:</span> {item.remaining} {item.unit}
+                    <span className="font-medium text-green-600">Available:</span> {item.remaining} {item.unit}
                   </p>
                 </div>
                 <button 
                   onClick={() => toggleItem(item)}
-                  className={`ml-4 px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`absolute bottom-4 right-4 rounded-full p-2 text-white shadow-lg transition-all ${
                     isSelected 
-                      ? "bg-orange-100 text-orange-700 hover:bg-orange-200" 
-                      : "bg-orange-600 text-white hover:bg-orange-700 shadow-sm"
+                      ? "bg-green-600 hover:bg-green-700 hover:shadow-green-200" 
+                      : "bg-gray-200 hover:bg-gray-300"
                   }`}
                 >
                   {isSelected ? 'Deselect' : 'Select'}
@@ -189,7 +189,7 @@ export default function DispatchSelector({
               <textarea 
                 placeholder="e.g. Loading for foundations..." 
                 rows={3}
-                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder:text-gray-400 text-sm"
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder:text-gray-400 text-sm"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
               />
@@ -198,7 +198,7 @@ export default function DispatchSelector({
               className={`w-full flex items-center justify-center gap-2 rounded-xl px-6 py-4 text-sm font-bold text-white shadow-lg transition-all ${
                 loading || selectedItems.length === 0
                   ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-orange-600 hover:bg-orange-700 hover:shadow-orange-200"
+                  : "bg-green-600 hover:bg-green-700 hover:shadow-green-200"
               }`}
               disabled={loading || selectedItems.length === 0}
               onClick={handleSubmit}

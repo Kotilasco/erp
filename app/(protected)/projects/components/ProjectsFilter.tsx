@@ -44,7 +44,7 @@ export function ProjectsFilter() {
           value={currentPageSize}
           onChange={(e) => handlePageSize(e.target.value)}
           disabled={isPending}
-          className="h-9 w-20 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+          className="h-9 w-20 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
         >
           <option value="10">10</option>
           <option value="20">20</option>
@@ -59,7 +59,7 @@ export function ProjectsFilter() {
           value={currentStatus}
           onChange={(e) => handleFilter('status', e.target.value)}
           disabled={isPending}
-          className="h-9 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+          className="h-9 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
         >
           <option value="">All Statuses</option>
           <option value="PLANNED">Planned</option>
@@ -77,7 +77,7 @@ export function ProjectsFilter() {
           value={currentDate}
           onChange={(e) => handleFilter('start_date', e.target.value)}
           disabled={isPending}
-          className="h-9 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+          className="h-9 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
         />
       </div>
       

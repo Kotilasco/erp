@@ -231,7 +231,7 @@ export default async function DispatchDetail({
             <span className="text-xl font-bold text-gray-900">{dispatch.project.quote?.customer?.displayName || dispatch.project.name}</span>
           </h1>
           
-           <Link href={`/projects/${dispatch.project.id}/dispatches`} className="inline-flex items-center gap-2 rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-orange-700 transition-colors">
+           <Link href={`/projects/${dispatch.project.id}/dispatches`} className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-colors">
               <ArrowLeftIcon className="h-4 w-4" />
               Back to Dispatches
            </Link>

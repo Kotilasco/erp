@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getRemainingDispatchMap } from '@/lib/dispatch';
 
-function assertRole(role?: string | null, allowed: string[]) {
+function assertRole(role: string | null | undefined, allowed: string[]) {
   if (!role || !allowed.includes(role)) {
     throw new Error('You do not have permission for this action.');
   }
@@ -25,62 +25,66 @@ export async function createDispatch(
     }>;
   }
 ) {
-  const user = await getCurrentUser();
-  assertRole(user?.role, ['PROJECT_OPERATIONS_OFFICER', 'ADMIN']);
+  try {
+    const user = await getCurrentUser();
+    assertRole(user?.role, ['PROJECT_OPERATIONS_OFFICER', 'ADMIN']);
 
-  if (!Array.isArray(input.items) || input.items.length === 0) {
-    throw new Error('Add at least one item to dispatch.');
-  }
+    if (!Array.isArray(input.items) || input.items.length === 0) {
+      throw new Error('Add at least one item to dispatch.');
+    }
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: {
-      quote: true,
-      requisitions: {
-        where: { status: { in: ['APPROVED', 'PARTIAL'] } },
-        orderBy: { createdAt: 'desc' },
-        include: { items: true },
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: {
+        quote: true,
+        requisitions: {
+          where: { status: { in: ['APPROVED', 'PARTIAL'] } },
+          orderBy: { createdAt: 'desc' },
+          include: { items: true },
+        },
       },
-    },
-  });
-  if (!project) throw new Error('Project not found.');
-  const requisition = project.requisitions[0] ?? null;
-  const requisitionId = requisition?.id ?? null;
+    });
+    if (!project) throw new Error('Project not found.');
+    const requisition = project.requisitions[0] ?? null;
+    const requisitionId = requisition?.id ?? null;
 
-  if (requisitionId) {
-    const remainingMap = await getRemainingDispatchMap(requisitionId);
-    for (const it of input.items) {
-      if (it.requisitionItemId) {
-        const left = remainingMap.get(it.requisitionItemId) ?? 0;
-        if (!(it.qty > 0)) throw new Error(`Qty must be > 0 for ${it.description}`);
-        if (it.qty > left) {
-          throw new Error(`Qty to dispatch for "${it.description}" exceeds remaining (${left}).`);
+    if (requisitionId) {
+      const remainingMap = await getRemainingDispatchMap(requisitionId);
+      for (const it of input.items) {
+        if (it.requisitionItemId) {
+          const left = remainingMap.get(it.requisitionItemId) ?? 0;
+          if (!(it.qty > 0)) throw new Error(`Qty must be > 0 for ${it.description}`);
+          if (it.qty > left) {
+            throw new Error(`Qty to dispatch for "${it.description}" exceeds remaining (${left}).`);
+          }
         }
       }
     }
-  }
 
-  const dispatch = await prisma.dispatch.create({
-    data: {
-      projectId,
-      status: 'PENDING',
-      note: input.note || null,
-      createdById: user!.id!,
-      items: {
-        create: input.items.map((it) => ({
-          requisitionItemId: it.requisitionItemId || null,
-          description: it.description,
-          unit: it.unit || null,
-          qty: it.qty,
-          estPriceMinor: it.estPriceMinor ? BigInt(it.estPriceMinor as any) : 0n,
-        })),
+    const dispatch = await prisma.dispatch.create({
+      data: {
+        projectId,
+        status: 'PENDING',
+        note: input.note || null,
+        createdById: user!.id!,
+        items: {
+          create: input.items.map((it) => ({
+            requisitionItemId: it.requisitionItemId || null,
+            description: it.description,
+            unit: it.unit || null,
+            qty: it.qty,
+            estPriceMinor: it.estPriceMinor ? BigInt(it.estPriceMinor as any) : 0n,
+          })),
+        },
       },
-    },
-    select: { id: true },
-  });
+      select: { id: true },
+    });
 
-  revalidatePath(`/projects/${projectId}`);
-  redirect(`/dispatches/${dispatch.id}/receipt`);
+    revalidatePath(`/projects/${projectId}`);
+    return { ok: true, dispatchId: dispatch.id };
+  } catch (e: any) {
+    return { ok: false, error: e.message || 'Failed to create dispatch' };
+  }
 }
 
 export async function markDispatchSent(
@@ -127,4 +131,3 @@ export async function markDispatchReceived(
   revalidatePath(`/projects/${d?.projectId}`);
   revalidatePath(`/dispatches/${dispatchId}/receipt`);
 }
-

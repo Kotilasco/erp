@@ -488,7 +488,7 @@ async function PendingTasks({
           {/* 1. Approvals (Priority) */}
           <Link
             href="/procurement/approvals"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden group"
+            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden group"
           >
             <div className="flex items-center gap-3 z-10">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -497,7 +497,7 @@ async function PendingTasks({
                 <span>Approvals</span>
             </div>
             {seniorApprovalsCount > 0 && (
-              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
                 {seniorApprovalsCount}
               </span>
             )}
@@ -506,7 +506,7 @@ async function PendingTasks({
           {/* 2. Create Purchase Order (Procurement) */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
           >
              <div className="flex items-center gap-3 z-10">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -515,7 +515,7 @@ async function PendingTasks({
                 <span>Create Purchase Order</span>
             </div>
             {fundingNeededCount > 0 && (
-              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
                 {fundingNeededCount}
               </span>
             )}
@@ -524,7 +524,7 @@ async function PendingTasks({
           {/* 3. Procure (Procurement) */}
           <Link
             href="/procurement/requisitions?tab=action_purchases"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
           >
             <div className="flex items-center gap-3 z-10">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -533,7 +533,7 @@ async function PendingTasks({
                 <span>Procure</span>
             </div>
             {actionPurchasesCount > 0 && (
-              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+              <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
                 {actionPurchasesCount}
               </span>
             )}
@@ -551,7 +551,7 @@ async function PendingTasks({
           {/* 1. Create Purchase Order */}
           <Link
             href="/procurement/requisitions?tab=funding_needed"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
           >
             <div className="flex items-center gap-3 z-10">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -559,7 +559,7 @@ async function PendingTasks({
                 </svg>
                 <span>Create Purchase Order</span>
             </div>
-            <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+            <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
                 {fundingNeededCount}
             </span>
           </Link>
@@ -567,7 +567,7 @@ async function PendingTasks({
           {/* 2. Procure */}
           <Link
             href="/procurement/requisitions?tab=action_purchases"
-            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-orange-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
+            className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden"
           >
             <div className="flex items-center gap-3 z-10">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -575,7 +575,7 @@ async function PendingTasks({
                 </svg>
                 <span>Procure</span>
             </div>
-            <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-orange-600 shadow-sm">
+            <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
                 {actionPurchasesCount}
             </span>
           </Link>
@@ -594,26 +594,26 @@ async function PendingTasks({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
           <Link
             href="/dispatches?status=APPROVED"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Outgoing Dispatches
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {outgoingCount}
               </span>
           </Link>
 
           <Link
             href="/procurement/purchase-orders?status=INCOMING" 
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
             Incoming Deliveries
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600">
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {incomingCount}
               </span>
           </Link>
@@ -644,7 +644,7 @@ async function PendingTasks({
           
           <Link
             href="/dispatches?status=IN_TRANSIT&driver=me"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -664,48 +664,48 @@ async function PendingTasks({
     const pendingFundingCount = await prisma.fundingRequest.count({
         where: { status: { in: ['REQUESTED', 'PENDING'] } }
     });
+    const paymentHistoryCount = await prisma.clientPayment.count();
     
     return (
       <div className="flex flex-col items-center justify-center py-6 mb-8">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
           <Link
             href="/accounts"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-indigo-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-indigo-700 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             Approve Purchase Order
-            {pendingFundingCount > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-indigo-600">
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {pendingFundingCount}
-              </span>
-            )}
+            </span>
           </Link>
 
           <Link
             href="/accounts?tab=receipts"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-amber-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-amber-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
             </svg>
             Goods Receiving
-            {pendingGrnPos.length > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-amber-600">
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {pendingGrnPos.length}
-              </span>
-            )}
+            </span>
           </Link>
 
           <Link
             href="/accounts/payments"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-emerald-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-emerald-700 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             Payment History
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
+                {paymentHistoryCount}
+            </span>
           </Link>
         </div>
       </div>
@@ -718,7 +718,7 @@ async function PendingTasks({
             <div className="w-full max-w-xl">
             <Link
                 href="/employees"
-                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-700 hover:shadow-xl hover:-translate-y-1"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
             >
                 <div className="p-2 bg-white/20 rounded-full">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -776,7 +776,11 @@ async function PendingTasks({
       data: d,
       date: new Date(d.createdAt),
     })),
-    // assignmentTasks handled separately for Senior PM
+    ...assignmentTasks.map((p) => ({
+      type: 'PROJECT_ASSIGNMENT' as const,
+      data: p,
+      date: p.createdAt,
+    })),
     ...quoteReviews.map((q) => ({ type: 'QUOTE_REVIEW' as const, data: q, date: q.updatedAt })),
     ...negotiationReviews.map((q) => ({
       type: 'NEGOTIATION_REVIEW' as const,
@@ -805,37 +809,37 @@ async function PendingTasks({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
           <Link
             href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v8m-4-4h8M4 6h16M4 18h16" />
             </svg>
             Unplanned
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
               {pmUnplannedCount}
             </span>
           </Link>
           <Link
             href="/projects?tab=active"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
              </svg>
              Active
-             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                {pmActiveCount}
              </span>
            </Link>
           <Link
             href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h11M9 21V3m5 6l7 7-7 7" />
             </svg>
             Dispatches
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
               {dispatchTasks.length}
             </span>
           </Link>
@@ -845,13 +849,13 @@ async function PendingTasks({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl mt-6">
            <Link
              href="/dispatches?status=ARRIVED"
-             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
            >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
              </svg>
              Awaiting Delivery
-             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600 border border-green-200">
                {awaitingDeliveryCount}
              </span>
            </Link>
@@ -867,7 +871,7 @@ async function PendingTasks({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
           <Link
             href="/projects?tab=unplanned"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -878,25 +882,25 @@ async function PendingTasks({
               />
             </svg>
             Unplanned
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
               {pmUnplannedCount}
             </span>
           </Link>
           <Link
             href="/projects?tab=active"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
              </svg>
              Active
-             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+             <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                {pmActiveCount}
              </span>
            </Link>
           <Link
             href="/dispatches"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
               <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
@@ -907,7 +911,7 @@ async function PendingTasks({
                 />
               </svg>
               Dispatches
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {dispatchTasks.length}
               </span>
             </Link>
@@ -916,13 +920,13 @@ async function PendingTasks({
            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl mt-6">
                 <Link
                 href="/dispatches?status=ARRIVED"
-                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
               >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                   </svg>
                   Awaiting Delivery
-                  <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+                  <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600 border border-green-200">
                     {awaitingDeliveryCount}
                   </span>
                 </Link>
@@ -1122,7 +1126,7 @@ async function PendingTasks({
                   return (
                     <div
                       key={`assign-${p.id}`}
-                      className="block rounded-lg border border-gray-200 p-4 hover:border-orange-300 transition-all border-l-4 border-l-orange-400"
+                      className="block rounded-lg border border-gray-200 p-4 hover:border-green-300 transition-all border-l-4 border-l-green-400"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
@@ -1137,12 +1141,12 @@ async function PendingTasks({
                           </p>
                         </div>
                         <div className="text-right ml-4 flex items-center gap-3">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             ASSIGN OFFICER
                           </span>
                           <Link
                             href="/projects?tab=assignment"
-                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                           >
                             Assign
                           </Link>
@@ -1628,7 +1632,7 @@ export default async function DashboardPage({
 
         <Link
           href="/quotes/new"
-          className="inline-flex w-full max-w-3xl justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-3xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          className="inline-flex w-full max-w-3xl justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-3xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
         >
           <PlusIcon className="h-10 w-10" />
           Create New Quotation
@@ -1654,7 +1658,7 @@ export default async function DashboardPage({
 
         <Link
           href="/quotes"
-          className="inline-flex w-full max-w-3xl justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-3xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          className="inline-flex w-full max-w-3xl justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-3xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -1672,7 +1676,7 @@ export default async function DashboardPage({
           </svg>
           Review Quotations
           {reviewCount > 0 && (
-            <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+            <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
               {reviewCount}
             </span>
           )}
@@ -1698,7 +1702,7 @@ export default async function DashboardPage({
 
         <Link
           href="/projects?tab=assignment"
-          className="inline-flex w-full max-w-3xl justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-3xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          className="inline-flex w-full max-w-3xl justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-3xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
         >
           <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path
@@ -1710,7 +1714,7 @@ export default async function DashboardPage({
           </svg>
           Unassigned Projects
           {unassignedCount > 0 && (
-            <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600">
+            <span className="ml-4 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
               {unassignedCount}
             </span>
           )}
@@ -1737,7 +1741,7 @@ export default async function DashboardPage({
         <div className="flex flex-col md:flex-row gap-6 w-full max-w-5xl justify-center">
           <Link
             href="/quotes?status=SENT_TO_SALES"
-            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-10 w-10">
               <path
@@ -1748,14 +1752,14 @@ export default async function DashboardPage({
               />
             </svg>
             New Quotations
-            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-orange-600">
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-green-600">
               {newQuotesCount}
             </span>
           </Link>
 
           <Link
             href="/quotes?status=REVIEWED"
-            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="h-10 w-10">
               <path
@@ -1773,7 +1777,7 @@ export default async function DashboardPage({
               <path strokeWidth="1.5" d="M9 12h6M9 16h6" />
             </svg>
             Pending Endorsements
-            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-orange-600">
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-green-600">
               {pendingEndorsementsCount}
             </span>
           </Link>
@@ -1828,7 +1832,7 @@ export default async function DashboardPage({
         <div className="flex flex-col md:flex-row gap-6 w-full max-w-5xl justify-center">
           <Link
             href="/projects?tab=due_today"
-            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1845,14 +1849,14 @@ export default async function DashboardPage({
               />
             </svg>
             Receive Due Payments
-            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-orange-600">
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-green-600">
               {duePaymentsCount}
             </span>
           </Link>
 
           <Link
             href="/projects?tab=all_payments"
-            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-blue-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-blue-600 hover:shadow-xl hover:-translate-y-1"
+            className="flex-1 inline-flex justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-2xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1869,7 +1873,7 @@ export default async function DashboardPage({
               />
             </svg>
             Other Payments
-            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-blue-600">
+            <span className="ml-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-base text-green-600">
               {otherPaymentsCount}
             </span>
           </Link>

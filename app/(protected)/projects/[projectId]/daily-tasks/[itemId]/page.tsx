@@ -131,7 +131,7 @@ export default async function TaskReportPage({
         </div>
         <Link
           href={`/projects/${projectId}/daily-tasks`}
-          className="inline-flex items-center gap-2 rounded-lg border border-transparent bg-orange-600 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg border border-transparent bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
         >
           <ArrowLeftIcon className="h-4 w-4" />
           Back to Tasks
@@ -308,7 +308,7 @@ export default async function TaskReportPage({
               <div className="flex items-center justify-end gap-4 pt-8 mt-8 border-t border-gray-100">
                 <Link
                   href={`/projects/${projectId}/daily-tasks`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-transparent bg-orange-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-colors"
+                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-2 transition-colors"
                 >
                   <XMarkIcon className="h-5 w-5" />
                   Cancel

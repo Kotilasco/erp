@@ -544,7 +544,7 @@ export default async function RequisitionDetailPage({
                {!isProcurement && <PrintButton />}
                {req.status === 'DRAFT' && ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(role) && (
                 <form action={submitRequisition.bind(null, req.id)}>
-                  <SubmitButton className="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-orange-500 transition-all">
+                  <SubmitButton className="inline-flex items-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-md hover:bg-green-500 transition-all">
                     Submit Requisition
                   </SubmitButton>
                 </form>
@@ -752,7 +752,7 @@ export default async function RequisitionDetailPage({
                        colorClass = 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-200';
                      } else if (somePurchased) {
                        label = 'Purchase Remaining';
-                       colorClass = 'bg-orange-600 hover:bg-orange-700 shadow-orange-200';
+                       colorClass = 'bg-green-600 hover:bg-green-700 shadow-green-200';
                      }
 
                      return (
@@ -846,7 +846,7 @@ export default async function RequisitionDetailPage({
                        </div>
                        <div className="bg-amber-100/50 p-2">
                           <form action={createPartialPOFromPurchases.bind(null, requisitionId)}>
-                            <SubmitButton className="w-full rounded-lg bg-amber-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-amber-700 uppercase tracking-wide">
+                            <SubmitButton className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-green-700 uppercase tracking-wide">
                               Purchase
                             </SubmitButton>
                           </form>

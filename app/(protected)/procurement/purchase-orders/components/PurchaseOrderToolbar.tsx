@@ -93,9 +93,9 @@ export default function PurchaseOrderToolbar() {
         <button
             onClick={handleReset}
             disabled={isPending}
-            className="flex items-center gap-1 rounded bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-orange-50 dark:bg-gray-700 dark:text-gray-300 shadow-sm border border-orange-200 dark:border-gray-600 hover:text-orange-600 transition-colors"
+            className="flex items-center gap-1 rounded bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:bg-gray-700 dark:text-gray-300 shadow-sm border border-gray-300 dark:border-gray-600 hover:text-gray-900 transition-colors"
         >
-            <ArrowPathIcon className="h-4 w-4 text-orange-500" />
+            <ArrowPathIcon className="h-4 w-4 text-gray-500" />
             Reset
         </button>
       </div>

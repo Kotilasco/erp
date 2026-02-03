@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import SubmitButton from '@/components/SubmitButton';
 import Link from 'next/link';
 import Money from '@/components/Money';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
 import PrintButton from '@/components/PrintButton';
 
@@ -290,9 +290,13 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                       revalidatePath(`/procurement/purchase-orders/${poId}`);
                     }}
                   >
-                    <SubmitButton className="inline-flex items-center justify-center gap-2 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-orange-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2">
-                      Place Order (Mark as PURCHASED)
-                    </SubmitButton>
+                    {/* Submit Button */}
+                    <div className="flex justify-end pt-6 border-t border-gray-100">
+                        <SubmitButton className="inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2">
+                            <PaperAirplaneIcon className="h-5 w-5" />
+                            Submit Order
+                        </SubmitButton>
+                    </div>
                   </form>
                 </CardContent>
               </Card>

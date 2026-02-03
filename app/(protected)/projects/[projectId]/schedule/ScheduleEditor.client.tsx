@@ -369,7 +369,7 @@ export default function ScheduleEditor({
         <div className="flex items-center gap-3">
              {/* <button
                 onClick={addRow}
-                className="inline-flex items-center justify-center gap-2 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-8 px-3 py-1"
+                className="inline-flex items-center justify-center gap-2 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-500 text-white shadow hover:bg-green-600 h-8 px-3 py-1"
             >
                 <PlusIcon className="h-3 w-3" />
                 Add Row
@@ -392,7 +392,7 @@ export default function ScheduleEditor({
             <button
                 onClick={handleExtract}
                 disabled={extracting}
-                className="flex flex-col items-center justify-center gap-6 rounded-2xl bg-orange-500 p-12 text-white shadow-2xl transition-all hover:bg-orange-600 hover:shadow-orange-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 w-full max-w-4xl h-[50vh] border-none"
+                className="flex flex-col items-center justify-center gap-6 rounded-2xl bg-green-500 p-12 text-white shadow-2xl transition-all hover:bg-green-600 hover:shadow-green-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 w-full max-w-4xl h-[50vh] border-none"
             >
                 <div className="rounded-full bg-white/20 p-8 backdrop-blur-sm ring-8 ring-white/10">
                     <DocumentTextIcon className="h-24 w-24 text-white" />
@@ -486,7 +486,7 @@ export default function ScheduleEditor({
                           "inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2",
                           (it.employeeIds && it.employeeIds.length > 0)
                             ? "bg-barmlo-green hover:bg-barmlo-green/90 focus:ring-barmlo-green"
-                            : "bg-orange-500 hover:bg-orange-600 focus:ring-orange-500"
+                            : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
                         )}
                     >
                         Select Employees
@@ -550,7 +550,7 @@ export default function ScheduleEditor({
                 <button
                 onClick={() => handleSave(true)}
                 disabled={loading}
-                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-orange-500 text-white shadow hover:bg-orange-600 h-9 px-4 py-2"
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white shadow hover:bg-green-700 h-9 px-4 py-2"
                 >
                 <CalendarIcon className="h-4 w-4" />
                 {loading ? 'Processing...' : 'Create Schedule'}

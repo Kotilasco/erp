@@ -111,7 +111,7 @@ export default function EmployeeTableToolbar() {
         <button
             onClick={handleReset}
             disabled={isPending}
-            className="inline-flex items-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-orange-500 hover:bg-gray-50 hover:text-orange-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
+            className="inline-flex items-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-green-500 hover:bg-gray-50 hover:text-green-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 dark:bg-gray-700 dark:text-white dark:ring-gray-600"
         >
             <ArrowPathIcon className="-ml-0.5 h-5 w-5" aria-hidden="true" />
             Reset

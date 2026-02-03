@@ -249,8 +249,8 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
 
   const isPM = role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN';
   const isProc = role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN';
-  const isAccounts = role === 'SALES_ACCOUNTS' || (role as string).startsWith('ACCOUNT') || role === 'ADMIN';
-  const canRecordPayments = role === 'SALES_ACCOUNTS' || role === 'ADMIN';
+  const isAccounts = (role as string) === 'SALES_ACCOUNTS' || (role as string).startsWith('ACCOUNT') || role === 'ADMIN';
+  const canRecordPayments = (role as string) === 'SALES_ACCOUNTS' || role === 'ADMIN';
   const canViewFinancials = [
     'SALES',
     'ADMIN',
@@ -262,7 +262,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
     'MANAGING_DIRECTOR',
   ].includes(role);
   const canViewSchedule = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'MANAGING_DIRECTOR', 'ADMIN'].includes(role);
-  const isSalesAccountsOnly = role === 'SALES_ACCOUNTS';
+  const isSalesAccountsOnly = (role as string) === 'SALES_ACCOUNTS';
   
   const sch = await prisma.paymentSchedule.findMany({ where: { projectId } });
   if (sch.length === 0) {
@@ -355,7 +355,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             <div className="mt-4 flex items-center md:ml-4 md:mt-0">
                <Link 
                   href="/projects" 
-                  className="inline-flex items-center rounded-md bg-orange-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-600 mr-3 transition-colors"
+                  className="inline-flex items-center rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 mr-3 transition-colors"
                >
                   <ArrowLeftIcon className="-ml-0.5 mr-1.5 h-5 w-5" aria-hidden="true" />
                   Back to Projects
@@ -377,7 +377,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
       <main className="mx-auto max-w-7xl px-6 lg:px-8 space-y-8">
         
         {/* Key Metrics Strip (Clean Cards) */}
-        {canViewFinancials && role !== 'SALES_ACCOUNTS' && (
+        {canViewFinancials && (role as string) !== 'SALES_ACCOUNTS' && (
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
              <div className="overflow-hidden rounded-lg bg-white px-4 py-5 shadow sm:p-6">
                 <dt className="truncate text-sm font-medium text-gray-500">Contract Value</dt>
@@ -424,7 +424,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                 >
                     <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-orange-50 transition-all group-hover:bg-orange-100"></div>
                     <div className="relative">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-600/20">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white shadow-lg shadow-green-600/20">
                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
                              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                            </svg>
@@ -439,7 +439,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                         )}
                         {hasSchedule && (
                             <div className="mt-6">
-                                <span className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 transition-colors">
+                                <span className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors">
                                     View Schedule
                                 </span>
                             </div>
@@ -454,20 +454,20 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                     href={`/projects/${projectId}/requisitions/new`}
                     className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
                 >
-                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-orange-50 transition-all group-hover:bg-orange-100"></div>
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-green-50 transition-all group-hover:bg-green-100"></div>
                      <div className="relative">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-600/20">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white shadow-lg shadow-green-600/20">
                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
                              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                            </svg>
                         </div>
                         <div className="flex justify-between items-start">
                              <h3 className="text-xl font-semibold text-gray-900">Create Requisition</h3>
-                             {requisitions.length > 0 && <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-600">{requisitions.length}</span>}
+                             {requisitions.length > 0 && <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-600">{requisitions.length}</span>}
                         </div>
                         <p className="mt-2 text-sm text-gray-500">Create requests directly.</p>
                          <div className="mt-6">
-                             <span className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 transition-colors">
+                             <span className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors">
                                  Create Requisition
                              </span>
                          </div>
@@ -481,20 +481,20 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                     href={`/projects/${projectId}/dispatches`}
                     className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
                  >
-                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-orange-50 transition-all group-hover:bg-orange-100"></div>
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-green-50 transition-all group-hover:bg-green-100"></div>
                      <div className="relative">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-600/20">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white shadow-lg shadow-green-600/20">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
                             </svg>
                         </div>
                          <div className="flex justify-between items-start">
                              <h3 className="text-xl font-semibold text-gray-900">Dispatches</h3>
-                             {project.dispatches.length > 0 && <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-xs font-semibold text-orange-600">{project.dispatches.length}</span>}
+                             {project.dispatches.length > 0 && <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-600">{project.dispatches.length}</span>}
                         </div>
                         <p className="mt-2 text-sm text-gray-500">Inventory movement and delivery tracking.</p>
                          <div className="mt-6">
-                             <span className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 transition-colors">
+                             <span className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors">
                                  Manage Dispatches
                              </span>
                          </div>
@@ -503,14 +503,14 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             )}
 
             {/* Daily Tasks Button */}
-            {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role) && (
+            {!isSalesAccountsOnly && (['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'] as string[]).includes(role) && (
                  <Link 
                     href={`/projects/${projectId}/daily-tasks`}
                     className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
                  >
-                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-orange-50 transition-all group-hover:bg-orange-100"></div>
+                    <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-green-50 transition-all group-hover:bg-green-100"></div>
                      <div className="relative">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-600/20">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white shadow-lg shadow-green-600/20">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />
                             </svg>
@@ -518,7 +518,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                         <h3 className="text-xl font-semibold text-gray-900">Daily Tasks</h3>
                         <p className="mt-2 text-sm text-gray-500">Log progress and daily activities.</p>
                          <div className="mt-6">
-                             <span className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 transition-colors">
+                             <span className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors">
                                  View Daily Tasks
                              </span>
                          </div>
@@ -527,14 +527,14 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
             )}
             
             {/* Reports Button */}
-            {!isSalesAccountsOnly && ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'].some(r => user.role === r || (user.role === 'ADMIN')) && (
+            {!isSalesAccountsOnly && (['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'] as string[]).includes(role) && (
                  <Link 
                     href={`/projects/${projectId}/reports`}
                     className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.33%-16px)] group relative overflow-hidden rounded-2xl bg-white p-8 shadow-sm ring-1 ring-gray-900/5 transition-all hover:-translate-y-1 hover:shadow-lg"
                  >
-                     <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-orange-50 transition-all group-hover:bg-orange-100"></div>
+                     <div className="absolute right-0 top-0 -mr-4 -mt-4 h-24 w-24 rounded-full bg-green-50 transition-all group-hover:bg-green-100"></div>
                      <div className="relative">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-orange-600 text-white shadow-lg shadow-orange-600/20">
+                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-green-600 text-white shadow-lg shadow-green-600/20">
                             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-6 w-6">
                               <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m3.75 9v6m3-3H9m1.5-12H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
                             </svg>
@@ -542,7 +542,7 @@ export default async function ProjectPage({ params, searchParams }: { params: Pr
                         <h3 className="text-xl font-semibold text-gray-900">Reports</h3>
                         <p className="mt-2 text-sm text-gray-500">Generate analytics and progress reports.</p>
                          <div className="mt-6">
-                             <span className="inline-flex items-center rounded-md bg-orange-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-orange-500 transition-colors">
+                             <span className="inline-flex items-center rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 transition-colors">
                                  View Reports
                              </span>
                          </div>

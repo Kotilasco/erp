@@ -35,7 +35,7 @@ export default function ApproveDispatchButton({
       disabled={isPending}
       className={clsx(
         "inline-flex items-center gap-2 rounded px-3 py-1.5 text-sm font-semibold shadow-sm transition focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
-        "bg-orange-600 text-white hover:bg-orange-700 focus:ring-orange-500"
+        "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500"
       )}
     >
       {isPending && (

@@ -8,7 +8,7 @@ export function CreateRequisitionButton() {
     <button
       type="submit"
       disabled={pending}
-      className="rounded-full bg-orange-600 px-6 py-3 text-white hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+      className="rounded-full bg-green-600 px-6 py-3 text-white hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
     >
       {pending && (
         <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

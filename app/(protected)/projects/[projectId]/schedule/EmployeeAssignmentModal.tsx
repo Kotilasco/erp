@@ -232,7 +232,7 @@ export default function EmployeeAssignmentModal({
               onSave(localSelected);
               onClose();
             }}
-            className="px-4 py-2 text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 rounded-md shadow-sm transition-colors"
+            className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md shadow-sm transition-colors"
           >
             Save Assignments
           </button>

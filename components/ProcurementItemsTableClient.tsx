@@ -462,7 +462,7 @@ export default function ProcurementItemsTableClient({
                                     : !permissions.canEditUnitPrice
                               }
                                 className={clsx(
-                                  "w-24 text-right rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                                  "w-24 text-right rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
                                 )}
                             />
                           ) : (
@@ -504,7 +504,7 @@ export default function ProcurementItemsTableClient({
                                     [item.id]: e.currentTarget.value,
                                   }))
                                 }
-                                className="w-24 rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                                className="w-24 rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
                                 disabled={readOnly}
                               />
                               <input
@@ -517,13 +517,13 @@ export default function ProcurementItemsTableClient({
                                     [item.id]: e.currentTarget.value,
                                   }))
                                 }
-                                className="w-full rounded-md border-gray-300 px-2 py-1 text-xs focus:border-orange-500 focus:ring-orange-500 sm:text-sm"
+                                className="w-full rounded-md border-gray-300 px-2 py-1 text-xs focus:border-green-500 focus:ring-green-500 sm:text-sm"
                                 disabled={readOnly}
                               />
                               <button
                                 type="button"
                                 onClick={() => handleTopUpRequest(item.id)}
-                                className="inline-flex items-center gap-1 rounded bg-orange-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-orange-500 disabled:opacity-60"
+                                className="inline-flex items-center gap-1 rounded bg-green-600 px-3 py-1 text-xs font-medium text-white shadow-sm hover:bg-green-500 disabled:opacity-60"
                                 disabled={isPending || readOnly}
                               >
                                 <PlusIcon className="w-3 h-3" />

@@ -431,7 +431,7 @@ export default function SidebarShell({
         >
           <div className={`py-5 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700/50 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
             <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-gray-50 border border-gray-100">
-               <Image src="/barmlo_logo.jpeg" alt="Barmlo Logo" fill className="object-contain p-1" />
+               <Image src="/barmlo_logo.png" alt="Barmlo Logo" fill className="object-contain p-1" />
             </div>
             {/* Removed text as requested */}
           </div>

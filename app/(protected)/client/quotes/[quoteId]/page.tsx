@@ -137,6 +137,7 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
     where: { id: quoteId },
     include: {
       customer: true,
+      project: { select: { name: true } },
       lines: {
         include: {
           addedInVersion: { select: { version: true } },
@@ -221,7 +222,7 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
           if (raw == null || raw === '') return null;
           const rate = Number(raw);
           if (!Number.isFinite(rate) || rate < 0) {
-            throw new Error(`Invalid rate for line ${line.description}`);
+            throw new Error(`Invalid rate for line ${(line as QuoteLine).description}`);
           }
           return { lineId: line.id, rate };
         })
@@ -254,7 +255,7 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
         <div className="flex flex-col md:flex-row justify-between items-start mb-6">
           <div className="flex flex-col items-center md:items-start">
              <div className="relative w-48 h-24 mb-2">
-                <Image src="/barmlo_logo.jpeg" alt="Barmlo Logo" fill className="object-contain" />
+                <Image src="/barmlo_logo.png" alt="Barmlo Logo" fill className="object-contain" />
              </div>
              <p className="text-orange-500 italic font-medium text-sm">Your happiness is our pride</p>
           </div>
@@ -302,7 +303,7 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
                  <p><span className="font-bold text-gray-700">Name:</span> {quote.customer?.displayName}</p>
                  <p><span className="font-bold text-gray-700">Address:</span> {quote.customer?.city || 'Harare'}</p>
                  <p><span className="font-bold text-gray-700">Phone, E-mail:</span> {quote.customer?.phone || quote.customer?.email || '-'}</p>
-                 <p><span className="font-bold text-gray-700">Ref:</span> {quote.description || 'PROPOSED HOUSE CONSTRUCTION'}</p>
+                 <p><span className="font-bold text-gray-700">Ref:</span> {quote.project?.name || 'PROPOSED HOUSE CONSTRUCTION'}</p>
               </div>
            </div>
 
@@ -508,7 +509,7 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
           <div className="mt-8">
             <SubmitButton
               loadingText="Submitting..."
-              className="w-full rounded-xl bg-orange-500 py-4 text-lg font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-orange-600 hover:shadow-lg"
+              className="w-full rounded-xl bg-green-600 py-4 text-lg font-bold text-white shadow-md transition-all hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-lg"
             >
               Submit Proposal
             </SubmitButton>
