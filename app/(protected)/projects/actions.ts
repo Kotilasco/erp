@@ -682,6 +682,12 @@ export async function createMultipurposeDispatch(projectId: string) {
       });
 
       for (const i of items) {
+        // Physical reservation on creation
+        await tx.inventoryItem.update({
+          where: { id: i.id },
+          data: { qty: { decrement: i.qty ?? 0 } }
+        });
+
         await tx.dispatchItem.create({
           data: {
             dispatchId: dispatch.id,
@@ -1321,37 +1327,54 @@ export async function updateDispatchItems(
   if (!d) throw new Error('Dispatch not found');
   if (d.status !== 'DRAFT') throw new Error('Only DRAFT dispatch is editable');
 
+  const projectId = (await prisma.dispatch.findUnique({ where: { id: dispatchId }, select: { projectId: true } }))?.projectId;
+  const remainingMap = projectId ? await getRemainingDispatchMap(projectId) : new Map<string, number>();
+
   for (const u of updates) {
     const item = await prisma.dispatchItem.findUnique({ where: { id: u.id }, include: { purchase: true } });
     if (!item) continue;
-    const qty = Number(u.qty);
-    if (!Number.isFinite(qty) || qty < 0) throw new Error('Invalid qty');
+    const newQty = Number(u.qty);
+    const oldQty = Number(item.qty);
+    if (!Number.isFinite(newQty) || newQty < 0) throw new Error('Invalid qty');
 
-    if (item.purchaseId && item.purchase) {
-      const bought = Number(item.purchase.qty ?? 0);
-      const agg = await prisma.dispatchItem.aggregate({
-        where: { purchaseId: item.purchaseId, NOT: { id: item.id } },
-        _sum: { qty: true },
-      });
-      const already = Number(agg._sum.qty ?? 0);
-      const remaining = Math.max(0, bought - already);
-      if (qty > remaining) {
-        throw new Error(`You tried to dispatch ${qty}, but only ${remaining} is available from this purchase.`);
+    const diff = newQty - oldQty;
+
+    // Validate project-specific items
+    if (item.requisitionItemId && projectId) {
+      const left = remainingMap.get(item.requisitionItemId) ?? 0;
+      // The map already includes 'oldQty' as consumed.
+      // So available is left + oldQty.
+      if (newQty > (left + oldQty)) {
+        throw new Error(`Line "${item.description}" exceeds remaining project stock (${left + oldQty}).`);
       }
     }
 
-    // Cap multipurpose/inventory items by available stock
+    // Cap multipurpose/inventory items by available stock and move physical inventory
     if (item.inventoryItemId) {
       const inv = await prisma.inventoryItem.findUnique({ where: { id: item.inventoryItemId } });
       const available = Number(inv?.qty ?? 0);
-      if (qty > available) {
-        throw new Error(`You tried to dispatch ${qty}, but only ${available} is available in inventory.`);
+
+      // We need to move 'diff' items.
+      // If newQty > oldQty, diff is positive (consumption), must be <= available.
+      if (diff > available) {
+        throw new Error(`You tried to dispatch ${newQty}, but only ${available + oldQty} is available in inventory.`);
+      }
+
+      // Perform physical movement
+      if (diff !== 0) {
+        await prisma.inventoryItem.update({
+          where: { id: item.inventoryItemId },
+          data: { qty: { decrement: diff } }
+        });
       }
     }
 
     await prisma.dispatchItem.update({
       where: { id: u.id },
-      data: { qty, ...(typeof u.selected === 'boolean' ? { selected: u.selected } : {}) },
+      data: {
+        qty: newQty,
+        selected: u.selected !== undefined ? u.selected : item.selected
+      },
     });
   }
 
