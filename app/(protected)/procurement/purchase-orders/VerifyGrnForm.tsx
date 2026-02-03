@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Money from '@/components/Money';
 import SubmitButton from '@/components/SubmitButton';
 import { verifyGRN } from './actions';
+import { formatDateTime } from '@/lib/format';
 
 type GRNItem = {
   id: string;
@@ -48,7 +49,7 @@ export default function VerifyGrnForm({
       <CardHeader>
         <CardTitle>Verify GRN {grnId.slice(0, 8)}</CardTitle>
         <CardDescription>
-          Received by {receivedBy} on {new Date(receivedAt).toLocaleString()}
+          Received by {receivedBy} on {formatDateTime(receivedAt)}
         </CardDescription>
         <div className="text-xs text-gray-500 mt-1">
           Vendor: <span className="font-medium text-gray-700">{vendorName}</span> • Phone:{' '}

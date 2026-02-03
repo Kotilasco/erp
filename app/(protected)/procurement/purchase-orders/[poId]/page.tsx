@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/db';
+import { formatDateTime } from '@/lib/format';
 import { getCurrentUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { placeOrder, receiveGoods } from '../actions';
@@ -164,7 +165,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                             </span>
                           </div>
                           <p className="text-sm text-gray-500">
-                            Received by <span className="font-medium text-gray-700">{creatorName}</span> on {grn.receivedAt ? new Date(grn.receivedAt).toLocaleString() : 'N/A'}
+                            Received by <span className="font-medium text-gray-700">{creatorName}</span> on {formatDateTime(grn.receivedAt)}
                           </p>
                         </div>
                         <div className="text-sm text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
