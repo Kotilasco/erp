@@ -12,9 +12,10 @@ import { markItemHandedOut } from '../action';
 import { redirect } from 'next/navigation';
 import ApproveDispatchButton from '@/components/ApproveDispatchButton';
 import Link from 'next/link';
-import { ArrowLeftIcon, CalendarIcon, UserIcon, CheckIcon, ShieldCheckIcon, TrashIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, CheckIcon, ShieldCheckIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 import DispatchAcknowledgment from '@/components/dispatch-acknowledgment';
+import QuoteHeader from '@/components/QuoteHeader';
 
 export const runtime = 'nodejs';
 
@@ -36,7 +37,7 @@ export default async function DispatchDetail({
                 id: true, 
                 name: true,
                 projectNumber: true,
-                quote: { include: { customer: true } }
+                quote: { include: { customer: true, project: true } }
             } 
         }, 
         items: { orderBy: { id: 'asc' } },
@@ -222,286 +223,258 @@ export default async function DispatchDetail({
   };
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pt-6">
-      {/* Header Section */}
-      <div className="space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-4">
-          <h1 className="flex items-center text-3xl font-bold tracking-tight text-gray-900">
-            <span className="text-black font-semibold text-xl tracking-wide mr-2">Project Name:</span>
-            <span className="text-xl font-bold text-gray-900">{dispatch.project.quote?.customer?.displayName || dispatch.project.name}</span>
-          </h1>
-          
-           <Link href={`/projects/${dispatch.project.id}/dispatches`} className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-green-700 transition-colors">
-              <ArrowLeftIcon className="h-4 w-4" />
+    <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        {/* Navigation */}
+        <div className="flex flex-col gap-4">
+          <nav className="flex items-center text-sm font-medium text-gray-500">
+            <Link 
+              href={`/projects/${dispatch.project.id}/dispatches`} 
+              className="hover:text-green-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-green-600" />
               Back to Dispatches
-           </Link>
-        </div>
+            </Link>
+          </nav>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-8 dark:bg-gray-800 dark:border-gray-700">
-             <div className="flex items-start gap-4 mb-8 border-b border-gray-100 pb-6">
-                <div className="p-3 bg-blue-50 rounded-full">
-                    <DocumentTextIcon className="h-6 w-6 text-blue-600" />
-                </div>
-                <div>
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Dispatch Details</h2>
-                    <p className="text-sm text-gray-500 mt-1">View and manage dispatch information</p>
-                </div>
-             </div>
-
-             <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-                            {(dispatch as any).dispatchNumber || dispatch.id.slice(0, 8).toUpperCase()}
-                        </span>
-                        <span className={cn(
-                            "inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wide",
-                            dispatch.status === 'APPROVED' ? "bg-green-100 text-green-800" :
-                            dispatch.status === 'SUBMITTED' ? "bg-blue-100 text-blue-800" :
-                            dispatch.status === 'DELIVERED' ? "bg-purple-100 text-purple-800" :
-                            "bg-gray-100 text-gray-800"
-                        )}>
-                            {dispatch.status}
-                        </span>
-                    </div>
-                    <div className="mt-4 flex items-center gap-6 text-sm text-gray-500 dark:text-gray-400">
-                        <div className="flex items-center gap-2">
-                            <CalendarIcon className="h-5 w-5 text-gray-400" />
-                            <span className="font-medium">Created:</span>
-                            {new Date(dispatch.createdAt).toLocaleDateString()}
-                        </div>
-                        <div className="flex items-center gap-2">
-                             <UserIcon className="h-5 w-5 text-gray-400" />
-                             <span className="font-medium">By:</span>
-                             {dispatch.createdBy?.name || 'Unknown'}
-                        </div>
-                    </div>
-                
-                <div className="flex gap-2">
-                     <DispatchAcknowledgment 
-                        dispatch={dispatch} 
-                        userId={me.id!} 
-                        userRole={role ?? ''} 
-                     />
-                     {canApprove && !isSecurity && (
-                        <ApproveDispatchButton dispatchId={dispatch.id} />
-                     )}
-                     {canEdit && (
-                        <div className="flex gap-2">
-                             {/* Edit actions handled in form normally */}
-                        </div>
-                     )}
-                     {!canEdit && !canApprove && (
-                        /* Only show print/etc if not editing */
-                        <></>
-                     )}
-                </div>
-             </div>
-        </div>
-
-
-
-      {/* Main Content */}
-      <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden dark:border-gray-700 dark:bg-gray-800">
-         <div className="px-8 py-6 border-b border-gray-100 dark:border-gray-700 bg-white">
-            <div className="flex items-center gap-3">
-                 <div className="h-6 w-1.5 bg-blue-600 rounded-full"></div>
-                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 uppercase tracking-wide">Dispatch Items</h3>
-            </div>
-         </div>
-
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-            <thead className="bg-gray-50 dark:bg-gray-900/50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Description</th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Qty</th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Unit</th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Handed Out</th>
-                <th className="px-6 py-3 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Received</th>
-                <th className="px-6 py-3 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white dark:divide-gray-700 dark:bg-gray-800">
-              {dispatch.items.map((it) => (
-                <tr key={it.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                  <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{it.description}</td>
-                  <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-300">
-                    {/* <— points to the bottom form */}
-                    {canEdit ? (
-                      <input
-                        name={`qty-${it.id}`}
-                        form="editForm"
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        defaultValue={Number(it.qty)}
-                        className="block w-32 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                      />
-                    ) : (
-                      <span className="font-mono">{Number(it.qty)}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{it.unit ?? '-'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {it.handedOutAt ? new Date(it.handedOutAt).toLocaleString() : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                    {it.receivedAt ? new Date(it.receivedAt).toLocaleString() : '—'}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex justify-center gap-2">
-                      {isSecurity &&
-                        (dispatch.status === 'APPROVED' || dispatch.status === 'IN_TRANSIT') &&
-                        !it.handedOutAt && (
-                          <form action={markItemHandedOut}>
-                            <input type="hidden" name="itemId" value={it.id} />
-                            <input type="hidden" name="qty" value={it.qty} />
-                            <LoadingButton
-                              type="submit"
-                              className="inline-flex items-center rounded border border-transparent bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                              loadingText="Handing out..."
-                            >
-                              Mark Handed Out
-                            </LoadingButton>
-                          </form>
-                        )}
-                      {isDriver &&
-                        (dispatch.status === 'IN_TRANSIT' ||
-                          dispatch.status === 'APPROVED' ||
-                          dispatch.status === 'DELIVERED') &&
-                        it.handedOutAt &&
-                        !it.receivedAt && (
-                          <form action={acknowledgeReceived}>
-                            <input type="hidden" name="itemId" value={it.id} />
-                            <button className="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
-                              Acknowledge Received
-                            </button>
-                          </form>
-                        )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-4 pt-4">
-         <div className="flex gap-3">
-            {canApprove && dispatch.status === 'SUBMITTED' && (
-                <ApproveDispatchButton dispatchId={dispatch.id} />
-            )}
-         </div>
-
-         {canEdit && (
-            <div className="flex flex-wrap gap-3">
-                <form id="editForm" action={saveAction} className="flex gap-2">
-                    <LoadingButton 
-                        type="submit"
-                        className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-green-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                    >
-                        {!isProjectOps && <CheckIcon className="h-4 w-4" />}
-                        Save Changes
-                    </LoadingButton>
-                    <LoadingButton
-                        formAction={submitAction}
-                        className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-blue-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                    >
-                        {!isProjectOps && <ShieldCheckIcon className="h-4 w-4" />}
-                        Submit to Security
-                    </LoadingButton>
-                </form>
-                
-                <form action={async () => {
-                    'use server';
-                    const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
-                    await deleteDispatch(dispatchId);
-                }}>
-                     <LoadingButton 
-                        type="submit" 
-                        className="inline-flex flex-col items-center justify-center gap-1 rounded-md border border-transparent bg-red-600 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                        loadingText="Deleting..."
-                     >
-                        {!isProjectOps && <TrashIcon className="h-4 w-4" />}
-                        Delete Draft
-                     </LoadingButton>
-                </form>
+          {/* Letterhead */}
+          {dispatch.project.quote ? (
+            <QuoteHeader quote={dispatch.project.quote} title="Dispatch Form" />
+          ) : (
+            <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dispatch Details</h1>
+              <p className="mt-2 text-gray-500">Project: {dispatch.project.name}</p>
             </div>
           )}
-      </div>
+        </div>
 
-      {canReturn && (
-        <div className="mt-8 rounded-xl border border-gray-200 bg-white shadow-sm p-6 dark:border-gray-700 dark:bg-gray-800">
-          <form action={returnAction}>
-            <div className="border-b border-gray-200 pb-4 mb-4">
-                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Return / Mark Used Out</h3>
-                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Enter quantities to return to inventory or mark as used out (consumed).
-                 </p>
-            </div>
-
-            <div className="space-y-4">
-                <div className="grid grid-cols-12 gap-4 border-b border-gray-100 pb-2 text-xs font-semibold uppercase text-gray-500">
-                    <div className="col-span-4">Item</div>
-                    <div className="col-span-2">Return Qty</div>
-                    <div className="col-span-2">Mark Used</div>
-                    <div className="col-span-4">Note</div>
+        <div className="space-y-8">
+            {/* Table Section */}
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200 bg-gray-50/50 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-gray-900">Dispatched Items</h2>
                 </div>
                 
-                {dispatch.items
-                .filter((it) => Number(it.qty) > 0)
-                .map((it) => (
-                    <div key={it.id} className="grid grid-cols-12 gap-4 items-center py-2 border-b border-gray-50 last:border-0">
-                        <div className="col-span-4">
-                            <div className="text-sm font-medium text-gray-900">{it.description}</div>
-                            <div className="text-xs text-gray-500">
-                                Dispatched: {Number(it.qty)} {it.unit ?? ''}
-                            </div>
-                        </div>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    Description
+                                </th>
+                                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-24">
+                                    Unit
+                                </th>
+                                <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-32">
+                                    Qty
+                                </th>
+                                {(isSecurity || isDriver) && (
+                                    <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider w-40">
+                                        Actions
+                                    </th>
+                                )}
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {dispatch.items.map((it) => (
+                                <tr key={it.id} className="hover:bg-gray-50 transition-colors">
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm font-bold text-gray-900">{it.description}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap">
+                                        <div className="text-sm text-gray-500">{it.unit || '-'}</div>
+                                    </td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                                        {canEdit ? (
+                                            <input
+                                                name={`qty-${it.id}`}
+                                                form="editForm"
+                                                type="number"
+                                                min={0}
+                                                step="0.01"
+                                                defaultValue={Number(it.qty)}
+                                                className="w-24 text-center rounded-lg border border-gray-200 px-2 py-1 text-sm font-medium focus:border-green-500 focus:ring-green-500"
+                                            />
+                                        ) : (
+                                            <div className="text-sm font-bold text-gray-900">{Number(it.qty)}</div>
+                                        )}
+                                    </td>
+                                    {(isSecurity || isDriver) && (
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex justify-center gap-2">
+                                                {isSecurity &&
+                                                    (dispatch.status === 'APPROVED' || dispatch.status === 'IN_TRANSIT') &&
+                                                    !it.handedOutAt && (
+                                                    <form action={markItemHandedOut}>
+                                                        <input type="hidden" name="itemId" value={it.id} />
+                                                        <input type="hidden" name="qty" value={it.qty.toString()} />
+                                                        <LoadingButton
+                                                            type="submit"
+                                                            className="inline-flex items-center rounded border border-transparent bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700"
+                                                            loadingText="..."
+                                                        >
+                                                            Hand Out
+                                                        </LoadingButton>
+                                                    </form>
+                                                )}
+                                                {isDriver &&
+                                                    (dispatch.status === 'IN_TRANSIT' ||
+                                                    dispatch.status === 'APPROVED' ||
+                                                    dispatch.status === 'DELIVERED') &&
+                                                    it.handedOutAt &&
+                                                    !it.receivedAt && (
+                                                    <form action={acknowledgeReceived}>
+                                                        <input type="hidden" name="itemId" value={it.id} />
+                                                        <button className="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700">
+                                                            Received
+                                                        </button>
+                                                    </form>
+                                                )}
+                                            </div>
+                                        </td>
+                                    )}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-                        <div className="col-span-2">
-                            <input
-                                name={`return-${it.id}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder="0"
-                                className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                            />
-                        </div>
+            {/* Note & Info */}
+            {dispatch.note && (
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                    <h3 className="text-sm font-bold text-gray-700 mb-2">Dispatch Note</h3>
+                    <p className="text-sm text-gray-600 bg-gray-50 p-4 rounded-lg border border-gray-100">{dispatch.note}</p>
+                </div>
+            )}
 
-                        <div className="col-span-2 flex items-center justify-center">
-                            <input
-                                name={`usedout-${it.id}`}
-                                type="checkbox"
-                                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                            />
-                        </div>
-
-                        <div className="col-span-4">
-                            <input
-                                name={`note-${it.id}`}
-                                type="text"
-                                placeholder="Reason / Note"
-                                className="block w-full rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-900 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:focus:border-blue-400"
-                            />
-                        </div>
+            {/* Action Footer */}
+            <div className="flex flex-col gap-6">
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div className="flex gap-3">
+                        <DispatchAcknowledgment 
+                            dispatch={dispatch} 
+                            userId={me.id!} 
+                            userRole={role ?? ''} 
+                        />
+                        {canApprove && dispatch.status === 'SUBMITTED' && (
+                            <ApproveDispatchButton dispatchId={dispatch.id} />
+                        )}
                     </div>
-                ))}
-            </div>
-            
-            <div className="mt-6 flex justify-end">
-                 <LoadingButton 
-                    type="submit"
-                    className="rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                 >
-                    Process Return / Used Out
-                 </LoadingButton>
-            </div>
-          </form>
-        </div>
-      )}
-    </div>
 
+                    {canEdit && (
+                        <div className="flex flex-wrap gap-3">
+                            <form id="editForm" action={saveAction} className="flex gap-2">
+                                <LoadingButton 
+                                    type="submit"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50"
+                                >
+                                    {!isProjectOps && <CheckIcon className="h-4 w-4" />}
+                                    Save Changes
+                                </LoadingButton>
+                                <LoadingButton
+                                    formAction={submitAction}
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 hover:shadow-lg"
+                                >
+                                    {!isProjectOps && <ShieldCheckIcon className="h-4 w-4" />}
+                                    Submit to Security
+                                </LoadingButton>
+                            </form>
+                            
+                            <form action={async () => {
+                                'use server';
+                                const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
+                                await deleteDispatch(dispatchId);
+                            }}>
+                                <LoadingButton 
+                                    type="submit" 
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-100"
+                                    loadingText="Deleting..."
+                                >
+                                    {!isProjectOps && <TrashIcon className="h-4 w-4" />}
+                                    Delete Draft
+                                </LoadingButton>
+                            </form>
+                        </div>
+                    )}
+                </div>
+
+                {/* Return Section (if applicable) */}
+                {canReturn && (
+                    <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+                        <form action={returnAction}>
+                            <div className="border-b border-gray-200 pb-4 mb-4">
+                                <h3 className="text-lg font-bold text-gray-900">Return / Mark Used Out</h3>
+                                <p className="text-sm text-gray-500 mt-1">
+                                    Process returns to inventory or mark items as consumed on site.
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-12 gap-4 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">
+                                    <div className="col-span-4">Item</div>
+                                    <div className="col-span-2">Return Qty</div>
+                                    <div className="col-span-2 text-center">Mark Used</div>
+                                    <div className="col-span-4">Note</div>
+                                </div>
+                                
+                                {dispatch.items
+                                .filter((it) => Number(it.qty) > 0)
+                                .map((it) => (
+                                    <div key={it.id} className="grid grid-cols-12 gap-4 items-center py-3 border-b border-gray-50 last:border-0">
+                                        <div className="col-span-4">
+                                            <div className="text-sm font-bold text-gray-900">{it.description}</div>
+                                            <div className="text-xs text-gray-500">
+                                                Dispatched: {Number(it.qty)} {it.unit ?? ''}
+                                            </div>
+                                        </div>
+
+                                        <div className="col-span-2">
+                                            <input
+                                                name={`return-${it.id}`}
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                placeholder="0"
+                                                className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-2 flex items-center justify-center">
+                                            <input
+                                                name={`usedout-${it.id}`}
+                                                type="checkbox"
+                                                className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                        </div>
+
+                                        <div className="col-span-4">
+                                            <input
+                                                name={`note-${it.id}`}
+                                                type="text"
+                                                placeholder="Reason..."
+                                                className="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-sm focus:bg-white focus:border-blue-500 focus:ring-blue-500"
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end">
+                                <LoadingButton 
+                                    type="submit"
+                                    className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-indigo-700"
+                                >
+                                    Process Return / Used Out
+                                </LoadingButton>
+                            </div>
+                        </form>
+                    </div>
+                )}
+            </div>
+        </div>
+      </div>
+    </div>
   );
 }
