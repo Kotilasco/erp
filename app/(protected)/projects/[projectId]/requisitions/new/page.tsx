@@ -109,31 +109,32 @@ export default async function NewRequisitionPage({
     purchasedByLine.set(qid, (purchasedByLine.get(qid) ?? 0) + Number(p.qty ?? 0));
   }
 
-  // compute lines with remaining
-  const linesWithRemaining: LineRow[] = quote.lines.map((line) => {
-    const ordered = Number(line.quantity ?? 0);
-    const meta =
-      typeof line.metaJson === 'string' ? JSON.parse(line.metaJson || '{}') : (line.metaJson ?? {});
-    const category = (meta.section || meta.category || 'Uncategorized') as string;
-    const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
-    const alreadyRequested = requestedByLine.get(line.id) ?? 0;
-    const approvedExtra = approvedByLine.get(line.id) ?? 0;
-    const alreadyPurchased = purchasedByLine.get(line.id) ?? 0;
+  // compute lines with remaining, excluding LABOUR sections
+  const linesWithRemaining: LineRow[] = quote.lines
+    .map((line) => {
+      const ordered = Number(line.quantity ?? 0);
+      const meta =
+        typeof line.metaJson === 'string' ? JSON.parse(line.metaJson || '{}') : (line.metaJson ?? {});
+      const category = (meta.section || meta.category || 'Uncategorized') as string;
+      const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
+      const alreadyRequested = requestedByLine.get(line.id) ?? 0;
+      const approvedExtra = approvedByLine.get(line.id) ?? 0;
+      const alreadyPurchased = purchasedByLine.get(line.id) ?? 0;
 
-    // remaining = ordered - alreadyRequested - alreadyPurchased (you can change formula)
-    const remaining = Math.max(0, ordered + approvedExtra - alreadyRequested);
-    return {
-      id: line.id,
-      qtyOrdered: ordered,
-      description: line.description,
-      unit: line.unit ?? unitFromMeta ?? null,
-      purchased: alreadyPurchased,
-      alreadyRequested: alreadyRequested,
-      remaining,
-      category,
-      approvedExtra,
-    };
-  });
+      const remaining = Math.max(0, ordered + approvedExtra - alreadyRequested);
+      return {
+        id: line.id,
+        qtyOrdered: ordered,
+        description: line.description,
+        unit: line.unit ?? unitFromMeta ?? null,
+        purchased: alreadyPurchased,
+        alreadyRequested: alreadyRequested,
+        remaining,
+        category,
+        approvedExtra,
+      };
+    })
+    .filter((ln) => !ln.category.toUpperCase().startsWith('LABOUR'));
 
   // group by category (ordered)
   const grouped: Record<string, LineRow[]> = {};
