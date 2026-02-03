@@ -6,10 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import SubmitButton from '@/components/SubmitButton';
 import Link from 'next/link';
 import Money from '@/components/Money';
-import { ArrowLeftIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, PaperAirplaneIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
 import PrintButton from '@/components/PrintButton';
 import PurchaseOrderApproval from './PurchaseOrderApproval';
+import VerifyGrnForm from '../VerifyGrnForm';
 
 function POStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -59,14 +60,14 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
       },
       goodsReceivedNotes: { include: { items: true }, orderBy: { createdAt: 'desc' } },
       purchases: true, 
-      createdBy: { select: { name: true, email: true } },
+      createdBy: { select: { id: true, name: true, email: true } },
       decidedBy: { select: { name: true, email: true } },
     },
   });
   if (!po) return <div className="p-6">PO not found.</div>;
 
   const isProcurement = me.role === 'PROCUREMENT' || me.role === 'SENIOR_PROCUREMENT' || me.role === 'ADMIN';
-  const isAccounts = me.role === 'SALES_ACCOUNTS' || (me.role as string).startsWith('ACCOUNT') || me.role === 'ADMIN';
+  const isAccounts = me.role === 'SALES_ACCOUNTS' || (me.role as string).startsWith('ACCOUNT') || me.role === 'ADMIN' || me.role === 'ACCOUNTS';
   const isSecurity = me.role === 'SECURITY' || me.role === 'ADMIN';
   const isSecurityUser = me.role === 'SECURITY';
 
@@ -100,6 +101,8 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
     addressJson: null
   };
 
+  const creatorName = po.createdBy?.name || po.createdBy?.email || 'Unknown';
+
   return (
     <div className="min-h-screen bg-gray-50/50 px-4 py-8 print:bg-white print:p-0">
       <div className="mx-auto w-full max-w-[90rem] space-y-6 print:max-w-none">
@@ -127,7 +130,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
               requisition={{
                 id: po.id,
                 createdAt: po.createdAt,
-                submittedBy: po.createdBy
+                submittedBy: po.createdBy || { name: 'Unknown', email: '' }
               }}
               title={isSecurityUser ? "Goods Delivery Note" : "Purchase Order"}
               recipientLabel="Vendor"
@@ -135,76 +138,134 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
               recipientId={po.supplierId || po.vendor}
             />
 
-            {isSecurityUser && po.goodsReceivedNotes.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase border-b pb-2">Goods Delivery Note</h2>
+            {po.goodsReceivedNotes.length > 0 && (
+              <div className="mt-8 space-y-12">
+                <h2 className="text-xl font-bold text-gray-900 border-b-2 border-emerald-500 pb-2 flex items-center gap-2">
+                  <ArchiveBoxIcon className="h-6 w-6 text-emerald-600" />
+                  Goods Received Notes (GRNs)
+                </h2>
                 
-                <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="rounded-lg border border-gray-200 p-4">
-                    <div className="grid grid-cols-2 border-b border-gray-200">
-                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600 border-r border-gray-200">Supplier</div>
-                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600">Contact</div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].vendorName || vendorName}</div>
-                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].vendorPhone || vendorPhone || 'N/A'}</div>
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-gray-200 p-4">
-                    <div className="grid grid-cols-2 border-b border-gray-200">
-                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600 border-r border-gray-200">Receipt</div>
-                      <div className="p-2 bg-gray-50 text-xs font-bold uppercase tracking-wider text-gray-600">Received Date</div>
-                    </div>
-                    <div className="grid grid-cols-2">
-                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].receiptNumber || 'N/A'}</div>
-                      <div className="p-2 text-sm text-gray-900">{po.goodsReceivedNotes[0].receivedAt ? new Date(po.goodsReceivedNotes[0].receivedAt).toLocaleString() : 'N/A'}</div>
-                    </div>
-                  </div>
-                </div>
+                {po.goodsReceivedNotes.map((grn, idx) => {
+                  const isPendingVerification = grn.status === 'PENDING';
+                  const showVerifyForm = isAccounts && isPendingVerification;
 
-                <table className="min-w-full divide-y divide-gray-300">
-                  <thead>
-                    <tr>
-                      <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">Item</th>
-                      <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">Unit</th>
-                      <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Qty Delivered</th>
-                      <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Unit Price</th>
-                      <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
-                    {po.goodsReceivedNotes[0].items.map((gi) => {
-                      const unitPriceMinor = gi.priceMinor ?? 0n;
-                      const amountMinor = BigInt(Math.round(Number(unitPriceMinor) * gi.qtyDelivered));
-                      return (
-                        <tr key={gi.id}>
-                          <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{gi.description}</td>
-                          <td className="px-3 py-4 text-left text-sm text-gray-500">{gi.unit || ''}</td>
-                          <td className="px-3 py-4 text-right text-sm text-gray-500">{gi.qtyDelivered}</td>
-                          <td className="px-3 py-4 text-right text-sm text-gray-500"><Money minor={unitPriceMinor} /></td>
-                          <td className="px-3 py-4 text-right text-sm text-gray-900 font-semibold"><Money minor={amountMinor} /></td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <th scope="row" colSpan={4} className="hidden pl-4 pr-3 pt-6 text-right text-sm font-semibold text-gray-900 sm:table-cell sm:pl-0">
-                        Total
-                      </th>
-                      <td className="pl-3 pr-4 pt-6 text-right text-sm font-semibold text-gray-900 sm:pr-0">
-                        <Money minor={po.goodsReceivedNotes[0].items.reduce((sum, gi) => sum + BigInt(Math.round(Number(gi.priceMinor ?? 0n) * gi.qtyDelivered)), 0n)} />
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                  return (
+                    <div key={grn.id} className={`p-6 rounded-xl border ${isPendingVerification ? 'border-amber-200 bg-amber-50/20' : 'border-gray-200 bg-white shadow-sm'}`}>
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="text-lg font-bold text-gray-900">Receipt #{grn.receiptNumber || 'N/A'}</h3>
+                            <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium ring-1 ring-inset ${
+                              grn.status === 'VERIFIED' 
+                                ? 'bg-green-50 text-green-700 ring-green-600/20' 
+                                : 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                            }`}>
+                              {grn.status}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            Received by <span className="font-medium text-gray-700">{creatorName}</span> on {grn.receivedAt ? new Date(grn.receivedAt).toLocaleString() : 'N/A'}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-600 bg-white px-3 py-1.5 rounded-lg border border-gray-100 shadow-sm">
+                          <span className="font-semibold">{grn.vendorName || vendorName}</span>
+                          <span className="mx-2 text-gray-300">|</span>
+                          <span>{grn.vendorPhone || vendorPhone || 'No Phone'}</span>
+                        </div>
+                      </div>
 
-                {po.goodsReceivedNotes[0].note && (
-                  <div className="mt-6 border-t pt-4">
-                    <h3 className="text-sm font-semibold text-gray-900">Delivery Note:</h3>
-                    <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">{po.goodsReceivedNotes[0].note}</p>
-                  </div>
-                )}
+                      {showVerifyForm ? (
+                        <VerifyGrnForm 
+                          grnId={grn.id}
+                          receivedBy={creatorName}
+                          receivedAt={grn.receivedAt?.toISOString() || new Date().toISOString()}
+                          vendorName={grn.vendorName || vendorName}
+                          vendorPhone={grn.vendorPhone || vendorPhone || 'N/A'}
+                          receiptNumber={grn.receiptNumber || 'N/A'}
+                          verifierId={me.id!}
+                          items={grn.items.map(gi => ({
+                            id: gi.id,
+                            description: gi.description || 'Item',
+                            qtyDelivered: gi.qtyDelivered,
+                            priceMinor: Number(gi.priceMinor || 0n),
+                            varianceMinor: Number(gi.varianceMinor || 0n)
+                          }))}
+                        />
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full divide-y divide-gray-200">
+                            <thead>
+                              <tr className="bg-gray-50/50">
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Item</th>
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Delivered</th>
+                                {grn.status === 'VERIFIED' && (
+                                  <>
+                                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Accepted</th>
+                                    <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Rejected</th>
+                                  </>
+                                )}
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Price</th>
+                                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Total</th>
+                                {grn.status === 'VERIFIED' && <th scope="col" className="px-4 py-3 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider text-emerald-600">Variance</th>}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 italic">
+                              {grn.items.map((gi) => {
+                                const unitPriceMinor = gi.priceMinor ?? 0n;
+                                const qty = grn.status === 'VERIFIED' ? gi.qtyAccepted : gi.qtyDelivered;
+                                const amountMinor = BigInt(Math.round(Number(unitPriceMinor) * qty));
+                                return (
+                                  <tr key={gi.id} className="hover:bg-gray-50/50 transition-colors">
+                                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{gi.description}</td>
+                                    <td className="px-4 py-3 text-right text-sm text-gray-500">{gi.qtyDelivered}</td>
+                                    {grn.status === 'VERIFIED' && (
+                                      <>
+                                        <td className="px-4 py-3 text-right text-sm font-semibold text-emerald-600">{gi.qtyAccepted}</td>
+                                        <td className="px-4 py-3 text-right text-sm font-semibold text-rose-600">{gi.qtyRejected}</td>
+                                      </>
+                                    )}
+                                    <td className="px-4 py-3 text-right text-sm text-gray-500"><Money minor={unitPriceMinor} /></td>
+                                    <td className="px-4 py-3 text-right text-sm text-gray-900 font-semibold"><Money minor={amountMinor} /></td>
+                                    {grn.status === 'VERIFIED' && (
+                                      <td className={`px-4 py-3 text-right text-sm font-bold ${Number(gi.varianceMinor || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                        {Number(gi.varianceMinor || 0) > 0 ? '+' : ''}<Money minor={gi.varianceMinor || 0n} />
+                                      </td>
+                                    )}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                            <tfoot className="bg-gray-50/30">
+                              <tr>
+                                <th scope="row" colSpan={grn.status === 'VERIFIED' ? 5 : 3} className="px-4 py-3 text-right text-sm font-semibold text-gray-900">
+                                  Total
+                                </th>
+                                <td className="px-4 py-3 text-right text-sm font-bold text-gray-900">
+                                  <Money minor={grn.items.reduce((sum, gi) => {
+                                    const qty = grn.status === 'VERIFIED' ? gi.qtyAccepted : gi.qtyDelivered;
+                                    return sum + BigInt(Math.round(Number(gi.priceMinor ?? 0n) * qty));
+                                  }, 0n)} />
+                                </td>
+                                {grn.status === 'VERIFIED' && (
+                                  <td className="px-4 py-3 text-right text-sm font-bold text-emerald-700 bg-emerald-50/50">
+                                    <Money minor={grn.items.reduce((sum, gi) => sum + (gi.varianceMinor || 0n), 0n)} />
+                                  </td>
+                                )}
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+
+                      {grn.note && (
+                        <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                          <h4 className="text-xs font-bold text-gray-500 uppercase mb-1">Security Note:</h4>
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{grn.note}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 

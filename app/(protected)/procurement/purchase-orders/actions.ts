@@ -310,6 +310,14 @@ export async function verifyGRN(
   items: Array<{ grnItemId: string; qtyAccepted: number; qtyRejected: number }>,
   userId: string
 ) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const role = user?.role || '';
+  const isAccounts = role === 'ACCOUNTS' || role === 'ACCOUNTING_OFFICER' || role === 'ACCOUNTING_CLERK' || role === 'ADMIN';
+
+  if (!isAccounts) {
+    throw new Error('Unauthorized: Only Accounts or Admin can verify GRNs');
+  }
+
   const grn = await prisma.goodsReceivedNote.findUnique({
     where: { id: grnId },
     include: { items: true, purchaseOrder: { include: { items: true } } },
