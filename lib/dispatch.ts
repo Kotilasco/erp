@@ -33,7 +33,10 @@ export async function getRemainingDispatchMap(projectId: string) {
     by: ['requisitionItemId'],
     where: {
       requisitionItemId: { not: null },
-      dispatch: { projectId },
+      dispatch: {
+        projectId,
+        status: { not: 'DRAFT' } // Drafts don't consume/reserve inventory yet
+      },
     },
     _sum: { qty: true } as any,
   });

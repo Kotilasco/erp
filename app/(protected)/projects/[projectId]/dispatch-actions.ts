@@ -62,7 +62,7 @@ export async function createDispatch(
     const dispatch = await prisma.dispatch.create({
       data: {
         projectId,
-        status: 'PENDING',
+        status: 'DRAFT',
         note: input.note || null,
         createdById: user!.id!,
         items: {

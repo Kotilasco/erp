@@ -179,7 +179,7 @@ export default function DispatchSelector({
               }
             `}
           >
-            {loading ? 'Processing...' : 'Dispatch'}
+            {loading ? 'Processing...' : 'Create Draft'}
           </button>
         </div>
       </div>

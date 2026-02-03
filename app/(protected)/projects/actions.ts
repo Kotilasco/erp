@@ -11,6 +11,7 @@ import { USER_ROLES, type UserRole } from '@/lib/workflow';
 import { revalidatePath } from 'next/cache';
 import crypto from 'node:crypto';
 import { redirect } from 'next/navigation';
+import { getRemainingDispatchMap } from '@/lib/dispatch';
 
 
 const ROLE_SET = new Set<UserRole>(USER_ROLES as unknown as UserRole[]);
@@ -736,14 +737,14 @@ export async function createDispatchFromSelectedInventory(
 
   try {
     const dispatchId = await prisma.$transaction(async (tx) => {
-      const d = await tx.dispatch.create({ 
-        data: { 
-          projectId, 
-          status: 'DRAFT', 
+      const d = await tx.dispatch.create({
+        data: {
+          projectId,
+          status: 'DRAFT',
           createdById: user.id ?? null,
           note: note || null,
-        }, 
-        select: { id: true } 
+        },
+        select: { id: true }
       });
       for (const sel of clean) {
         const s = byId.get(sel.id)!;
@@ -1366,7 +1367,7 @@ export async function submitDispatch(dispatchId: string) {
 
   const dispatch = await prisma.dispatch.findUnique({
     where: { id: dispatchId },
-    include: { items: { include: { purchase: true } } },
+    include: { items: true },
   });
   if (!dispatch) throw new Error('Dispatch not found');
   if (dispatch.status !== 'DRAFT') throw new Error('Only DRAFT can be submitted');
@@ -1374,26 +1375,14 @@ export async function submitDispatch(dispatchId: string) {
   const selected = dispatch.items.filter((i: any) => i.selected !== false);
   if (selected.length === 0) throw new Error('Select at least one item to submit');
 
-  for (const it of selected as any[]) {
-    if (it.purchaseId && it.purchase) {
-      const bought = Number(it.purchase.qty ?? 0);
-      const agg = await prisma.dispatchItem.aggregate({
-        where: { purchaseId: it.purchaseId, NOT: { id: it.id } },
-        _sum: { qty: true },
-      });
-      const already = Number(agg._sum.qty ?? 0);
-      const remaining = Math.max(0, bought - already);
-      if (Number(it.qty) > remaining) {
-        throw new Error(`Line "${it.description}" exceeds remaining purchased qty. Available: ${remaining}.`);
-      }
-    }
-
-    // Validate inventory-backed lines against available stock
-    if (it.inventoryItemId) {
-      const inv = await prisma.inventoryItem.findUnique({ where: { id: it.inventoryItemId } });
-      const available = Number(inv?.qty ?? 0);
-      if (Number(it.qty) > available) {
-        throw new Error(`Line \"${it.description}\" exceeds available inventory. Available: ${available}.`);
+  if (dispatch.projectId) {
+    const remainingMap = await getRemainingDispatchMap(dispatch.projectId);
+    for (const it of selected) {
+      if (it.requisitionItemId) {
+        const left = remainingMap.get(it.requisitionItemId) ?? 0;
+        if (it.qty > left) {
+          throw new Error(`Line "${it.description}" exceeds remaining project stock (${left}).`);
+        }
       }
     }
   }
