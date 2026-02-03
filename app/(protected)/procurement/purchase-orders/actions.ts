@@ -113,6 +113,59 @@ export async function rejectPO(poId: string, reason: string, approverId: string)
   revalidatePath(`/procurement/purchase-orders/${poId}`);
 }
 
+export async function approvePOWithUpdates(
+  poId: string,
+  approverId: string,
+  items: { id: string; unitPriceMinor: number }[]
+) {
+  const po = await prisma.purchaseOrder.findUnique({
+    where: { id: poId },
+    include: { items: true }
+  });
+  if (!po) throw new Error('PO not found');
+  if (po.status !== 'SUBMITTED') throw new Error('PO not in SUBMITTED state');
+
+  const totalMinor = items.reduce((acc, item) => {
+    const originalItem = po.items.find(i => i.id === item.id);
+    const qty = originalItem ? originalItem.qty : 0;
+    const itemTotal = BigInt(Math.round(qty * item.unitPriceMinor));
+    return acc + itemTotal;
+  }, 0n);
+
+  await prisma.$transaction(async (tx) => {
+    // 1. Update Items
+    for (const item of items) {
+      const originalItem = po.items.find(i => i.id === item.id);
+      const qty = originalItem ? originalItem.qty : 0;
+      const itemTotal = BigInt(Math.round(qty * item.unitPriceMinor));
+
+      await tx.purchaseOrderItem.update({
+        where: { id: item.id },
+        data: {
+          unitPriceMinor: BigInt(item.unitPriceMinor),
+          totalMinor: itemTotal
+        }
+      });
+    }
+
+    // 2. Approve PO
+    await tx.purchaseOrder.update({
+      where: { id: poId },
+      data: {
+        status: 'APPROVED',
+        approvedMinor: totalMinor, // Set approved amount
+        requestedMinor: totalMinor, // Update requested to match approved? Or keep original? Let's update totalMinor.
+        totalMinor: totalMinor,
+        decidedById: approverId,
+        decidedAt: new Date()
+      },
+    });
+  });
+
+  revalidatePath('/accounts/purchase-orders');
+  revalidatePath(`/procurement/purchase-orders/${poId}`);
+}
+
 export async function placeOrder(poId: string, userId: string) {
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: poId },

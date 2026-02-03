@@ -53,16 +53,14 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
                 return BigInt(val);
             };
 
-            const getLines = (data: any) => Array.isArray(data.lines) ? data.lines : [];
-
-            const originalLines = getLines(originalData);
-            const proposedLines = getLines(proposedData);
+            const originalLines = (Array.isArray(originalData.lines) ? originalData.lines : []) as any[];
+            const proposedLines = (Array.isArray(proposedData.lines) ? proposedData.lines : []) as any[];
 
             // Calculate Totals
             const originalTotal = originalLines.reduce((acc: bigint, l: any) => acc + toBigInt(l.lineTotalMinor), 0n);
             const proposedTotal = proposedLines.reduce((acc: bigint, l: any) => acc + toBigInt(l.lineTotalMinor), 0n);
 
-            const variance = proposedTotal - originalTotal;
+            const variance = originalTotal - proposedTotal;
             negotiationVarianceMinor += variance;
 
             // Generate Detailed Items
@@ -73,7 +71,7 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
                 const propTotal = toBigInt(propLine.lineTotalMinor);
                 const origTotal = origLine ? toBigInt(origLine.lineTotalMinor) : 0n;
 
-                const lineVariance = propTotal - origTotal;
+                const lineVariance = origTotal - propTotal;
 
                 if (lineVariance !== 0n) {
                     items.push({
@@ -96,7 +94,7 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
             // Handle deleted lines (in original but not in proposed)
             for (const [id, origLine] of originalMap) {
                 const origTotal = toBigInt(origLine.lineTotalMinor);
-                const lineVariance = 0n - origTotal; // Loss of revenue
+                const lineVariance = origTotal; // Removal of a line is a saving in cost!
 
                 items.push({
                     id: origLine.id,
@@ -125,14 +123,14 @@ function calculatePnL(project: any): { summary: PnLSummary; items: VarianceItem[
                 if (item.purchases) {
                     for (const purch of item.purchases) {
                         if (purch.qty > 0) {
-                            let baselineUnitPrice = item.estPriceMinor > 0n ? item.estPriceMinor : 0n;
+                            let baselineUnitPrice: bigint = (item.estPriceMinor ?? 0n) > 0n ? BigInt(item.estPriceMinor as any) : 0n;
                             if (item.quoteLineId && project.quote?.lines) {
                                 const ql = project.quote.lines.find((l: any) => l.id === item.quoteLineId);
-                                if (ql) baselineUnitPrice = ql.unitPriceMinor;
+                                if (ql) baselineUnitPrice = BigInt(ql.unitPriceMinor as any);
                             }
                             const actualUnitPrice = purch.priceMinor;
                             const diff = baselineUnitPrice - actualUnitPrice;
-                            const variance = diff * BigInt(Math.round(purch.qty));
+                            const variance = diff * BigInt(Math.floor(purch.qty));
 
                             if (variance !== 0n) {
                                 procurementVarianceMinor += variance;

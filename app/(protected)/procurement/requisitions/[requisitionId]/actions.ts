@@ -24,13 +24,18 @@ export async function createPOFromRequisition(requisitionId: string, fd: FormDat
       vendor,
       requestedMinor: req.items.reduce((a, it) => a + BigInt(it.amountMinor), 0n),
       items: {
-        create: req.items.map((it) => ({
-          requisitionItemId: it.id,
-          description: it.description,
-          unit: it.unit,
-          qty: it.qtyRequested,
-          amountMinor: it.amountMinor, // locked
-        })),
+        create: req.items.map((it) => {
+          const unitPrice = it.requestedUnitPriceMinor ?? it.estPriceMinor ?? 0n;
+          const total = it.qtyRequested ? BigInt(Math.round(it.qtyRequested * Number(unitPrice))) : 0n;
+          return {
+            requisitionItemId: it.id,
+            description: it.description,
+            unit: it.unit,
+            qty: it.qtyRequested,
+            unitPriceMinor: unitPrice,
+            totalMinor: total,
+          };
+        }),
       },
     },
     select: { id: true },

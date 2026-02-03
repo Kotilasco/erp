@@ -9,6 +9,7 @@ import Money from '@/components/Money';
 import { ArrowLeftIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
 import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
 import PrintButton from '@/components/PrintButton';
+import PurchaseOrderApproval from './PurchaseOrderApproval';
 
 function POStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -180,8 +181,8 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                           <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">{gi.description}</td>
                           <td className="px-3 py-4 text-left text-sm text-gray-500">{gi.unit || ''}</td>
                           <td className="px-3 py-4 text-right text-sm text-gray-500">{gi.qtyDelivered}</td>
-                          <td className="px-3 py-4 text-right text-sm text-gray-500"><Money amount={unitPriceMinor} /></td>
-                          <td className="px-3 py-4 text-right text-sm text-gray-900 font-semibold"><Money amount={amountMinor} /></td>
+                          <td className="px-3 py-4 text-right text-sm text-gray-500"><Money minor={unitPriceMinor} /></td>
+                          <td className="px-3 py-4 text-right text-sm text-gray-900 font-semibold"><Money minor={amountMinor} /></td>
                         </tr>
                       );
                     })}
@@ -192,7 +193,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                         Total
                       </th>
                       <td className="pl-3 pr-4 pt-6 text-right text-sm font-semibold text-gray-900 sm:pr-0">
-                        <Money amount={po.goodsReceivedNotes[0].items.reduce((sum, gi) => sum + BigInt(Math.round(Number(gi.priceMinor ?? 0n) * gi.qtyDelivered)), 0n)} />
+                        <Money minor={po.goodsReceivedNotes[0].items.reduce((sum, gi) => sum + BigInt(Math.round(Number(gi.priceMinor ?? 0n) * gi.qtyDelivered)), 0n)} />
                       </td>
                     </tr>
                   </tfoot>
@@ -240,10 +241,10 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                         {item.qty} {item.unit}
                       </td>
                       <td className="px-3 py-4 text-right text-sm text-gray-500">
-                        <Money amount={item.unitPriceMinor} />
+                        <Money minor={item.unitPriceMinor} />
                       </td>
                       <td className="px-3 py-4 text-right text-sm text-gray-500">
-                        <Money amount={item.totalMinor} />
+                        <Money minor={item.totalMinor} />
                       </td>
                     </tr>
                   ))}
@@ -254,7 +255,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                       Total
                     </th>
                     <td className="pl-3 pr-4 pt-6 text-right text-sm font-semibold text-gray-900 sm:pr-0">
-                      <Money amount={po.totalMinor > 0n ? po.totalMinor : po.requestedMinor} />
+                      <Money minor={po.totalMinor > 0n ? po.totalMinor : po.requestedMinor} />
                     </td>
                   </tr>
                 </tfoot>
@@ -272,6 +273,20 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
 
         {/* Action Cards (Hidden in Print) */}
         <div className="space-y-6 print:hidden">
+            {isAccounts && po.status === 'SUBMITTED' && (
+              <PurchaseOrderApproval 
+                poId={poId} 
+                userId={me.id!} 
+                items={po.items.map(i => ({
+                  id: i.id,
+                  description: i.description,
+                  qty: i.qty,
+                  unit: i.unit,
+                  unitPriceMinor: i.unitPriceMinor,
+                  totalMinor: i.totalMinor
+                }))} 
+              />
+            )}
             {isProcurement && po.status === 'APPROVED' && (
               <Card className="rounded-xl border border-gray-200 bg-white shadow-sm">
                 <CardHeader className="border-b border-gray-200 bg-gray-50/60 px-6 py-4">

@@ -15,7 +15,7 @@ export default async function GlobalMaterialEfficiencyPage() {
   if (!user) redirect('/login');
 
   const allowedRoles = ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'];
-  if (!allowedRoles.includes(user.role)) return redirect('/reports');
+  if (!allowedRoles.includes(user.role!)) return redirect('/reports');
 
   // Filter Logic
   const projectWhere = user.role === 'PROJECT_OPERATIONS_OFFICER' 
@@ -139,7 +139,7 @@ export default async function GlobalMaterialEfficiencyPage() {
               <div className="text-right">
                   <div className="text-2xl font-bold text-gray-900">{topSpender.name}</div>
                   <div className="text-orange-600 font-medium font-mono text-lg">
-                      <Money amount={topSpender.totalValueMinor} />
+                      <Money minor={topSpender.totalValueMinor} />
                   </div>
                   <div className="text-xs text-gray-500 mt-1">{topSpender.reqCount} requisitions</div>
               </div>
@@ -182,10 +182,10 @@ export default async function GlobalMaterialEfficiencyPage() {
                                 {stat.totalItems}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium text-gray-900">
-                                <Money amount={stat.totalValueMinor} />
+                                <Money minor={stat.totalValueMinor} />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right text-sm text-gray-500">
-                                <Money amount={stat.totalValueMinor / BigInt(stat.reqCount || 1)} />
+                                <Money minor={stat.totalValueMinor / BigInt(stat.reqCount || 1)} />
                             </td>
                         </tr>
                     ))}
