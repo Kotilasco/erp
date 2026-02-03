@@ -99,6 +99,7 @@ export async function markDispatchSent(
     data: {
       status: 'SENT',
       securityById: input.securityById || user!.id!,
+      securitySignedAt: new Date(),
       driverName: input.driverName || null,
       vehicleReg: input.vehicleReg || null,
       securityAck: input.securityAck || null,
@@ -130,4 +131,66 @@ export async function markDispatchReceived(
   const d = await prisma.dispatch.findUnique({ where: { id: dispatchId }, select: { projectId: true } });
   revalidatePath(`/projects/${d?.projectId}`);
   revalidatePath(`/dispatches/${dispatchId}/receipt`);
+}
+
+export async function getProjectDispatchableItems(projectId: string) {
+  const approvedReqItems = await prisma.procurementRequisitionItem.findMany({
+    where: {
+      requisition: { 
+        projectId: projectId, 
+        status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED', 'COMPLETED'] }
+      },
+    },
+  });
+
+  const dispatchedItems = await prisma.dispatchItem.findMany({
+    where: {
+      dispatch: { projectId },
+      requisitionItemId: { not: null },
+    },
+  });
+
+  const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
+    where: {
+      grn: { 
+        status: 'VERIFIED',
+        purchaseOrder: { requisition: { projectId } }
+      }
+    },
+    include: {
+      poItem: true
+    }
+  });
+
+  const receivedQtyByReqItem = new Map<string, number>();
+  for (const grnItem of verifiedGrnItems) {
+    if (grnItem.poItem?.requisitionItemId) {
+        const rid = grnItem.poItem.requisitionItemId;
+        const current = receivedQtyByReqItem.get(rid) ?? 0;
+        receivedQtyByReqItem.set(rid, current + grnItem.qtyAccepted);
+    }
+  }
+
+  const dispatchableItems = approvedReqItems
+    .map((ri) => {
+      const dispatched = dispatchedItems
+        .filter((di) => di.requisitionItemId === ri.id)
+        .reduce((sum, di) => sum + Number(di.qty), 0);
+      
+      const received = receivedQtyByReqItem.get(ri.id) ?? 0;
+      const remaining = received - dispatched;
+      
+      if (remaining <= 0) return null;
+      
+      return {
+        id: ri.id,
+        description: ri.description,
+        unit: ri.unit,
+        remaining,
+        estPriceMinor: ri.estPriceMinor.toString(),
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    return dispatchableItems;
 }

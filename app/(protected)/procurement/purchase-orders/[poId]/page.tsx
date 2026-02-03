@@ -12,6 +12,9 @@ import PurchaseOrderHeader from '@/components/PurchaseOrderHeader';
 import PrintButton from '@/components/PrintButton';
 import PurchaseOrderApproval from './PurchaseOrderApproval';
 import VerifyGrnForm from '../VerifyGrnForm';
+import VerifyPoGrnsForm from '../VerifyPoGrnsForm';
+import VerifiedGrnsList from '../VerifiedGrnsList';
+import CollapsibleOrderItems from '../CollapsibleOrderItems';
 
 function POStatusBadge({ status }: { status: string }) {
   const colors: Record<string, string> = {
@@ -59,7 +62,13 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
           }
         }
       },
-      goodsReceivedNotes: { include: { items: true }, orderBy: { createdAt: 'desc' } },
+      goodsReceivedNotes: { 
+        include: { 
+            items: true,
+            receivedBy: { select: { name: true, email: true } }
+        }, 
+        orderBy: { createdAt: 'desc' } 
+      },
       purchases: true, 
       createdBy: { select: { id: true, name: true, email: true } },
       decidedBy: { select: { name: true, email: true } },
@@ -133,7 +142,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                 createdAt: po.createdAt,
                 submittedBy: po.createdBy || { name: 'Unknown', email: '' }
               }}
-              title={isSecurityUser ? "Goods Delivery Note" : "Purchase Order"}
+              title={isSecurityUser ? "Goods Delivery Note" : "Goods Received Note"}
               recipientLabel="Vendor"
               recipientIdLabel="Vendor Ref"
               recipientId={po.supplierId || po.vendor}
@@ -141,14 +150,61 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
 
             {po.goodsReceivedNotes.length > 0 && (
               <div className="mt-8 space-y-12">
-                <h2 className="text-xl font-bold text-gray-900 border-b-2 border-emerald-500 pb-2 flex items-center gap-2">
-                  <ArchiveBoxIcon className="h-6 w-6 text-emerald-600" />
-                  Goods Received Notes (GRNs)
-                </h2>
                 
+                {isAccounts && po.goodsReceivedNotes.some(g => g.status === 'PENDING') && (
+                  <div className="mb-8">
+                     <VerifyPoGrnsForm 
+                        poId={po.id}
+                        verifierId={me.id!}
+                        items={po.goodsReceivedNotes
+                            .filter(g => g.status === 'PENDING')
+                            .flatMap(grn => grn.items.map(item => ({
+                                grnId: grn.id,
+                                grnItemId: item.id,
+                                description: item.description,
+                                qtyDelivered: item.qtyDelivered,
+                                priceMinor: Number(item.priceMinor || 0),
+                                varianceMinor: Number(item.varianceMinor || 0),
+                                receiptNumber: grn.receiptNumber || 'N/A',
+                                vendorName: grn.vendorName || vendorName,
+                                receivedAt: grn.receivedAt.toISOString()
+                            })))}
+                     />
+                  </div>
+                )}
+
+                {/* Verified GRNs List */}
+                {po.goodsReceivedNotes.some(g => g.status === 'VERIFIED') && (
+                  <VerifiedGrnsList 
+                    items={po.goodsReceivedNotes
+                      .filter(g => g.status === 'VERIFIED')
+                      .flatMap(grn => grn.items.map(item => ({
+                        grnId: grn.id,
+                        grnItemId: item.id,
+                        description: item.description,
+                        qtyDelivered: item.qtyDelivered,
+                        qtyAccepted: item.qtyAccepted,
+                        qtyRejected: item.qtyRejected,
+                        priceMinor: Number(item.priceMinor || 0),
+                        varianceMinor: Number(item.varianceMinor || 0),
+                        receiptNumber: grn.receiptNumber || 'N/A',
+                        vendorName: grn.vendorName || vendorName,
+                        receivedAt: grn.receivedAt.toISOString(),
+                        receivedBy: (grn as any).receivedBy?.name || 'Unknown'
+                      })))
+                    }
+                  />
+                )}
+
                 {po.goodsReceivedNotes.map((grn, idx) => {
+                  if (grn.status === 'VERIFIED') return null;
+
                   const isPendingVerification = grn.status === 'PENDING';
-                  const showVerifyForm = isAccounts && isPendingVerification;
+                  
+                  // If accounts user, pending GRNs are shown in the consolidated form above
+                  if (isAccounts && isPendingVerification) return null;
+
+                  const showVerifyForm = false;
 
                   return (
                     <div key={grn.id} className={`p-6 rounded-xl border ${isPendingVerification ? 'border-amber-200 bg-amber-50/20' : 'border-gray-200 bg-white shadow-sm'}`}>
@@ -271,58 +327,10 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
             )}
 
             {!isSecurityUser && (
-            <div className="mt-8">
-              <h2 className="text-lg font-bold text-gray-900 mb-4 uppercase border-b pb-2">Order Items</h2>
-              <table className="min-w-full divide-y divide-gray-300">
-                <thead>
-                  <tr>
-                    <th scope="col" className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0">
-                      Description
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                      Qty
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                      Unit Price
-                    </th>
-                    <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
-                      Amount
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {po.items.map((item) => (
-                    <tr key={item.id}>
-                      <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-0">
-                        {item.description}
-                        {item.quoteLine?.product?.sku && (
-                          <span className="block font-normal text-gray-500 text-xs">SKU: {item.quoteLine.product.sku}</span>
-                        )}
-                      </td>
-                      <td className="px-3 py-4 text-right text-sm text-gray-500">
-                        {item.qty} {item.unit}
-                      </td>
-                      <td className="px-3 py-4 text-right text-sm text-gray-500">
-                        <Money minor={item.unitPriceMinor} />
-                      </td>
-                      <td className="px-3 py-4 text-right text-sm text-gray-500">
-                        <Money minor={item.totalMinor} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <th scope="row" colSpan={3} className="hidden pl-4 pr-3 pt-6 text-right text-sm font-semibold text-gray-900 sm:table-cell sm:pl-0">
-                      Total
-                    </th>
-                    <td className="pl-3 pr-4 pt-6 text-right text-sm font-semibold text-gray-900 sm:pr-0">
-                      <Money minor={po.totalMinor > 0n ? po.totalMinor : po.requestedMinor} />
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
+              <CollapsibleOrderItems 
+                items={po.items}
+                totalMinor={po.totalMinor > 0n ? po.totalMinor : po.requestedMinor}
+              />
             )}
 
             {po.note && (
