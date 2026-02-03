@@ -48,15 +48,13 @@ export async function createDispatch(
     const requisition = project.requisitions[0] ?? null;
     const requisitionId = requisition?.id ?? null;
 
-    if (requisitionId) {
-      const remainingMap = await getRemainingDispatchMap(requisitionId);
-      for (const it of input.items) {
-        if (it.requisitionItemId) {
-          const left = remainingMap.get(it.requisitionItemId) ?? 0;
-          if (!(it.qty > 0)) throw new Error(`Qty must be > 0 for ${it.description}`);
-          if (it.qty > left) {
-            throw new Error(`Qty to dispatch for "${it.description}" exceeds remaining (${left}).`);
-          }
+    const remainingMap = await getRemainingDispatchMap(projectId);
+    for (const it of input.items) {
+      if (it.requisitionItemId) {
+        const left = remainingMap.get(it.requisitionItemId) ?? 0;
+        if (!(it.qty > 0)) throw new Error(`Qty must be > 0 for ${it.description}`);
+        if (it.qty > left) {
+          throw new Error(`Qty to dispatch for "${it.description}" exceeds remaining (${left}).`);
         }
       }
     }
@@ -138,63 +136,16 @@ export async function getProjectDispatchableItems(projectId: string) {
     where: {
       requisition: {
         projectId: projectId,
-        status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED', 'COMPLETED'] }
+        status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED', 'COMPLETE'] }
       },
     },
   });
 
-  const dispatchedItems = await prisma.dispatchItem.findMany({
-    where: {
-      dispatch: { projectId },
-      requisitionItemId: { not: null },
-    },
-  });
-
-  const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
-    where: {
-      grn: {
-        status: 'VERIFIED',
-        purchaseOrder: { project: { id: projectId } }
-      }
-    },
-    include: {
-      poItem: true
-    }
-  });
-
-  const purchases = await prisma.purchase.findMany({
-    where: {
-      requisition: { projectId }
-    }
-  });
-
-  const receivedQtyByReqItem = new Map<string, number>();
-
-  // Add from GRNs
-  for (const grnItem of verifiedGrnItems) {
-    if (grnItem.poItem?.requisitionItemId) {
-      const rid = grnItem.poItem.requisitionItemId;
-      const current = receivedQtyByReqItem.get(rid) ?? 0;
-      receivedQtyByReqItem.set(rid, current + grnItem.qtyAccepted);
-    }
-  }
-
-  // Add from Purchases
-  for (const p of purchases) {
-    if (p.requisitionItemId) {
-      const current = receivedQtyByReqItem.get(p.requisitionItemId) ?? 0;
-      receivedQtyByReqItem.set(p.requisitionItemId, current + p.qty);
-    }
-  }
+  const remainingMap = await getRemainingDispatchMap(projectId);
 
   const dispatchableItems = approvedReqItems
     .map((ri) => {
-      const dispatched = dispatchedItems
-        .filter((di) => di.requisitionItemId === ri.id)
-        .reduce((sum, di) => sum + Number(di.qty), 0);
-
-      const received = receivedQtyByReqItem.get(ri.id) ?? 0;
-      const remaining = received - dispatched;
+      const remaining = remainingMap.get(ri.id) ?? 0;
 
       if (remaining <= 0) return null;
 

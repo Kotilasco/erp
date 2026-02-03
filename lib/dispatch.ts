@@ -1,24 +1,16 @@
 import { prisma } from '@/lib/db';
 
 /**
- * remainingDispatchQty: purchasedQty - sum(dispatchedQty)
- * If no purchases, remaining = 0
+ * remainingDispatchQty: (VerifiedGRNs + FinalizedPurchases) - sum(dispatchedQty)
+ * We must filter by projectId to ensure isolation and project-wide visibility.
  */
-export async function getRemainingDispatchMap(requisitionId: string) {
-  // 1. Get quantities from explicit Purchase records
-  const purchases = await prisma.purchase.groupBy({
-    by: ['requisitionItemId'],
-    where: { requisitionId, requisitionItemId: { not: null } },
-    _sum: { qty: true } as any,
-  });
-
-  // 2. Get quantities from Verified Goods Received Notes
-  // (Prisma groupBy doesn't support grouping by relation fields like poItem.requisitionItemId)
+export async function getRemainingDispatchMap(projectId: string) {
+  // 1. Get quantities from Verified Goods Received Notes for this PROJECT
   const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
     where: {
       grn: {
         status: 'VERIFIED',
-        purchaseOrder: { requisitionId }
+        purchaseOrder: { projectId }
       },
       poItem: { requisitionItemId: { not: null } }
     },
@@ -27,24 +19,26 @@ export async function getRemainingDispatchMap(requisitionId: string) {
     }
   });
 
-  // 3. Get already dispatched quantities
+  // 2. Get quantities from explicit Purchase records (excluding PO placeholders)
+  const explicitPurchases = await prisma.purchase.findMany({
+    where: {
+      requisition: { projectId },
+      requisitionItemId: { not: null },
+      purchaseOrderId: null // Only non-PO purchases, as PO items are handled by GRN
+    }
+  });
+
+  // 3. Get already dispatched quantities for this PROJECT
   const dispatches = await prisma.dispatchItem.groupBy({
     by: ['requisitionItemId'],
     where: {
       requisitionItemId: { not: null },
-      dispatch: { project: { requisitions: { some: { id: requisitionId } } } },
+      dispatch: { projectId },
     },
     _sum: { qty: true } as any,
   });
 
   const availableByItem = new Map<string, number>();
-
-  // Add from Purchase records
-  purchases.forEach((p: any) => {
-    if (p.requisitionItemId) {
-      availableByItem.set(p.requisitionItemId, Number(p._sum.qty ?? 0));
-    }
-  });
 
   // Add from Verified GRNs
   verifiedGrnItems.forEach((vgi) => {
@@ -55,6 +49,13 @@ export async function getRemainingDispatchMap(requisitionId: string) {
     }
   });
 
+  // Add from Explicit Purchases
+  explicitPurchases.forEach((p) => {
+    const rid = p.requisitionItemId!;
+    const current = availableByItem.get(rid) ?? 0;
+    availableByItem.set(rid, current + Number(p.qty));
+  });
+
   const dispatchedByItem = new Map<string, number>();
   dispatches.forEach((d: any) => {
     if (d.requisitionItemId) {
@@ -63,9 +64,9 @@ export async function getRemainingDispatchMap(requisitionId: string) {
   });
 
   const remaining = new Map<string, number>();
-  for (const [itemId, available] of availableByItem.entries()) {
-    const already = dispatchedByItem.get(itemId) ?? 0;
-    remaining.set(itemId, Math.max(0, available - already));
+  for (const [rid, available] of availableByItem.entries()) {
+    const already = dispatchedByItem.get(rid) ?? 0;
+    remaining.set(rid, Math.max(0, available - already));
   }
   return remaining;
 }
