@@ -39,6 +39,7 @@ async function PendingTasks({
   let pendingGrnPos: any[] = [];
   let dispatchTasks: Array<{ type: 'PENDING_DISPATCH'; data: any; date: Date }> = [];
   let driverTasks: any[] = []; // Initialize driverTasks
+  let driverDeliveriesCount = 0;
   const roles = {
     PM: role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN' || role === 'MANAGING_DIRECTOR',
     SALES_ACCOUNTS:
@@ -251,6 +252,13 @@ async function PendingTasks({
         purchases: { select: { vendor: true } },
       },
       orderBy: { createdAt: 'desc' },
+    });
+
+    driverDeliveriesCount = await prisma.dispatch.count({
+      where: {
+        status: 'IN_TRANSIT',
+        assignedToDriverId: userId,
+      },
     });
   }
 
@@ -635,11 +643,9 @@ async function PendingTasks({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             My Pickups
-            {driverTasks.length > 0 && (
               <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {driverTasks.length}
               </span>
-            )}
           </Link>
           
           <Link
@@ -650,7 +656,9 @@ async function PendingTasks({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
             </svg>
             Deliveries
-            {/* We could add a count here too if we fetched IN_TRANSIT tasks */}
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
+                {driverDeliveriesCount}
+              </span>
           </Link>
         </div>
       </div>
