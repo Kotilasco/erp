@@ -118,6 +118,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
       <div className="mx-auto w-full max-w-[90rem] space-y-6 print:max-w-none">
         
         {/* Navigation and Toolbar */}
+        {!isSecurityUser && (
         <div className="flex items-center justify-between print:hidden">
             <Link
               href="/procurement/purchase-orders"
@@ -131,6 +132,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                <PrintButton />
             </div>
         </div>
+        )}
 
         {/* Main PO Document */}
         <div className="bg-white p-8 shadow-sm rounded-xl border border-gray-200 print:shadow-none print:border-none print:p-0">
@@ -148,7 +150,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
               recipientId={po.supplierId || po.vendor}
             />
 
-            {po.goodsReceivedNotes.length > 0 && (
+            {!isSecurityUser && po.goodsReceivedNotes.length > 0 && (
               <div className="mt-8 space-y-12">
                 
                 {isAccounts && po.goodsReceivedNotes.some(g => g.status === 'PENDING') && (
@@ -333,7 +335,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
               />
             )}
 
-            {po.note && (
+            {!isSecurityUser && po.note && (
                 <div className="mt-8 border-t pt-4">
                     <h3 className="text-sm font-semibold text-gray-900">Notes:</h3>
                     <p className="mt-1 text-sm text-gray-600 whitespace-pre-wrap">{po.note}</p>
