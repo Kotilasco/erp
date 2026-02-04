@@ -20,6 +20,7 @@ import DriverAcknowledgeButton from '@/components/DriverAcknowledgeButton';
 import AssignDriverForm from '@/components/AssignDriverForm';
 import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
 import DispatchAcknowledgment from '@/components/dispatch-acknowledgment';
+import QuoteHeader from '@/components/QuoteHeader';
 
 const STATUS_BADGE: Record<string, string> = {
   DRAFT: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
@@ -47,7 +48,16 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
   const dispatch = await prisma.dispatch.findUnique({
     where: { id: dispatchId },
     include: {
-      project: { select: { id: true, projectNumber: true, quote: { select: { customer: { select: { displayName: true } } } } } },
+      project: { 
+        include: { 
+          quote: { 
+            include: { 
+              customer: true, 
+              project: true 
+            } 
+          } 
+        } 
+      },
       items: { orderBy: { id: 'asc' }, include: { inventoryItem: true } },
       createdBy: { select: { name: true, email: true } },
     },
@@ -87,6 +97,17 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header with Breadcrumb-like nav */}
+      {isSecurity && dispatch.project?.quote ? (
+        <div className="flex flex-col gap-4">
+           <div className="flex justify-end">
+             <Link href="/dispatches" className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-green-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600 transition-colors w-fit">
+                 <ArrowLeftIcon className="h-5 w-5" />
+                 Back to Dispatches
+             </Link>
+           </div>
+           <QuoteHeader quote={dispatch.project.quote} title="Dispatch Form" />
+        </div>
+      ) : (
       <div className="flex flex-col gap-4">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
@@ -125,6 +146,7 @@ export default async function DispatchDetail({ params }: { params: Promise<{ dis
           </div>
         </div>
       </div>
+      )}
 
       {canEdit ? (
         <div className="space-y-6">
