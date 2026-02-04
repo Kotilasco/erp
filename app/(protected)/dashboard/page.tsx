@@ -629,14 +629,14 @@ async function PendingTasks({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
           <Link
             href="/dispatches?status=DISPATCHED&driver=me"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-blue-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl hover:-translate-y-1"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             My Pickups
             {driverTasks.length > 0 && (
-              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-blue-600">
+              <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
                 {driverTasks.length}
               </span>
             )}
