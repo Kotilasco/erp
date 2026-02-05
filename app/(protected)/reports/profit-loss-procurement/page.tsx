@@ -12,23 +12,59 @@ import Link from 'next/link';
 import GlobalPnLTable from '@/components/GlobalPnLTable';
 import PrintHeader from '@/components/PrintHeader';
 import PrintButton from '@/components/PrintButton';
+import PnLProjectFilter from '@/components/PnLProjectFilter';
 
-export default async function GlobalProcurementPnLPage() {
+export default async function GlobalProcurementPnLPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ projectId?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+
+  const { projectId } = await searchParams;
 
   const allowedRoles = ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT'];
   if (!allowedRoles.includes(user.role)) return redirect('/reports');
 
-  // Filter Projects logic
-  const projectWhere = user.role === 'PROJECT_OPERATIONS_OFFICER' 
+  // Base Scope Logic
+  const scopeWhere = user.role === 'PROJECT_OPERATIONS_OFFICER' 
       ? { assignedToId: user.id } 
       : {};
 
-  const projectCount = await prisma.project.count({ where: projectWhere });
+  // Fetch Project List for Filter
+  const projectsListRaw = await prisma.project.findMany({
+      where: scopeWhere,
+      select: { 
+          id: true, 
+          name: true, 
+          quote: { 
+              select: { 
+                  customer: { 
+                      select: { displayName: true } 
+                  } 
+              } 
+          } 
+      },
+      orderBy: { updatedAt: 'desc' }
+  });
+
+  const projectsList = projectsListRaw.map(p => ({
+      id: p.id,
+      name: p.name,
+      customer: p.quote?.customer
+  }));
+
+  // Active Filter Logic
+  const activeWhere = {
+      ...scopeWhere,
+      ...(projectId ? { id: projectId } : {})
+  };
+
+  const projectCount = await prisma.project.count({ where: activeWhere });
 
   // Use Bulk PnL
-  const { summary: globalSummary, items: globalItems } = await getBulkPnL(projectWhere);
+  const { summary: globalSummary, items: globalItems } = await getBulkPnL(activeWhere);
   
   // Filter for Procurement Only
   const procItems = globalItems.filter(i => i.category === 'PROCUREMENT');
@@ -63,6 +99,7 @@ export default async function GlobalProcurementPnLPage() {
                 </p>
             </div>
             <div className="flex items-center gap-3">
+                <PnLProjectFilter projects={projectsList} />
                 <Link 
                     href={`/reports`}
                     className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm border border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all"
@@ -92,7 +129,7 @@ export default async function GlobalProcurementPnLPage() {
 
         {/* Detailed Table */}
         <div className="space-y-6">
-            <GlobalPnLTable title="Procurement Variances" items={procItems} pageSize={15} />
+            <GlobalPnLTable title="Procurement Variances" items={procItems} pageSize={5} />
             
             {procItems.length === 0 && (
                 <div className="text-center py-12 bg-white rounded-xl border border-gray-200 border-dashed">
