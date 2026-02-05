@@ -1,46 +1,45 @@
 'use client';
 
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useTransition } from 'react';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 
-interface PageSizeSelectorProps {
-  defaultValue?: string;
+export default function PageSizeSelector({
+  defaultSize = 10,
+  options = [10, 25, 50, 100]
+}: {
+  defaultSize?: number;
   options?: number[];
-}
-
-export function PageSizeSelector({ defaultValue = '10', options = [10, 20, 50, 100] }: PageSizeSelectorProps) {
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [isPending, startTransition] = useTransition();
+  
+  const currentSize = Number(searchParams.get('pageSize')) || defaultSize;
 
-  const currentSize = searchParams.get('pageSize') || defaultValue;
-
-  const handleChange = (newSize: string) => {
-    const params = new URLSearchParams(searchParams.toString());
+  const handleSizeChange = (newSize: string) => {
+    const params = new URLSearchParams(searchParams);
     params.set('pageSize', newSize);
-    params.set('page', '1'); // Reset to page 1 when changing page size
-
-    startTransition(() => {
-      router.replace(`${pathname}?${params.toString()}`);
-    });
+    params.set('page', '1'); // Reset to first page when changing size
+    router.replace(`${pathname}?${params.toString()}`);
   };
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm text-gray-500 whitespace-nowrap">Show</span>
+      <label htmlFor="pageSize" className="text-sm font-medium text-gray-700">
+        Show
+      </label>
       <select
+        id="pageSize"
         value={currentSize}
-        onChange={(e) => handleChange(e.target.value)}
-        disabled={isPending}
-        className="h-9 rounded-md border-gray-200 text-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-50 hover:bg-white transition-colors cursor-pointer shadow-sm"
+        onChange={(e) => handleSizeChange(e.target.value)}
+        className="h-9 rounded-md border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 py-1 pl-2 pr-8 shadow-sm cursor-pointer"
       >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
+        {options.map((size) => (
+          <option key={size} value={size}>
+            {size}
           </option>
         ))}
       </select>
+      <span className="text-sm text-gray-500">entries</span>
     </div>
   );
 }
