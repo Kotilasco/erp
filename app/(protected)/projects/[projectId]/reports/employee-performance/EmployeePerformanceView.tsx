@@ -8,7 +8,9 @@ import {
   ClockIcon,
   ArrowsRightLeftIcon,
   TableCellsIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 
 export type EmployeeStat = {
@@ -26,6 +28,8 @@ export default function EmployeePerformanceView({ employees }: { employees: Empl
   const [compareA, setCompareA] = useState<string>(employees[0]?.id || '');
   const [compareB, setCompareB] = useState<string>(employees[1]?.id || '');
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
 
   const empA = employees.find(e => e.id === compareA);
   const empB = employees.find(e => e.id === compareB);
@@ -34,6 +38,15 @@ export default function EmployeePerformanceView({ employees }: { employees: Empl
     e.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     e.role.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Reset page when search changes
+  if (currentPage > 1 && Math.ceil(filteredEmployees.length / pageSize) < currentPage) {
+      setCurrentPage(1);
+  }
+
+  const totalPages = Math.ceil(filteredEmployees.length / pageSize);
+  const startIdx = (currentPage - 1) * pageSize;
+  const paginatedEmployees = filteredEmployees.slice(startIdx, startIdx + pageSize);
 
   return (
     <div className="space-y-6">
@@ -49,7 +62,7 @@ export default function EmployeePerformanceView({ employees }: { employees: Empl
                     className="block w-full rounded-md border-0 py-1.5 pl-10 text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
                     placeholder="Search employees..."
                     value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
                 />
            </div>
 
@@ -95,7 +108,7 @@ export default function EmployeePerformanceView({ employees }: { employees: Empl
                         </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                        {filteredEmployees.map((emp) => {
+                        {paginatedEmployees.map((emp) => {
                             const completionRate = emp.tasksAssigned > 0 ? (emp.tasksCompleted / emp.tasksAssigned) * 100 : 0;
                             return (
                                 <tr key={emp.id} className="hover:bg-gray-50 transition-colors">
@@ -156,6 +169,81 @@ export default function EmployeePerformanceView({ employees }: { employees: Empl
                         })}
                     </tbody>
                 </table>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex items-center justify-between border-t border-gray-200 px-6 py-3 bg-gray-50">
+                        <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm text-gray-700">
+                                    Showing <span className="font-medium">{startIdx + 1}</span> to <span className="font-medium">{Math.min(startIdx + pageSize, filteredEmployees.length)}</span> of <span className="font-medium">{filteredEmployees.length}</span> results
+                                </p>
+                            </div>
+                            <div>
+                                <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span className="sr-only">Previous</span>
+                                        <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+                                    </button>
+                                    
+                                    {[...Array(totalPages)].map((_, i) => {
+                                        const p = i + 1;
+                                        // Show first, last, current, and neighbors
+                                        if (p === 1 || p === totalPages || (p >= currentPage - 1 && p <= currentPage + 1)) {
+                                            return (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => setCurrentPage(p)}
+                                                    aria-current={p === currentPage ? 'page' : undefined}
+                                                    className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                                        p === currentPage
+                                                            ? 'z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+                                                            : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
+                                                    }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            );
+                                        } else if (p === currentPage - 2 || p === currentPage + 2) {
+                                            return <span key={p} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span>;
+                                        }
+                                        return null;
+                                    })}
+
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span className="sr-only">Next</span>
+                                        <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+                                    </button>
+                                </nav>
+                            </div>
+                        </div>
+                        {/* Mobile View */}
+                        <div className="flex flex-1 justify-between sm:hidden">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Previous
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
        ) : (
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8">
