@@ -17,6 +17,7 @@ export type VarianceItem = {
     varianceMinor: bigint; // Positive = Profit/Savings, Negative = Loss
     details: string; // Keep for backward compatibility or simple view
     projectName?: string; // Optional context
+    projectId?: string; // Optional context for linking
 
     // New structured data for tables
     structuredDetails?: {
@@ -325,6 +326,7 @@ export async function getBulkPnL(where: Prisma.ProjectWhereInput): Promise<{ sum
         const tagged = res.items.map(item => ({
             ...item,
             projectName: projectName,
+            projectId: p.id,
             itemName: item.description, // Keep original description here for table, simpler
             description: item.description // Keep original
         }));

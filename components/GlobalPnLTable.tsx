@@ -4,6 +4,7 @@ import { VarianceItem } from "@/lib/profit-loss";
 import Money from "@/components/Money";
 import { useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import Link from 'next/link';
 
 export default function GlobalPnLTable({ 
     items, 
@@ -49,6 +50,7 @@ export default function GlobalPnLTable({
                             <th className="px-6 py-3 text-right">Est. Unit</th>
                             <th className="px-6 py-3 text-right">Act. Unit</th>
                             <th className="px-6 py-3 text-right">Variance</th>
+                            <th className="px-6 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -110,6 +112,19 @@ export default function GlobalPnLTable({
                                     <td className={`px-6 py-4 text-right font-bold`}>
                                         {formatMoney(item.varianceMinor)}
                                     </td>
+
+                                    {/* Actions */}
+                                    <td className="px-6 py-4 text-right text-sm">
+                                        {item.projectId && (
+                                            <Link 
+                                                href={`/projects/${item.projectId}/reports/profit-loss`}
+                                                className="text-indigo-600 hover:text-indigo-900 font-medium inline-flex items-center gap-1 group/link"
+                                            >
+                                                Detailed Report
+                                                <span className="transition-transform group-hover/link:translate-x-1">&rarr;</span>
+                                            </Link>
+                                        )}
+                                    </td>
                                 </tr>
                             );
                         })}
@@ -120,21 +135,71 @@ export default function GlobalPnLTable({
             {/* Pagination Controls */}
             {totalPages > 1 && (
                 <div className="flex items-center justify-between border-t border-gray-200 px-6 py-3 bg-gray-50">
-                    <div className="text-sm text-gray-500">
-                        Showing <span className="font-medium">{startIdx + 1}</span> to <span className="font-medium">{Math.min(startIdx + pageSize, items.length)}</span> of <span className="font-medium">{items.length}</span> results
+                    <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                        <div>
+                            <p className="text-sm text-gray-700">
+                                Showing <span className="font-medium">{startIdx + 1}</span> to <span className="font-medium">{Math.min(startIdx + pageSize, items.length)}</span> of <span className="font-medium">{items.length}</span> results
+                            </p>
+                        </div>
+                        <div>
+                            <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <span className="sr-only">Previous</span>
+                                    <ChevronLeftIcon className="h-5 w-5" aria-hidden="true" />
+                                </button>
+                                
+                                {[...Array(totalPages)].map((_, i) => {
+                                    const p = i + 1;
+                                    // Show first, last, current, and neighbors
+                                    if (p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1)) {
+                                        return (
+                                            <button
+                                                key={p}
+                                                onClick={() => setPage(p)}
+                                                aria-current={p === page ? 'page' : undefined}
+                                                className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                                                    p === page
+                                                        ? 'z-10 bg-indigo-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600'
+                                                        : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0'
+                                                }`}
+                                            >
+                                                {p}
+                                            </button>
+                                        );
+                                    } else if (p === page - 2 || p === page + 2) {
+                                        return <span key={p} className="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300 focus:outline-offset-0">...</span>;
+                                    }
+                                    return null;
+                                })}
+
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <span className="sr-only">Next</span>
+                                    <ChevronRightIcon className="h-5 w-5" aria-hidden="true" />
+                                </button>
+                            </nav>
+                        </div>
                     </div>
-                    <div className="flex gap-2">
+                    {/* Mobile View */}
+                    <div className="flex flex-1 justify-between sm:hidden">
                         <button
                             onClick={() => setPage(p => Math.max(1, p - 1))}
                             disabled={page === 1}
-                            className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                         >
                             Previous
                         </button>
                         <button
                             onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages}
-                            className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                         >
                             Next
                         </button>
