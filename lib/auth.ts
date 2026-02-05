@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 
+// Utility to get current authenticated user
 export type AuthenticatedUser = {
   id: string | undefined;
   email: string | null;
