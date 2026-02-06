@@ -242,7 +242,7 @@ export default async function ProjectsPage({
                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Location</th>
                    <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
                    <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Start Date</th>
-                  {!isProjectManager && <th scope="col" className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Project Operations Officer</th>}
+                  {!isProjectManager && <th scope="col" className={`px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 ${isSeniorPM ? 'sticky right-0 z-10 bg-gray-50 border-l border-gray-200 dark:bg-gray-900 dark:border-gray-700 min-w-[260px]' : ''}`}>Project Operations Officer</th>}
                   {!isSeniorPM && (
                     <th scope="col" className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Actions</th>
                   )}
@@ -433,7 +433,7 @@ export default async function ProjectsPage({
                          </div>
                        </td>
                        {!isProjectManager && (
-                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                         <td className={`px-6 py-4 text-sm text-gray-500 dark:text-gray-400 ${isSeniorPM ? 'sticky right-0 z-10 bg-white border-l border-gray-100 dark:bg-gray-800 dark:border-gray-700 min-w-[260px]' : ''}`}>
                             {isSeniorPM && currentTab === 'assignment' ? (
                                <ProjectAssigner projectId={project.id} projectManagers={projectManagers} />
                             ) : (
