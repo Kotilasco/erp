@@ -17,23 +17,60 @@ import GlobalPnLTable from '@/components/GlobalPnLTable'; // Updated import
 import PrintHeader from '@/components/PrintHeader';
 import PrintButton from '@/components/PrintButton';
 
-export default async function GlobalPnLPage() {
+import PnLProjectFilter from '@/components/PnLProjectFilter';
+
+export default async function GlobalPnLPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ projectId?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
+  
+  const { projectId } = await searchParams;
 
   const allowedRoles = ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER'];
   if (!allowedRoles.includes(user.role)) return redirect('/reports');
 
-  // Filter Projects Logic
-  const projectWhere = user.role === 'PROJECT_OPERATIONS_OFFICER' 
+  // Base Scope Logic
+  const scopeWhere = user.role === 'PROJECT_OPERATIONS_OFFICER' 
       ? { assignedToId: user.id } 
       : {};
 
+  // Fetch Project List for Filter
+  const projectsListRaw = await prisma.project.findMany({
+      where: scopeWhere,
+      select: { 
+          id: true, 
+          name: true, 
+          quote: { 
+              select: { 
+                  customer: { 
+                      select: { displayName: true } 
+                  } 
+              } 
+          } 
+      },
+      orderBy: { updatedAt: 'desc' }
+  });
+
+  const projectsList = projectsListRaw.map(p => ({
+      id: p.id,
+      name: p.name,
+      customer: p.quote.customer
+  }));
+
+  // Active Filter Logic
+  const activeWhere = {
+      ...scopeWhere,
+      ...(projectId ? { id: projectId } : {})
+  };
+
   // Fetch count just for display
-  const projectCount = await prisma.project.count({ where: projectWhere });
+  const projectCount = await prisma.project.count({ where: activeWhere });
 
   // Use Bulk PnL Fetch
-  const { summary: globalSummary, items: globalItems } = await getBulkPnL(projectWhere);
+  const { summary: globalSummary, items: globalItems } = await getBulkPnL(activeWhere);
 
   const formatVariance = (val: bigint) => {
      const isPos = val >= 0;
@@ -72,6 +109,7 @@ export default async function GlobalPnLPage() {
                 </p>
             </div>
             <div className="flex items-center gap-3">
+                <PnLProjectFilter projects={projectsList} />
                 <Link 
                     href={`/reports`}
                     className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm border border-gray-300 hover:bg-gray-50 hover:text-gray-900 transition-all"
@@ -93,29 +131,34 @@ export default async function GlobalPnLPage() {
         </div>
 
         {/* Net Result */}
-        <div className="rounded-2xl bg-white p-8 shadow-sm border border-gray-100 flex items-center justify-between">
-            <div>
-                <h2 className="text-lg font-semibold text-gray-900">Net Global Variance</h2>
+        <div className="rounded-2xl bg-gradient-to-br from-white to-gray-50 p-8 shadow-md border border-gray-200 flex items-center justify-between relative overflow-hidden">
+            <div className="relative z-10">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <GlobeAltIcon className="h-6 w-6 text-indigo-500" />
+                    Net Global Variance
+                </h2>
                 <p className="text-sm text-gray-500 mt-1">Total profit/loss against planned quotes across all projects.</p>
             </div>
-            <div className="text-4xl font-bold">
+            <div className="relative z-10 text-5xl font-bold tracking-tight">
                  {formatVariance(globalSummary.netProfitLossMinor)}
             </div>
+            {/* Decorative background element */}
+            <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-indigo-50/50 to-transparent pointer-events-none" />
         </div>
 
         {/* Detailed Tables */}
         <div className="space-y-6">
             {categories.PROCUREMENT.length > 0 && (
-                 <GlobalPnLTable title="Procurement Efficiency" items={categories.PROCUREMENT} />
+                 <GlobalPnLTable title="Procurement Efficiency" items={categories.PROCUREMENT} pageSize={5} />
             )}
             {categories.USAGE.length > 0 && (
-                <GlobalPnLTable title="Material Usage" items={categories.USAGE} />
+                <GlobalPnLTable title="Material Usage" items={categories.USAGE} pageSize={5} />
             )}
             {categories.RETURNS.length > 0 && (
-                <GlobalPnLTable title="Site Returns" items={categories.RETURNS} />
+                <GlobalPnLTable title="Site Returns" items={categories.RETURNS} pageSize={5} />
             )}
             {categories.NEGOTIATION.length > 0 && (
-                <GlobalPnLTable title="Negotiation Impact" items={categories.NEGOTIATION} />
+                <GlobalPnLTable title="Negotiation Impact" items={categories.NEGOTIATION} pageSize={5} />
             )}
             
             {globalItems.length === 0 && (
