@@ -934,8 +934,8 @@ export async function deleteDispatch(dispatchId: string) {
     });
   });
 
-  revalidatePath(`/projects/${dispatch.projectId}`);
-  redirect(`/projects/${dispatch.projectId}?tab=dispatches`);
+  revalidatePath('/dispatches');
+  redirect('/dispatches');
 }
 
 // --- Inventory Returns ---
@@ -1328,7 +1328,7 @@ export async function updateDispatchItems(
   if (d.status !== 'DRAFT') throw new Error('Only DRAFT dispatch is editable');
 
   const projectId = (await prisma.dispatch.findUnique({ where: { id: dispatchId }, select: { projectId: true } }))?.projectId;
-  const remainingMap = projectId ? await getRemainingDispatchMap(projectId) : new Map<string, number>();
+  const remainingMap = projectId ? await getRemainingDispatchMap(projectId, dispatchId) : new Map<string, number>();
 
   for (const u of updates) {
     const item = await prisma.dispatchItem.findUnique({ where: { id: u.id }, include: { purchase: true } });
@@ -1342,10 +1342,8 @@ export async function updateDispatchItems(
     // Validate project-specific items
     if (item.requisitionItemId && projectId) {
       const left = remainingMap.get(item.requisitionItemId) ?? 0;
-      // The map already includes 'oldQty' as consumed.
-      // So available is left + oldQty.
-      if (newQty > (left + oldQty)) {
-        throw new Error(`Line "${item.description}" exceeds remaining project stock (${left + oldQty}).`);
+      if (newQty > left) {
+        throw new Error(`Line "${item.description}" exceeds remaining project stock (${left}).`);
       }
     }
 
@@ -1399,7 +1397,7 @@ export async function submitDispatch(dispatchId: string) {
   if (selected.length === 0) throw new Error('Select at least one item to submit');
 
   if (dispatch.projectId) {
-    const remainingMap = await getRemainingDispatchMap(dispatch.projectId);
+    const remainingMap = await getRemainingDispatchMap(dispatch.projectId, dispatchId);
     for (const it of selected) {
       if (it.requisitionItemId) {
         const left = remainingMap.get(it.requisitionItemId) ?? 0;
