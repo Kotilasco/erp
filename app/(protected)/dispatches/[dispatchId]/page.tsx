@@ -16,6 +16,8 @@ import { ArrowLeftIcon, CheckIcon, ShieldCheckIcon, TrashIcon } from '@heroicons
 import { cn } from '@/lib/utils';
 import DispatchAcknowledgment from '@/components/dispatch-acknowledgment';
 import QuoteHeader from '@/components/QuoteHeader';
+import { getDrivers } from '../driver-actions';
+import AssignDriverForm from '@/components/AssignDriverForm';
 
 export const runtime = 'nodejs';
 
@@ -33,10 +35,7 @@ export default async function DispatchDetail({
     where: { id: dispatchId },
     include: { 
         project: { 
-            select: { 
-                id: true, 
-                name: true,
-                projectNumber: true,
+            include: { 
                 quote: { include: { customer: true, project: true } }
             } 
         }, 
@@ -54,6 +53,10 @@ export default async function DispatchDetail({
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
   const isDriver = role === 'DRIVER' || role === 'ADMIN';
   const canReturn = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN') && dispatch.status === 'DELIVERED';
+
+  // Fetch drivers for security/admin if status is ready for assignment
+  const canAssignDriver = isSecurity && ['APPROVED', 'DISPATCHED', 'IN_TRANSIT'].includes(dispatch.status);
+  const drivers = canAssignDriver ? await getDrivers() : [];
 
   // ---------- server actions ----------
   
@@ -366,6 +369,17 @@ export default async function DispatchDetail({
                             <ApproveDispatchButton dispatchId={dispatch.id} />
                         )}
                     </div>
+
+                    {canAssignDriver && (
+                        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                            <h4 className="text-sm font-bold text-gray-700 mb-3">Assign Transport / Driver</h4>
+                            <AssignDriverForm 
+                                dispatchId={dispatch.id} 
+                                drivers={drivers} 
+                                currentDriverId={dispatch.assignedToDriverId} 
+                            />
+                        </div>
+                    )}
 
                     {canEdit && (
                         <div className="flex flex-wrap gap-3">

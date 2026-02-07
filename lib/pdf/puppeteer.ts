@@ -37,7 +37,7 @@ export class PuppeteerRenderer implements PdfRenderer {
   async render(req: PdfRequest): Promise<PdfResult> {
     const quote = await prisma.quote.findUnique({
       where: { id: req.quoteId },
-      include: { customer: true, lines: { orderBy: { id: "asc" } } },
+      include: { customer: true, project: true, lines: { orderBy: { id: "asc" } } },
     });
     if (!quote) throw new Error("Quote not found");
 
@@ -61,14 +61,14 @@ export class PuppeteerRenderer implements PdfRenderer {
       let meta: any = {};
       try {
         meta = JSON.parse(line.metaJson ?? "{}");
-      } catch {}
-      
+      } catch { }
+
       const section = meta.section?.trim() || "Items";
       if (!groups[section]) {
         groups[section] = { section, rows: [], subtotal: 0 };
         groupOrder.push(section);
       }
-      
+
       const qty = Number(line.quantity || 0);
       const amt = Number(line.lineTotalMinor || 0);
       groups[section].rows.push({ ...line, qty, amt, unit: meta.unit || line.unit });
@@ -77,26 +77,19 @@ export class PuppeteerRenderer implements PdfRenderer {
 
     // Calculate totals
     const subtotal = quote.lines.reduce((sum, l) => sum + Number(l.lineTotalMinor || 0), 0);
-    const vat = Math.round(subtotal * vatPct / 100); // Approximate if not stored
-    // Ideally use stored totals if available in metaJson, but recalculating is safer for display if missing
-    let grandTotal = subtotal; // If VAT is included or excluded depends on logic, assuming simple add for now
-    // Actually page.tsx uses derived totals. Let's trust line totals sum for subtotal.
-    // page.tsx: const vatPercent = fromMinor(quote.vatBps) / 100;
-    // computedTotals.tax = subtotal * vatPercent ...
     const taxAmount = subtotal * (vatPct / 100);
-    grandTotal = subtotal + taxAmount;
-
+    const grandTotal = subtotal + taxAmount;
 
     const html = `<!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
+  <meta charset="utf-8" />
   <title>Quote ${quote.number || quote.id}</title>
   <style>
     @page { margin: 15mm 15mm; }
     * { box-sizing: border-box; }
     body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 12px; color: #1f2937; margin: 0; }
-    
+
     /* Utilities */
     .flex { display: flex; }
     .flex-col { flex-direction: column; }
@@ -134,7 +127,7 @@ export class PuppeteerRenderer implements PdfRenderer {
     .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
     .text-lg { font-size: 1.125rem; line-height: 1.75rem; }
     .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
-    
+
     /* Colors */
     .text-white { color: #fff; }
     .text-gray-500 { color: #6b7280; }
@@ -159,38 +152,36 @@ export class PuppeteerRenderer implements PdfRenderer {
     .rounded-xl { border-radius: 0.75rem; }
     
     .w-full { width: 100%; }
-    .w-48 { width: 12rem; }
-    .h-24 { height: 6rem; }
+    .w-64 { width: 16rem; }
+    .h-32 { height: 8rem; }
     .h-0.5 { height: 0.125rem; }
     
     .grid { display: grid; }
     .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     
     .object-contain { object-fit: contain; }
-    
+
     /* Table specific */
     table { width: 100%; border-collapse: collapse; }
     th { font-size: 0.75rem; text-transform: uppercase; color: #6b7280; font-weight: 500; letter-spacing: 0.05em; }
-    
+
     /* Helpers */
     .logo-img { max-width: 100%; max-height: 100%; }
   </style>
 </head>
 <body>
-  <div class="bg-white border border-gray-200 rounded-lg" style="border: none;">
-    
+  <div class="bg-white" style="border: none;">
     <!-- Top Section: Logo & Contact -->
     <div class="flex justify-between items-start mb-6">
       <div class="flex flex-col items-start">
-        <div class="w-48 h-24 mb-2 relative">
+        <div class="w-64 h-32 mb-2 relative">
           ${logoBase64 ? `<img src="${logoBase64}" class="logo-img object-contain" alt="Barmlo Logo" />` : '<div style="background:#eee;width:100%;height:100%;display:flex;align-items:center;justify-content:center;">Logo</div>'}
         </div>
-        <p class="text-orange-500 italic font-medium text-sm">Your happiness is our pride</p>
       </div>
 
       <div class="flex flex-col gap-2 text-sm text-blue-900 text-right items-end">
         <div class="flex items-center gap-2 justify-end">
-          <span class="font-bold italic">+263782939350, +263787555007</span>
+          <span class="font-bold italic">+263 782 939 350, +263 787 555 007</span>
         </div>
         <div class="flex items-center gap-2 justify-end">
           <span class="font-bold italic">132 J Chinamano Ave Harare</span>
@@ -224,10 +215,10 @@ export class PuppeteerRenderer implements PdfRenderer {
       <div class="border border-gray-300">
         <div class="bg-blue-100 px-2 py-1 border-b border-gray-300 font-bold text-gray-700 text-sm" style="background-color: rgba(219, 234, 254, 0.5);">CUSTOMER INFO</div>
         <div class="p-2 text-sm">
-          <p style="margin:0 0 4px"><span class="font-bold text-gray-700">Name:</span> ${quote.customer?.displayName ?? ""}</p>
+          <p style="margin:0 0 4px"><span class="font-bold text-gray-700">Name:</span> ${quote.customer?.displayName || ""}</p>
           <p style="margin:0 0 4px"><span class="font-bold text-gray-700">Address:</span> ${quote.customer?.city || 'Harare'}</p>
-          <p style="margin:0 0 4px"><span class="font-bold text-gray-700">Phone, E-mail:</span> ${quote.customer?.phone || quote.customer?.email || '-'}</p>
-          <p style="margin:0"><span class="font-bold text-gray-700">Ref:</span> ${quote.description || 'PROPOSED HOUSE CONSTRUCTION'}</p>
+          <p style="margin:0 0 4px"><span class="font-bold text-gray-700">Phone/Email:</span> ${quote.customer?.phone || quote.customer?.email || '-'}</p>
+          <p style="margin:0"><span class="font-bold text-gray-700">Ref:</span> ${(quote as any).project?.name || 'PROPOSED HOUSE'}</p>
         </div>
       </div>
 
@@ -255,8 +246,8 @@ export class PuppeteerRenderer implements PdfRenderer {
     <!-- Line Items -->
     <div style="display: flex; flex-direction: column; gap: 2rem;">
       ${groupOrder.map(section => {
-        const group = groups[section];
-        return `
+      const group = groups[section];
+      return `
         <div>
           <div class="rounded-xl bg-blue-50 p-4 border border-blue-100 flex items-center gap-3 mb-4">
              <h3 class="font-bold text-blue-900 uppercase text-sm" style="letter-spacing: 0.05em; margin:0;">${section}</h3>
@@ -304,7 +295,7 @@ export class PuppeteerRenderer implements PdfRenderer {
           </div>
         </div>
         `;
-      }).join("")}
+    }).join("")}
     </div>
 
     <!-- Grand Totals -->
@@ -324,10 +315,10 @@ export class PuppeteerRenderer implements PdfRenderer {
         </div>
       </div>
     </div>
-    
   </div>
 </body>
 </html>`;
+
 
     // Launch Chromium (works locally & on Vercel)
     const isServerless = !!process.env.VERCEL;
@@ -359,7 +350,7 @@ export class PuppeteerRenderer implements PdfRenderer {
 
       const customerName = quote.customer?.displayName || "Customer";
       const sanitizedCustomerName = customerName.replace(/[^a-z0-9\-_]/gi, '_');
-      
+
       let filename = `${sanitizedCustomerName}_Quotation`;
       if (quote.number) {
         filename += `_${quote.number}`;

@@ -263,96 +263,218 @@ function assertSecurity(role?: string | null) {
 } */
 
 
-export async function markItemHandedOut(itemId: string) {
+export async function markItemHandedOut(formData: FormData) {
+  const itemId = String(formData.get("itemId") ?? "");
+  if (!itemId) throw new Error("Missing itemId");
+
   const me = await getCurrentUser();
-  if (!me) throw new Error('Auth required');
-  assertSecurity(me.role); // throws if not security/admin
+  if (!me) throw new Error("Authentication required");
 
-  const res = await prisma.$transaction(async (tx) => {
-    const item = await tx.dispatchItem.findUnique({
-      where: { id: itemId },
-      select: {
-        id: true,
-        qty: true,
-        inventoryItemId: true,
-        purchaseId: true,
-        description: true,
-        unit: true,
-        dispatch: { select: { id: true, status: true, projectId: true } },
-      },
+  // role guard
+  const role = (me as any).role as string | undefined;
+  if (!role || !["SECURITY", "ADMIN"].includes(role)) {
+    throw new Error("Only security or admin may mark items handed out");
+  }
+
+  // ---- 1) Load dispatch item + minimal relations (outside tx) ----
+  const it = await prisma.dispatchItem.findUnique({
+    where: { id: itemId },
+    select: {
+      id: true,
+      qty: true,
+      unit: true,
+      inventoryItemId: true,
+      purchaseId: true,
+      handedOutQty: true,
+      description: true,
+      dispatch: { select: { id: true, status: true, projectId: true } },
+    },
+  });
+  if (!it) throw new Error("Dispatch item not found");
+
+  // status guard
+  const allowedStatuses = ["SUBMITTED", "APPROVED", "IN_TRANSIT"] as const;
+  const dispatchStatus = it.dispatch?.status ?? null;
+  if (!dispatchStatus || !allowedStatuses.includes(dispatchStatus as any)) {
+    throw new Error(
+      `Dispatch status does not allow handing out (status=${dispatchStatus})`
+    );
+  }
+
+  const qtyToHand = Number(it.qty ?? 0);
+  if (!(qtyToHand > 0)) throw new Error("Invalid dispatch quantity to hand out");
+
+  // ---- 2) Resolve/create inventory item (outside tx to keep tx short) ----
+  let inventoryId: string | null = it.inventoryItemId ?? null;
+
+  // by purchaseId
+  if (!inventoryId && it.purchaseId) {
+    const inv = await prisma.inventoryItem.findFirst({
+      where: { purchaseId: it.purchaseId },
+      select: { id: true, quantity: true, qty: true },
     });
-    if (!item) throw new Error('Dispatch item not found');
+    if (inv) inventoryId = inv.id;
+  }
 
-    console.log("Hshew wehwehj jewjewj")
-    // allowed statuses (adjust to your workflow)
-    const allowed = ['SUBMITTED', 'IN_TRANSIT'];
-    if (!item.dispatch || !allowed.includes(item.dispatch.status)) {
-      throw new Error(`Dispatch is not in a state that allows handing out (status=${item.dispatch?.status ?? 'N/A'})`);
+  // by normalized name + unit
+  if (!inventoryId) {
+    const normalizedName = (it.description ?? "").trim();
+    if (normalizedName) {
+      const invByName = await prisma.inventoryItem.findFirst({
+        where: { name: normalizedName, unit: it.unit ?? null },
+        select: { id: true, quantity: true, qty: true },
+      });
+      if (invByName) inventoryId = invByName.id;
     }
+  }
 
-    const qtyToHand = Number(item.qty ?? 0);
-    if (!(qtyToHand > 0)) throw new Error('Invalid dispatch quantity');
-
-    // 1) mark dispatch item as handed out
-    await tx.dispatchItem.update({
-      where: { id: item.id },
-      data: { handedOutAt: new Date(), handedOutById: me.id ?? null },
+  // seed by creating an inventory record (if purchase exists)
+  if (!inventoryId && it.purchaseId) {
+    const purchase = await prisma.purchase.findUnique({
+      where: { id: it.purchaseId },
+      select: { vendor: true, taxInvoiceNo: true, qty: true, purchasedOn: true },
     });
-    console.log("Hshew wehwehj jewjewj")
-
-    // 2) resolve inventory id (try explicit links then fallback to key)
-    let inventoryId: string | null = item.inventoryItemId ?? null;
-
-    if (!inventoryId && item.purchaseId) {
-      const inv = await tx.inventoryItem.findFirst({ where: { purchaseId: item.purchaseId }, select: { id: true } });
-      inventoryId = inv?.id ?? null;
-    }
-    console.log("Hshew wehwehj jewjewj")
-
-    if (!inventoryId) {
-      const key = `${(item.description ?? '').trim()}|${(item.unit ?? '').trim()}`.toLowerCase();
-      const inv = await tx.inventoryItem.findFirst({ where: { key }, select: { id: true } });
-      inventoryId = inv?.id ?? null;
+    if (!purchase) {
+      throw new Error("Linked purchase not found to seed inventory item");
     }
 
-    if (!inventoryId) {
-      throw new Error('Dispatch item is not linked to an inventory record; cannot decrement stock');
-    }
+    const invName =
+      (it.description && it.description.trim()) ||
+      `${purchase.vendor ?? "Vendor"} / ${purchase.taxInvoiceNo ?? "invoice"}`;
+    const unit = it.unit ?? null;
+    const key = `${invName.trim()}|${(unit ?? "").trim()}`.toLowerCase();
+    const seedQty = Number(purchase.qty ?? it.qty ?? qtyToHand) || qtyToHand;
 
-    console.log("Hshew wehwehj jewjewj")
-    console.log(inventoryId)
-    console.log("Hshew wehwehj jewjewj")
-    // 3) atomic decrement
+    try {
+      const created = await prisma.inventoryItem.create({
+        data: {
+          purchaseId: it.purchaseId,
+          name: invName,
+          description: invName,
+          unit,
+          key,
+          qty: seedQty,
+          quantity: seedQty,
+          category: "MATERIAL",
+        },
+        select: { id: true },
+      });
+      inventoryId = created.id;
+    } catch (err: any) {
+      // handle potential unique races
+      if (err?.code === "P2002" || /unique|constraint/i.test(String(err?.message || ""))) {
+        const found = await prisma.inventoryItem.findFirst({
+          where: { OR: [{ purchaseId: it.purchaseId }, { name: invName, unit }, { key }] },
+          select: { id: true },
+        });
+        if (found) {
+          await prisma.inventoryItem.update({
+            where: { id: found.id },
+            data: {
+              qty: { increment: seedQty },
+              quantity: { increment: seedQty },
+              ...(it.purchaseId ? { purchaseId: it.purchaseId } : {}),
+            },
+          });
+          inventoryId = found.id;
+        } else {
+          const fallback = await prisma.inventoryItem.create({
+            data: {
+              purchaseId: it.purchaseId,
+              name: invName,
+              description: invName,
+              unit,
+              key,
+              qty: seedQty,
+              quantity: seedQty,
+              category: "MATERIAL",
+            },
+            select: { id: true },
+          });
+          inventoryId = fallback.id;
+        }
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (!inventoryId) {
+    throw new Error("Dispatch item is not linked to inventory and cannot be handed out");
+  }
+
+  // ---- 3) Short transaction: atomic decrement + update dispatch item ----
+  await prisma.$transaction(async (tx) => {
+    // Atomic stock decrement guarded by gte
     const updated = await tx.inventoryItem.updateMany({
-      where: { id: inventoryId, quantity: { gte: qtyToHand } },
-      data: {
-        quantity: { decrement: qtyToHand },
-        qty: { decrement: qtyToHand },
-      },
+      where: { id: inventoryId!, quantity: { gte: qtyToHand } },
+      data: { quantity: { decrement: qtyToHand }, qty: { decrement: qtyToHand } },
     });
-
     if (updated.count === 0) {
-      throw new Error('Insufficient stock to hand out the requested quantity');
+      throw new Error("Insufficient stock to hand out the requested quantity");
     }
 
-    // Optionally create an audit record if you add an inventoryTransactions model
-    // await tx.inventoryTransaction.create({ ... });
+    // Ensure we don't exceed dispatched quantity
+    const already = Number(it.handedOutQty ?? 0);
+    if (already + qtyToHand > Number(it.qty)) {
+      throw new Error("Handed out quantity exceeds dispatched quantity");
+    }
 
-    console.log({ ok: true, inventoryId, handedQty: qtyToHand, dispatchId: item.dispatch?.id ?? null, projectId: item.dispatch?.projectId ?? null })
-
-    return { ok: true, inventoryId, handedQty: qtyToHand, dispatchId: item.dispatch?.id ?? null, projectId: item.dispatch?.projectId ?? null };
+    // Mark dispatched item as handed out
+    await tx.dispatchItem.update({
+      where: { id: it.id },
+      data: {
+        handedOutAt: new Date(),
+        handedOutById: me.id!,
+        handedOutQty: { increment: qtyToHand },
+      },
+    });
   });
 
-  console.log("Hshew wehwehj jewjewj after transaction")
-  console.log(res)
-  console.log("Hshew wehwehj jewjewj after transaction")
+  // ---- 4) Best-effort audit record (outside tx to avoid session loss) ----
+  try {
+    await prisma.inventoryMove.create({
+      data: {
+        inventoryItemId: inventoryId!,
+        changeById: me.id!,
+        delta: -qtyToHand,
+        reason: "DISPATCH_HANDOUT",
+        metaJson: JSON.stringify({ dispatchItemId: it.id, dispatchId: it.dispatch?.id }),
+      },
+    });
+  } catch {
+    // swallow audit failure; core mutation already succeeded
+  }
 
-  if (res.dispatchId) revalidatePath(`/dispatches/${res.dispatchId}`);
-  if (res.projectId) revalidatePath(`/projects/${res.projectId}`);
-  revalidatePath('/dispatches');
-  revalidatePath('/inventory');
+  // ---- 5) Revalidate affected pages ----
+  if (it.dispatch?.id) revalidatePath(`/dispatches/${it.dispatch.id}`);
+  revalidatePath("/dispatches");
+  revalidatePath("/inventory");
 
-  return res;
+  // ---- 6) Check if ALL items are handed out, then update dispatch status to DISPATCHED ----
+  if (it.dispatch?.id) {
+    const allItems = await prisma.dispatchItem.findMany({
+      where: { dispatchId: it.dispatch.id },
+      select: { qty: true, handedOutQty: true }
+    });
+
+    const userIsDone = allItems.every(i => (i.handedOutQty ?? 0) >= i.qty);
+
+    if (userIsDone && it.dispatch.status !== 'DISPATCHED') {
+      await prisma.dispatch.update({
+        where: { id: it.dispatch.id },
+        data: { status: 'DISPATCHED' }
+      });
+      revalidatePath(`/dispatches/${it.dispatch.id}`);
+    }
+  }
+
+  return {
+    ok: true,
+    inventoryId,
+    handedQty: qtyToHand,
+    dispatchId: it.dispatch?.id ?? null,
+  };
 }
 
 export async function markItemReceived(itemId: string, receiverName: string) {

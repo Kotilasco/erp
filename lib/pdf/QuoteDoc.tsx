@@ -59,9 +59,8 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
           <View style={{ alignItems: 'center' }}>
             {/* eslint-disable-next-line jsx-a11y/alt-text */}
             {logoData ? (
-              <Image src={logoData} style={{ width: 150, height: 60, objectFit: 'contain' }} />
+              <Image src={logoData} style={{ width: 180, height: 75, objectFit: 'contain' }} />
             ) : null}
-            <Text style={{ color: '#f97316', fontStyle: 'italic', fontSize: 10, marginTop: 4, fontWeight: 'medium' }}>Your happiness is our pride</Text>
           </View>
           
           <View style={{ flexDirection: 'column', gap: 4 }}>
