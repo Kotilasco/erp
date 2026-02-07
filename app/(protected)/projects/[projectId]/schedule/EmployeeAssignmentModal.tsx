@@ -185,7 +185,7 @@ export default function EmployeeAssignmentModal({
                                     type="checkbox"
                                     checked={isSelected}
                                     onChange={() => toggleEmployee(emp.id)}
-                                    disabled={isBusy}
+                                    disabled={isBusy && !isSelected}
                                     className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                                   />
                                   <div>
