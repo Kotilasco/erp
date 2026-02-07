@@ -59,6 +59,22 @@ export default async function FundingRequestDetailPage({
   const req = funding.requisition!;
   const proj = req.project!;
 
+  const itemsWithTotals = req.items.map((item) => {
+    const qty = item.qtyRequested ?? item.qty ?? 0;
+    const unitPrice = item.requestedUnitPriceMinor ?? item.estPriceMinor ?? BigInt(0);
+    // Calculate total: qty * unitPrice
+    // Handle floating point math safely by converting properly
+    const totalMinor = BigInt(Math.round(qty * Number(unitPrice)));
+    return { 
+      ...item, 
+      displayQty: qty, 
+      displayUnitPrice: unitPrice, 
+      calculatedTotalMinor: totalMinor 
+    };
+  });
+
+  const grandTotalMinor = itemsWithTotals.reduce((acc, item) => acc + item.calculatedTotalMinor, BigInt(0));
+
   return (
     <div className="space-y-6 p-6 mx-auto max-w-7xl">
       <div className="flex items-center justify-end no-print">
@@ -113,16 +129,16 @@ export default async function FundingRequestDetailPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {req.items.map((item) => (
+              {itemsWithTotals.map((item) => (
                 <tr key={item.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{item.qtyRequested ?? item.qty}</td>
+                  <td className="px-4 py-3 text-right text-gray-700">{item.displayQty}</td>
                   <td className="px-4 py-3 text-left text-gray-500">{item.unit ?? '-'}</td>
                   <td className="px-4 py-3 text-right text-gray-700 font-mono">
-                    <Money minor={item.requestedUnitPriceMinor ?? item.estPriceMinor} />
+                    <Money minor={item.displayUnitPrice} />
                   </td>
                   <td className="px-4 py-3 text-right font-semibold text-gray-900 font-mono">
-                    <Money minor={item.amountMinor} />
+                    <Money minor={item.calculatedTotalMinor} />
                   </td>
                 </tr>
               ))}
@@ -131,7 +147,7 @@ export default async function FundingRequestDetailPage({
               <tr>
                 <td colSpan={4} className="px-4 py-3 text-right text-gray-700">Total Requested:</td>
                 <td className="px-4 py-3 text-right text-lg text-indigo-700 font-bold font-mono">
-                  <Money minor={funding.amountMinor} />
+                  <Money minor={grandTotalMinor} />
                 </td>
               </tr>
             </tfoot>
