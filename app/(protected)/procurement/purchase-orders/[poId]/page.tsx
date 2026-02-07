@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db';
 import { formatDateTime } from '@/lib/format';
 import { getCurrentUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { placeOrder, receiveGoods } from '../actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import SubmitButton from '@/components/SubmitButton';
@@ -429,6 +430,7 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                       
                       await receiveGoods(poId, rawItems, me.id!, details);
                       revalidatePath(`/procurement/purchase-orders/${poId}`);
+                      redirect('/dashboard');
                     }}
                     className="space-y-6"
                   >
@@ -460,51 +462,93 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-gray-200 bg-white">
-                                {po.items.map((item) => (
-                                  <tr key={item.id}>
-                                    <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
-                                      {item.description}
-                                      <div className="mt-1 text-xs text-gray-500">Ordered: {item.qty} {item.unit}</div>
-                                    </td>
-                                    <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
-                                      <input type="text" name={`vendor-${item.id}`} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Vendor Name *" required />
-                                    </td>
-                                    <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
-                                      <input type="text" name={`phone-${item.id}`} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Phone" />
-                                    </td>
-                                    <td className="px-3 py-4 text-sm text-gray-500 align-top">
-                                      <input type="number" step="any" name={`delivered-${item.id}`} className="block w-32 rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="0" />
-                                    </td>
-                                    <td className="px-3 py-4 text-sm text-gray-500 align-top">
-                                      <div className="relative rounded-lg shadow-sm">
-                                        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                                          <span className="text-gray-500 sm:text-base">$</span>
+                                {po.items.map((item) => {
+                                  const purchase = po.purchases.find(p => p.requisitionItemId === item.requisitionItemId);
+                                  const unitPrice = purchase && purchase.qty > 0 ? (Number(purchase.priceMinor) / 100) / purchase.qty : (Number(item.unitPriceMinor) / 100);
+                                  
+                                  return (
+                                    <tr key={item.id}>
+                                      <td className="py-4 pl-4 pr-3 text-sm font-medium text-gray-900 sm:pl-6">
+                                        {item.description}
+                                        <div className="mt-1 text-xs text-gray-500">Ordered: {item.qty} {item.unit}</div>
+                                      </td>
+                                      <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
+                                        <input 
+                                          type="text" 
+                                          name={`vendor-${item.id}`} 
+                                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" 
+                                          placeholder="Vendor Name *" 
+                                          defaultValue={purchase?.vendor || po.vendor || ''}
+                                          required 
+                                        />
+                                      </td>
+                                      <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
+                                        <input 
+                                          type="text" 
+                                          name={`phone-${item.id}`} 
+                                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" 
+                                          placeholder="Phone" 
+                                          defaultValue={purchase?.vendorPhone || ''}
+                                        />
+                                      </td>
+                                      <td className="px-3 py-4 text-sm text-gray-500 align-top">
+                                        <input 
+                                          type="number" 
+                                          step="any" 
+                                          name={`delivered-${item.id}`} 
+                                          className="block w-32 rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" 
+                                          placeholder="0" 
+                                          defaultValue={item.qty}
+                                        />
+                                      </td>
+                                      <td className="px-3 py-4 text-sm text-gray-500 align-top">
+                                        <div className="relative rounded-lg shadow-sm">
+                                          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                                            <span className="text-gray-500 sm:text-base">$</span>
+                                          </div>
+                                          <input 
+                                            type="number" 
+                                            step="0.01" 
+                                            name={`price-${item.id}`} 
+                                            className="block w-full rounded-lg border-gray-300 pl-8 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" 
+                                            placeholder="Price" 
+                                            defaultValue={unitPrice.toFixed(2)}
+                                          />
                                         </div>
-                                        <input type="number" step="0.01" name={`price-${item.id}`} className="block w-full rounded-lg border-gray-300 pl-8 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Price" />
-                                      </div>
-                                    </td>
-                                    <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
-                                      <input type="text" name={`receipt-${item.id}`} className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" placeholder="Receipt # *" required />
-                                    </td>
-                                  </tr>
-                                ))}
+                                      </td>
+                                      <td className="px-3 py-4 text-sm text-gray-500 align-top space-y-3">
+                                        <input 
+                                          type="text" 
+                                          name={`receipt-${item.id}`} 
+                                          className="block w-full rounded-lg border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2.5 px-3" 
+                                          placeholder="Receipt # *" 
+                                          required 
+                                        />
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
                               </tbody>
                             </table>
                           </div>
                         ) : (
                         <div className="space-y-6">
-                        {po.items.map((item) => (
+                        {po.items.map((item) => {
+                             const purchase = po.purchases.find(p => p.requisitionItemId === item.requisitionItemId);
+                             const unitPrice = purchase && purchase.qty > 0 ? (Number(purchase.priceMinor) / 100) / purchase.qty : (Number(item.unitPriceMinor) / 100);
+
+                             return (
                             <div key={item.id} className="grid grid-cols-1 gap-4 sm:grid-cols-6 bg-gray-50 p-4 rounded-lg">
                             <div className="sm:col-span-6 font-medium text-sm text-gray-900">{item.description} (Ordered: {item.qty} {item.unit})</div>
                             
                             <div className="sm:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Qty Delivered</label>
-                                <input type="number" step="any" name={`delivered-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" placeholder="0" />
+                                <input type="number" step="any" name={`delivered-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" placeholder="0" defaultValue={item.qty} />
                             </div>
                             
                             <div className="sm:col-span-2">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Name</label>
-                                <input type="text" name={`vendor-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" required />
+                                <input type="text" name={`vendor-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" defaultValue={purchase?.vendor || po.vendor || ''} required />
                             </div>
 
                             <div className="sm:col-span-1">
@@ -514,15 +558,16 @@ export default async function POPage(props: { params: Promise<{ poId: string }> 
 
                             <div className="sm:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Vendor Phone</label>
-                                <input type="text" name={`phone-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" />
+                                <input type="text" name={`phone-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" defaultValue={purchase?.vendorPhone || ''} />
                             </div>
 
                             <div className="sm:col-span-1">
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Unit Price</label>
-                                <input type="number" step="0.01" name={`price-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" />
+                                <input type="number" step="0.01" name={`price-${item.id}`} className="block w-full rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500 text-base py-2 px-3" defaultValue={unitPrice.toFixed(2)} />
                             </div>
                             </div>
-                        ))}
+                             );
+                        })}
                         </div>
                         )}
                     </div>

@@ -294,10 +294,28 @@ export async function receiveGoods(
       });
     }
 
-    // Touch PO to ensure it moves to top of Dashboard
+    // 3. Update PO status based on delivery
+    let allReceivedTotal = true;
+    let anyReceivedTotal = false;
+
+    for (const poItem of po.items) {
+      const deliveredNow = items.find(i => i.poItemId === poItem.id)?.qtyDelivered ?? 0;
+      const previouslyUsed = receivedByItem.get(poItem.id) ?? 0;
+      const totalDelivered = previouslyUsed + deliveredNow;
+
+      if (totalDelivered < poItem.qty) {
+        allReceivedTotal = false;
+      }
+      if (totalDelivered > 0) {
+        anyReceivedTotal = true;
+      }
+    }
+
+    const nextStatus = allReceivedTotal ? 'RECEIVED' : anyReceivedTotal ? 'PARTIAL' : po.status;
+
     await tx.purchaseOrder.update({
       where: { id: poId },
-      data: { updatedAt: new Date() }
+      data: { status: nextStatus, updatedAt: new Date() }
     });
   }, { timeout: 10000 });
 

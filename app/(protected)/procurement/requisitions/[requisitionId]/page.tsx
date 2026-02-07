@@ -847,7 +847,7 @@ export default async function RequisitionDetailPage({
                        <div className="bg-amber-100/50 p-2">
                           <form action={createPartialPOFromPurchases.bind(null, requisitionId)}>
                             <SubmitButton className="w-full rounded-lg bg-green-600 px-4 py-3 text-sm font-bold text-white shadow-sm hover:bg-green-700 uppercase tracking-wide">
-                              Purchase
+                              Procure
                             </SubmitButton>
                           </form>
                        </div>

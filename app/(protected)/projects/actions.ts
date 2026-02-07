@@ -3104,27 +3104,43 @@ export async function createPartialPOFromPurchases(requisitionId: string) {
     });
 
     // 3. Update Purchase Records to link to PO and mark as PO_CREATED
-    for (const p of pendingPurchases) {
-      await tx.purchase.update({
-        where: { id: p.id },
-        data: {
-          status: 'PO_CREATED',
-          purchaseOrderId: newPO.id,
-        } as any,
-      });
-    }
-
-    // 4. Update Requisition Status to PARTIAL if not fully closed
-    await tx.procurementRequisition.update({
-      where: { id: requisitionId },
-      data: { status: 'PARTIAL' },
+    await tx.purchase.updateMany({
+      where: {
+        id: { in: pendingPurchases.map(p => p.id) }
+      },
+      data: {
+        status: 'PO_CREATED',
+        purchaseOrderId: newPO.id,
+      } as any,
     });
 
-    return newPO;
+    // 4. Update Requisition Status and determine if complete
+    const allItems = await tx.procurementRequisitionItem.findMany({
+      where: { requisitionId },
+      include: { purchases: { select: { qty: true } } },
+    });
+
+    const isFullyPurchased = allItems.every((it) => {
+      const purchasedQty = it.purchases.reduce((sum, p) => sum + p.qty, 0);
+      const targetQty = it.qtyRequested && it.qtyRequested > 0 ? it.qtyRequested : (it.qty ?? 0);
+      return purchasedQty >= targetQty;
+    });
+
+    await tx.procurementRequisition.update({
+      where: { id: requisitionId },
+      data: { status: isFullyPurchased ? 'COMPLETED' : 'PARTIAL' },
+    });
+
+    return { isFullyPurchased };
+  }, {
+    timeout: 20000, // Increase timeout to 20 seconds
   });
 
   revalidatePath(`/procurement/requisitions/${requisitionId}`);
-  redirect(`/procurement/purchase-orders/${po.id}`);
+  if (po.isFullyPurchased) {
+    redirect('/dashboard');
+  }
+  // Otherwise, stay on the page. (No redirect = stay on current path in Next.js Server Actions)
 }
 
 
