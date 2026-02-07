@@ -317,7 +317,7 @@ export default async function DispatchDetail({
                                                             className="inline-flex items-center rounded border border-transparent bg-barmlo-blue px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-barmlo-blue/90"
                                                             loadingText="..."
                                                         >
-                                                            Hand Out
+                                                            Dispatch
                                                         </LoadingButton>
                                                     </form>
                                                 )}
