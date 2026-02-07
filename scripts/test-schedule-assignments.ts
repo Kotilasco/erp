@@ -15,7 +15,7 @@ async function testScheduleAssignments() {
         // 2. Get employees
         const employees = await prisma.employee.findMany({ take: 2 });
         if (employees.length === 0) {
-            console.log('❌ No employees found. Please create employees first.');
+            console.log('❌ No employees found. Please add an employees first.');
             return;
         }
         console.log(`✓ Found ${employees.length} employees`);

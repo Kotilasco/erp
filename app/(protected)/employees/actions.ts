@@ -43,7 +43,7 @@ export async function addEmployee(formData: FormData) {
     revalidatePath('/employees');
     return { ok: true };
   } catch (e: any) {
-    return { ok: false, error: e.message || 'Failed to create employee' };
+    return { ok: false, error: e.message || 'Failed to add an employee' };
   }
 }
 
