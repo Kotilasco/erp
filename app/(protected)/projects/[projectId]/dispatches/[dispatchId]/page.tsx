@@ -243,10 +243,15 @@ export default async function DispatchDetail({
 
           {/* Letterhead */}
           {dispatch.project.quote ? (
-            <QuoteHeader quote={dispatch.project.quote} title="Dispatch Form" />
+            <QuoteHeader 
+              quote={dispatch.project.quote} 
+              title={isDriver && ['DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'ARRIVED'].includes(dispatch.status) ? "Delivery Note" : "Dispatch Form"} 
+            />
           ) : (
             <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dispatch Details</h1>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                {isDriver && ['DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'ARRIVED'].includes(dispatch.status) ? "Delivery Note" : "Dispatch Details"}
+              </h1>
               <p className="mt-2 text-gray-500">Project: {dispatch.project.name}</p>
             </div>
           )}
