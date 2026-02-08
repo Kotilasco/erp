@@ -1,8 +1,12 @@
-'use client';
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { checkEmployeeAvailability } from './actions';
+import { 
+  calculateDuration, 
+  addWorkingTime, 
+  ProductivitySettings, 
+  ScheduleItemMinimal 
+} from '@/lib/schedule-engine';
 
 type Employee = {
   id: string;
@@ -22,6 +26,11 @@ export default function EmployeeAssignmentModal({
   endDate,
   scheduleItemId,
   assignedIds,
+  productivity,
+  itemQuantity,
+  itemUnit,
+  itemTitle,
+  itemDescription,
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -32,10 +41,17 @@ export default function EmployeeAssignmentModal({
   endDate: string | null;
   scheduleItemId?: string | null;
   assignedIds: string[];
+  productivity: ProductivitySettings;
+  itemQuantity: number | null;
+  itemUnit?: string | null;
+  itemTitle: string;
+  itemDescription?: string | null;
 }) {
   const [localSelected, setLocalSelected] = useState<string[]>(selectedIds);
   const [busyEmployees, setBusyEmployees] = useState<string[]>([]);
   const [checking, setChecking] = useState(false);
+  const [projectedEnd, setProjectedEnd] = useState<string | null>(endDate);
+  const [conflicts, setConflicts] = useState<string[]>([]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     Assistants: false,
     Builders: false,
@@ -46,27 +62,45 @@ export default function EmployeeAssignmentModal({
     'Aluminium Fiters': false,
   });
 
-  const checkAvailability = useCallback(async () => {
-    if (!startDate || !endDate) return;
+  const checkAvailability = useCallback(async (currentStart: string, currentEnd: string) => {
     setChecking(true);
     try {
       const allIds = employees.map(e => e.id);
-      const result = await checkEmployeeAvailability(allIds, startDate, endDate, scheduleItemId ?? undefined);
+      const result = await checkEmployeeAvailability(allIds, currentStart, currentEnd, scheduleItemId ?? undefined);
       setBusyEmployees(result.busy);
     } catch (err) {
       console.error('Failed to check availability', err);
     } finally {
       setChecking(false);
     }
-  }, [startDate, endDate, employees, scheduleItemId]);
+  }, [employees, scheduleItemId]);
+
+  // Handle local projections
+  useEffect(() => {
+    if (!startDate) return;
+
+    const duration = calculateDuration({
+        title: itemTitle,
+        description: itemDescription,
+        unit: itemUnit,
+        quantity: itemQuantity,
+        employeeIds: localSelected
+    }, productivity);
+
+    const start = new Date(startDate);
+    const end = addWorkingTime(start, duration);
+    const endStr = end.toISOString().slice(0, 10);
+    setProjectedEnd(endStr);
+
+    checkAvailability(startDate, endStr);
+  }, [localSelected, startDate, itemTitle, itemDescription, itemUnit, itemQuantity, productivity, checkAvailability]);
 
   // Reset local state when modal opens
   useEffect(() => {
     if (isOpen) {
       setLocalSelected(selectedIds);
-      checkAvailability();
     }
-  }, [isOpen, selectedIds, startDate, endDate, checkAvailability]);
+  }, [isOpen, selectedIds]);
 
   const categories = [
     'Assistants',
@@ -124,10 +158,15 @@ export default function EmployeeAssignmentModal({
         </div>
 
         <div className="p-6 space-y-4 flex-1 overflow-hidden flex flex-col">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
             <div className="text-sm text-gray-600">
               {checking ? 'Checking availability...' : 'Select employees by category'}
             </div>
+            {projectedEnd && projectedEnd !== endDate && (
+              <div className="text-xs font-semibold text-orange-600 animate-pulse">
+                ⚠️ Warning: Reducing workers extends task until {projectedEnd}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-y-auto border rounded-md">
             <div className="divide-y divide-gray-100">

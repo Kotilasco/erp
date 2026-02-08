@@ -112,3 +112,41 @@ export async function checkEmployeeAvailability(
         details,
     };
 }
+export async function batchCheckConflicts(
+    items: {
+        id?: string | null;
+        employeeIds: string[];
+        plannedStart: string;
+        plannedEnd: string;
+    }[]
+) {
+    const conflictIds = new Set<string>();
+    const details: Record<string, string> = {};
+
+    for (const item of items) {
+        if (!item.employeeIds.length || !item.plannedStart || !item.plannedEnd) continue;
+
+        const result = await checkEmployeeAvailability(
+            item.employeeIds,
+            item.plannedStart,
+            item.plannedEnd,
+            item.id ?? undefined
+        );
+
+        if (result.busy.length > 0) {
+            const rowId = item.id || `temp-${items.indexOf(item)}`;
+            conflictIds.add(rowId);
+            // Store some details for the first found conflict
+            const firstBusy = result.busy[0];
+            const detail = result.details && result.details[firstBusy];
+            if (detail) {
+                details[rowId] = `${detail.conflictProject} (${new Date(detail.conflictStart).toLocaleDateString()} - ${new Date(detail.conflictEnd).toLocaleDateString()})`;
+            }
+        }
+    }
+
+    return {
+        conflictIds: Array.from(conflictIds),
+        details,
+    };
+}

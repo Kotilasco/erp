@@ -25,7 +25,7 @@ import {
 const quoteInclude = {
   customer: true,
   lines: true,
-} satisfies Prisma.QuoteInclude;
+} as const;
 
 const USER_ROLE_SET = new Set<UserRole>(USER_ROLES as unknown as UserRole[]);
 const QUOTE_STATUS_SET = new Set<QuoteStatus>(QUOTE_STATUSES as unknown as QuoteStatus[]);
@@ -75,13 +75,27 @@ export async function createQuote(input: unknown, currentUserId?: string) {
       throw new Error('Customer is required: please select or create a customer before saving.');
     }
 
-    const actingUser = currentUserId
-      ? await prisma.user.findUnique({ where: { id: currentUserId }, select: { id: true, role: true, office: true } })
-      : await getCurrentUser();
+    let actingUser: { id: string; role: string | undefined; office: string | null | undefined } | null = null;
+
+    if (currentUserId) {
+      actingUser = await prisma.user.findUnique({
+        where: { id: currentUserId },
+        select: { id: true, role: true, office: true }
+      }) as any;
+    } else {
+      const sessionUser = await getCurrentUser();
+      if (sessionUser?.id) {
+        // Verify existence in DB to prevent stale session errors (e.g. after db reset)
+        actingUser = await prisma.user.findUnique({
+          where: { id: sessionUser.id },
+          select: { id: true, role: true, office: true }
+        }) as any;
+      }
+    }
 
     const userId = actingUser?.id ?? (await ensureSystemUserId());
     const userRole = coerceUserRole(actingUser?.role);
-    const userOffice = actingUser ? resolveOfficeForRole(userRole, (actingUser as any).office ?? null) : null;
+    const userOffice = actingUser ? resolveOfficeForRole(userRole, actingUser.office ?? null) : null;
 
     const linesCalced = parsed.lines.map((line) =>
       calcLine({
@@ -115,6 +129,10 @@ export async function createQuote(input: unknown, currentUserId?: string) {
           vatBps: toBps(parsed.vatRate),
           discountPolicy: parsed.discountPolicy ?? null,
           metaJson: JSON.stringify(meta),
+          pgRate: parsed.pgRate ?? 2.0,
+          contingencyRate: parsed.contingencyRate ?? 10.0,
+          assumptions: parsed.assumptions ?? null,
+          exclusions: parsed.exclusions ?? null,
           status: 'SUBMITTED_REVIEW',
           office: userOffice,
           customer: { connect: { id: parsed.customerId } },
@@ -126,6 +144,8 @@ export async function createQuote(input: unknown, currentUserId?: string) {
                 description: line.description,
                 quantity: line.quantity,
                 unit: line.unit ?? null,
+                section: line.section ?? null,
+                itemType: line.itemType ?? null,
                 product: line.productId ? { connect: { id: line.productId } } : undefined,
                 unitPriceMinor: toMinor(Number(line.unitPrice)),
                 lineSubtotalMinor: toMinor(Number(calc.lineSubtotal)),
@@ -142,7 +162,7 @@ export async function createQuote(input: unknown, currentUserId?: string) {
 
       // Keep version creation minimal inside tx
       await createQuoteVersionTx(tx, {
-        quote: q,
+        quote: q as any, // Cast to match payload with included relations
         label: 'Initial save',
         status: 'SUBMITTED_REVIEW',
         byRole: userRole ?? null,

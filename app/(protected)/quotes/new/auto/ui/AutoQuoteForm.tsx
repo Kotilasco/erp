@@ -13,12 +13,27 @@ const DEFAULT_BASE: BaseRow[] = [
   { code: 'TakeOff!G4', label: 'Project Distance (G4)', value: 0 },
 ];
 
+import QuoteNotes from '@/components/QuoteNotes';
+
+// ... (existing imports)
+
 export default function AutoQuoteForm() {
   const [base, setBase] = useState<BaseRow[]>(DEFAULT_BASE);
   const [preview, setPreview] = useState<{ code: string; value: number }[]>([]);
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [pending, start] = useTransition();
   const [quoteId, setQuoteId] = useState<string | null>(null);
+  
+  // Notes State
+  const [assumptions, setAssumptions] = useState<string[]>([
+    "Foundation depth of 700mm",
+    "Concrete grade 19 for footings and surface beds",
+    "Mortar Mix 1:3 for foundation brickwork"
+  ]);
+  const [exclusions, setExclusions] = useState<string[]>([
+    "Formwork",
+    "Scaffolding"
+  ]);
 
   function setVal(i: number, v: number) {
     setBase((arr) => arr.map((r, idx) => (idx === i ? { ...r, value: v } : r)));
@@ -43,6 +58,8 @@ export default function AutoQuoteForm() {
       const res = await createAutoQuote({
         baseInputs: Object.fromEntries(base.map((r) => [r.code, r.value])),
         include: picked,
+        assumptions,
+        exclusions
       });
       setQuoteId(res.quoteId);
     });
@@ -50,6 +67,7 @@ export default function AutoQuoteForm() {
 
   return (
     <div className="space-y-6">
+      {/* ... (Existing Base Inputs Section) ... */}
       <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
         <div className="mb-6 flex items-center gap-3 border-b border-gray-100 pb-4 dark:border-gray-700">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20">
@@ -127,6 +145,12 @@ export default function AutoQuoteForm() {
               </label>
             ))}
           </div>
+          
+          <QuoteNotes 
+             assumptions={assumptions} 
+             exclusions={exclusions} 
+             onChange={(a, e) => { setAssumptions(a); setExclusions(e); }} 
+          />
 
           <div className="mt-8 flex justify-end gap-4">
             <button 

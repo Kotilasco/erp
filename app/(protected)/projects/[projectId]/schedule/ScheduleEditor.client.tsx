@@ -4,16 +4,12 @@ import { cn } from '@/lib/utils';
 import EmployeeAssignmentModal from './EmployeeAssignmentModal';
 import { PlusIcon, CalendarIcon, DocumentTextIcon, CheckCircleIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
-// Helper to infer task type (copied from server action logic)
-function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | null {
-  const u = (unit || '').toLowerCase();
-  const d = (description || '').toLowerCase();
-  if (u.includes('m3') || u.includes('cubic')) return 'cubic';
-  if (u.includes('m2') || u.includes('sqm') || d.includes('plaster')) return 'plaster';
-  if (u.includes('brick') || d.includes('brick')) return 'brick';
-  if (u === 'm' || d.includes('excav')) return 'excavation';
-  return null;
-}
+import { 
+  recalculateRipple, 
+  ScheduleItemMinimal,
+  ProductivitySettings
+} from '@/lib/schedule-engine';
+import { batchCheckConflicts } from './actions';
 
 type Item = {
   id?: string | null;
@@ -27,20 +23,9 @@ type Item = {
   estHours?: number | null;
   note?: string | null;
   employeeIds?: string[];
+  hasConflict?: boolean; // New field for conflict highlight
+  conflictNote?: string | null;
 };
-
-type ProductivitySettings = {
-  builderShare: number;
-  excavationBuilder: number;
-  excavationAssistant: number;
-  brickBuilder: number;
-  brickAssistant: number;
-  plasterBuilder: number;
-  plasterAssistant: number;
-  cubicBuilder: number;
-  cubicAssistant: number;
-};
-
 export default function ScheduleEditor({
   projectId,
   schedule,
@@ -54,7 +39,7 @@ export default function ScheduleEditor({
   employees: Array<{ id: string; givenName: string; surname?: string | null; role: string }>;
   productivity: ProductivitySettings;
 }) {
-  /* ... inside ScheduleEditor ... */
+  /* ... */
   const isDraft = !schedule || schedule.status === 'DRAFT';
 
   const initItems: Item[] = (schedule?.items ?? []).map((i: any) => ({
@@ -69,6 +54,8 @@ export default function ScheduleEditor({
     estHours: i.estHours ?? null,
     note: i.note ?? null,
     employeeIds: Array.isArray(i.assignees) ? i.assignees.map((a: any) => a.id) : [],
+    hasConflict: i.hasConflict ?? false,
+    conflictNote: i.conflictNote ?? null,
   }));
 
   const [items, setItems] = useState<Item[]>(initItems);
@@ -76,6 +63,7 @@ export default function ScheduleEditor({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extracting, setExtracting] = useState(false);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   // Auto-scheduling state
   const [projectStartDate, setProjectStartDate] = useState<string>(
@@ -98,130 +86,48 @@ export default function ScheduleEditor({
 
   // --- Auto-Scheduling Logic ---
 
+  const checkAllConflicts = useCallback(async (currentItems: Item[]) => {
+    setCheckingConflicts(true);
+    try {
+        const payload = currentItems.map(it => ({
+            id: it.id,
+            employeeIds: it.employeeIds ?? [],
+            plannedStart: it.plannedStart!,
+            plannedEnd: it.plannedEnd!,
+        })).filter(it => it.plannedStart && it.plannedEnd);
+
+        const result = await batchCheckConflicts(payload);
+        setItems(prev => prev.map(it => {
+            const rowId = it.id || `temp-${items.indexOf(it)}`;
+            const hasConflict = result.conflictIds.includes(rowId);
+            return {
+                ...it,
+                hasConflict,
+                conflictNote: hasConflict ? result.details[rowId] : null
+            };
+        }));
+    } catch (err) {
+        console.error('Failed to check conflicts', err);
+    } finally {
+        setCheckingConflicts(false);
+    }
+  }, [items]);
+
   const calculateSchedule = useCallback((currentItems: Item[]) => {
     if (!projectStartDate) return currentItems;
+    
+    // items in Item[] format are compatible with ScheduleItemMinimal
+    const result = recalculateRipple(
+        currentItems as ScheduleItemMinimal[],
+        0, // Start from the beginning
+        new Date(projectStartDate),
+        gapMinutes,
+        productivity
+    );
 
-    let currentStart = new Date(projectStartDate);
-    // Set start time to 07:00
-    currentStart.setHours(7, 0, 0, 0);
-
-    // Helper to add working time
-    const addWorkingTime = (startDate: Date, hours: number): Date => {
-      let remainingHours = hours;
-      let date = new Date(startDate);
-
-      while (remainingHours > 0) {
-        // Check if current day is weekend (Sat=6, Sun=0)
-        const day = date.getDay();
-        if (day === 0 || day === 6) {
-          // Move to next Monday 07:00
-          date.setDate(date.getDate() + (day === 6 ? 2 : 1));
-          date.setHours(7, 0, 0, 0);
-          continue;
-        }
-
-        // Current work day ends at 17:00
-        const workEnd = new Date(date);
-        workEnd.setHours(17, 0, 0, 0);
-
-        // If currently before 07:00, move to 07:00
-        if (date.getHours() < 7) {
-          date.setHours(7, 0, 0, 0);
-        }
-        // If currently after 17:00, move to next day 07:00
-        if (date.getHours() >= 17) {
-          date.setDate(date.getDate() + 1);
-          date.setHours(7, 0, 0, 0);
-          continue;
-        }
-
-        const msRemainingToday = workEnd.getTime() - date.getTime();
-        const hoursRemainingToday = msRemainingToday / (1000 * 60 * 60);
-
-        if (hoursRemainingToday >= remainingHours) {
-          date.setTime(date.getTime() + remainingHours * 60 * 60 * 1000);
-          remainingHours = 0;
-        } else {
-          remainingHours -= hoursRemainingToday;
-          date.setDate(date.getDate() + 1);
-          date.setHours(7, 0, 0, 0);
-        }
-      }
-      return date;
-    };
-
-    const addGap = (date: Date, minutes: number): Date => {
-      let newDate = new Date(date.getTime() + minutes * 60000);
-      // If gap pushes past 17:00, move to next day 07:00
-      if (newDate.getHours() >= 17 || (newDate.getHours() === 16 && newDate.getMinutes() > 59)) { // simplified check
-         // Actually, let's just check if it's past 17:00
-         const endOfDay = new Date(newDate);
-         endOfDay.setHours(17, 0, 0, 0);
-         if (newDate > endOfDay) {
-             newDate.setDate(newDate.getDate() + 1);
-             newDate.setHours(7, 0, 0, 0);
-         }
-      }
-      // Handle weekends after gap
-      const day = newDate.getDay();
-      if (day === 0 || day === 6) {
-         newDate.setDate(newDate.getDate() + (day === 6 ? 2 : 1));
-         newDate.setHours(7, 0, 0, 0);
-      }
-      // Handle before 7am
-      if (newDate.getHours() < 7) {
-          newDate.setHours(7, 0, 0, 0);
-      }
-
-      return newDate;
-    };
-
-    return currentItems.map((item) => {
-      const type = inferTaskType(item.unit, item.description);
-      const qty = Number(item.quantity ?? 0);
-      const numEmployees = item.employeeIds?.length || 0;
-      
-      let estHours = 8; // Default fallback
-
-      if (type && qty > 0 && numEmployees > 0) {
-        const builders = Math.max(1, Math.round(numEmployees * productivity.builderShare));
-        const assistants = Math.max(0, numEmployees - builders);
-
-        const rates = (() => {
-          switch (type) {
-            case 'excavation': return { b: productivity.excavationBuilder, a: productivity.excavationAssistant };
-            case 'brick': return { b: productivity.brickBuilder, a: productivity.brickAssistant };
-            case 'plaster': return { b: productivity.plasterBuilder, a: productivity.plasterAssistant };
-            case 'cubic': return { b: productivity.cubicBuilder, a: productivity.cubicAssistant };
-            default: return { b: 0, a: 0 };
-          }
-        })();
-
-        const daily = builders * rates.b + assistants * rates.a;
-        if (daily > 0) {
-          const days = qty / daily;
-          estHours = days * 10; // 10-hour workday (07:00 - 17:00)
-        }
-      } else if (item.estHours) {
-          // Keep existing estimate if manually set or calculated previously
-          estHours = item.estHours;
-      }
-
-      const start = new Date(currentStart);
-      const end = addWorkingTime(start, estHours);
-
-      // Update currentStart for next task
-      currentStart = addGap(end, gapMinutes);
-
-      return {
-        ...item,
-        plannedStart: start.toISOString().slice(0, 10),
-        plannedEnd: end.toISOString().slice(0, 10),
-        estHours: Number(estHours.toFixed(2)),
-        employees: numEmployees, // Sync employee count
-      };
-    });
+    return result as Item[];
   }, [projectStartDate, gapMinutes, productivity]);
+
 
   // Recalculate when dependencies change
   useEffect(() => {
@@ -340,75 +246,69 @@ export default function ScheduleEditor({
 
   return (
     <div className="space-y-6">
-      {/* Top Controls - Only show if items exist */}
-      {items.length > 0 && (
-      <div className="flex flex-wrap items-end gap-6 bg-white p-4 rounded-lg border shadow-sm">
-        <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Project Start Date</label>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-lg shadow-sm border mb-6">
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col">
+            <label className="text-xs font-medium text-gray-500 mb-1">Project Start Date</label>
             <input
-                type="date"
-                value={projectStartDate}
-                onChange={(e) => setProjectStartDate(e.target.value)}
-                className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              type="date"
+              value={projectStartDate}
+              onChange={(e) => setProjectStartDate(e.target.value)}
+              className="h-9 rounded-md border border-gray-300 px-3 text-sm focus:ring-emerald-500 focus:border-emerald-500"
             />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-xs font-medium text-gray-500 mb-1">Gap (Minutes)</label>
+            <input
+              type="number"
+              value={gapMinutes}
+              onChange={(e) => setGapMinutes(Number(e.target.value))}
+              className="h-9 w-24 rounded-md border border-gray-300 px-3 text-sm focus:ring-emerald-500 focus:border-emerald-500"
+            />
+          </div>
         </div>
-        <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">Gap Between Tasks</label>
-            <div className="flex items-center gap-2">
-                <input
-                    type="number"
-                    min="0"
-                    value={gapMinutes}
-                    onChange={(e) => setGapMinutes(Number(e.target.value))}
-                    className="flex h-8 w-20 rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                />
-                <span className="text-xs text-gray-500">minutes</span>
-            </div>
-        </div>
-        <div className="flex-1"></div>
-        <div className="flex items-center gap-3">
-             {/* <button
-                onClick={addRow}
-                className="inline-flex items-center justify-center gap-2 rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-500 text-white shadow hover:bg-green-600 h-8 px-3 py-1"
-            >
-                <PlusIcon className="h-3 w-3" />
-                Add Row
-            </button> */}
-             {/* {items.length === 0 && (
-                <button
-                    onClick={handleExtract}
-                    disabled={extracting}
-                    className="inline-flex items-center justify-center rounded-md text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1"
-                >
-                    {extracting ? 'Extracting...' : 'Extract from Quote'}
-                </button>
-            )} */}
-        </div>
-      </div>
-      )}
 
-      {items.length === 0 && (
-        <div className="flex justify-center items-center min-h-[60vh] p-4">
+          <button
+            onClick={() => checkAllConflicts(items)}
+            disabled={checkingConflicts}
+            className={cn(
+                "inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium shadow-sm transition-colors",
+                "bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200",
+                checkingConflicts && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            <CalendarIcon className="h-4 w-4" />
+            {checkingConflicts ? 'Checking Conflicts...' : 'Check Availability'}
+          </button>
+          
+          <button
+            onClick={() => setItems([...items, { title: '', quantity: 0, employeeIds: [] }])}
+            className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
+          >
+            <PlusIcon className="h-4 w-4 text-gray-500" />
+            Add Task
+          </button>
+       </div>
+
+      {/* Table */}
+      {items.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg border">
+          <DocumentTextIcon className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks yet</h3>
+          <p className="mt-1 text-sm text-gray-500">Get started by extracting tasks from a quote or adding them manually.</p>
+          <div className="mt-6 flex items-center justify-center gap-3">
             <button
-                onClick={handleExtract}
-                disabled={extracting}
-                className="flex flex-col items-center justify-center gap-6 rounded-2xl bg-green-500 p-12 text-white shadow-2xl transition-all hover:bg-green-600 hover:shadow-green-500/50 hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 w-full max-w-4xl h-[50vh] border-none"
+              onClick={handleExtract}
+              disabled={extracting}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white shadow hover:bg-green-700 h-9 px-4 py-2"
             >
-                <div className="rounded-full bg-white/20 p-8 backdrop-blur-sm ring-8 ring-white/10">
-                    <DocumentTextIcon className="h-24 w-24 text-white" />
-                </div>
-                <div className="text-center space-y-2">
-                    <span className="block text-4xl font-extrabold tracking-tight">Extract from Quote</span>
-                    <span className="block text-lg font-medium text-white/90">
-                        {extracting ? 'Extracting items...' : 'Click to populate schedule items'}
-                    </span>
-                </div>
+              {extracting ? 'Extracting...' : 'Extract from Quote'}
             </button>
+          </div>
         </div>
-      )}
-
-      {items.length > 0 && (
-      <div className="rounded-md border bg-white">
+      ) : (
+        <div className="overflow-x-auto bg-white rounded-lg border shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead className="bg-muted/50 border-b">
@@ -429,14 +329,30 @@ export default function ScheduleEditor({
             </thead>
             <tbody className="divide-y">
               {items.map((it, i) => (
-                <tr key={it.id ?? i} className="hover:bg-muted/50 transition-colors">
+                <tr key={it.id ?? i} className={cn("transition-colors", it.hasConflict ? "bg-red-50 hover:bg-red-100" : "hover:bg-muted/50")}>
                   <td className="px-2 py-1">
-                    <input
-                      value={it.title}
-                      onChange={(e) => updateField(i, 'title', e.target.value)}
-                      className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                      placeholder="Task name"
-                    />
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={it.title}
+                        onChange={(e) => updateField(i, 'title', e.target.value)}
+                        className={cn(
+                          "flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                          it.hasConflict && "border-rose-300 bg-rose-50"
+                        )}
+                        placeholder="Task name"
+                      />
+                      {it.hasConflict && (
+                        <div className="group relative">
+                          <span className="flex-shrink-0 cursor-help inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-600/20 shadow-sm animate-pulse">
+                            CONFLICT
+                          </span>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg z-50">
+                            {it.conflictNote || 'Resource busy on another project.'}
+                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </td>
                   <td className="px-2 py-1">
                     <input
@@ -522,55 +438,57 @@ export default function ScheduleEditor({
             </tbody>
           </table>
         </div>
-      </div>
-      )}
 
-      {items.length > 0 && (
-      <div className="flex items-center justify-between pt-4 border-t">
-        <div className="flex-1 max-w-sm">
-          <input
-            value={note ?? ''}
-            onChange={(e) => setNote(e.target.value)}
-            placeholder="Schedule note (optional)"
-            className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          />
-        </div>
-        
-        <div className="flex gap-2">
+        {/* Bottom Controls */}
+        <div className="border-t bg-gray-50 p-4 space-y-4">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">Schedule Note</label>
+            <input
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Schedule note (optional)"
+              className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            />
+          </div>
+          
+          <div className="flex gap-2">
             <button
-            onClick={() => handleSave(false)}
-            disabled={loading}
-            className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+              onClick={() => handleSave(false)}
+              disabled={loading}
+              className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
             >
-            <DocumentTextIcon className="h-4 w-4" />
-            {loading ? 'Saving...' : 'Save Draft'}
+              <DocumentTextIcon className="h-4 w-4" />
+              {loading ? 'Saving...' : 'Save Draft'}
             </button>
             
             {(schedule?.status === 'DRAFT' || !schedule) && (
-                <button
+              <button
                 onClick={() => handleSave(true)}
                 disabled={loading}
                 className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-green-600 text-white shadow hover:bg-green-700 h-9 px-4 py-2"
-                >
-                <CalendarIcon className="h-4 w-4" />
-                {loading ? 'Processing...' : 'Create Schedule'}
-                </button>
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+                {loading ? 'Activating...' : 'Create Schedule'}
+              </button>
             )}
 
             {schedule?.status === 'ACTIVE' && (
-                  <button
-                  onClick={() => handleSave(true)} // Keep active
-                  disabled={loading}
-                  className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-barmlo-blue text-white shadow hover:bg-barmlo-blue/90 h-9 px-4 py-2"
-                  >
-                  <CheckCircleIcon className="h-4 w-4" />
-                  {loading ? 'Saving...' : 'Save Changes'}
-                  </button>
-             )}
-         </div>
-       </div>
-       )}
-       {error && <div className="text-sm font-medium text-destructive">{error}</div>}
+              <button
+                onClick={() => handleSave(true)}
+                disabled={loading}
+                className="inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-barmlo-blue text-white shadow hover:bg-barmlo-blue/90 h-9 px-4 py-2"
+              >
+                <CheckCircleIcon className="h-4 w-4" />
+                {loading ? 'Saving...' : 'Save Changes'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      )}
+
+      {error && <div className="text-sm font-medium text-destructive">{error}</div>}
 
       {/* Employee Assignment Modal */}
       {modalOpen && activeRowIndex !== null && (
@@ -581,11 +499,11 @@ export default function ScheduleEditor({
                 setActiveRowIndex(null);
             }}
             employees={employees}
-            selectedIds={items[activeRowIndex].employeeIds ?? []}
-            onSave={(ids) => updateField(activeRowIndex, 'employeeIds', ids)}
-            startDate={items[activeRowIndex].plannedStart ?? null}
-            endDate={items[activeRowIndex].plannedEnd ?? null}
-            scheduleItemId={items[activeRowIndex].id}
+            selectedIds={items[activeRowIndex!]?.employeeIds ?? []}
+            onSave={(ids) => updateField(activeRowIndex!, 'employeeIds', ids)}
+            startDate={items[activeRowIndex!]?.plannedStart ?? null}
+            endDate={items[activeRowIndex!]?.plannedEnd ?? null}
+            scheduleItemId={items[activeRowIndex!]?.id ?? null}
             assignedIds={Array.from(
               new Set(
                 items
@@ -593,6 +511,11 @@ export default function ScheduleEditor({
                   .flatMap((it) => it.employeeIds ?? [])
               )
             )}
+            productivity={productivity}
+            itemQuantity={items[activeRowIndex!]?.quantity ?? 0}
+            itemUnit={items[activeRowIndex!]?.unit ?? null}
+            itemTitle={items[activeRowIndex!]?.title ?? ''}
+            itemDescription={items[activeRowIndex!]?.description ?? null}
         />
       )}
     </div>

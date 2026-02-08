@@ -186,66 +186,26 @@ function inferTaskType(unit?: string | null, description?: string | null): 'exca
   return null;
 }
 
+import {
+  inferTaskType as engineInferTaskType,
+  recalculateRipple,
+  ScheduleItemMinimal,
+  ProductivitySettings as EngineProductivitySettings
+} from '@/lib/schedule-engine';
+
 export async function computeEstimatesForItems(
-  items: {
-    id?: string | null;
-    title: string;
-    description?: string | null;
-    unit?: string | null;
-    quantity?: number | null;
-    plannedStart?: string | null;
-    plannedEnd?: string | null;
-    employees?: number | null;
-    estHours?: number | null;
-    note?: string | null;
-  }[],
-  settings: ProductivitySettings,
+  items: ScheduleItemMinimal[],
+  settings: EngineProductivitySettings,
 ): Promise<any[]> {
-  return items.map((item) => {
-    const type = inferTaskType(item.unit, item.description);
-    const qty = Number(item.quantity ?? 0);
-    const employeesFromIds = Array.isArray((item as any).employeeIds)
-      ? (item as any).employeeIds.filter((id: any) => typeof id === 'string' && id.trim().length > 0).length
-      : 0;
-    const employees = Number(item.employees ?? employeesFromIds ?? 0);
-    if (!type || !(qty > 0) || !(employees > 0)) return item;
+  if (!items.length) return [];
 
-    const builders = Math.max(1, Math.round(employees * settings.builderShare));
-    const assistants = Math.max(0, employees - builders);
+  // Use the ripple engine starting from the first item
+  // If we don't have a start date for the first item, we use today's working hour
+  const projectStart = items[0].plannedStart
+    ? new Date(items[0].plannedStart)
+    : new Date();
 
-    const rates = (() => {
-      switch (type) {
-        case 'excavation':
-          return { b: settings.excavationBuilder, a: settings.excavationAssistant };
-        case 'brick':
-          return { b: settings.brickBuilder, a: settings.brickAssistant };
-        case 'plaster':
-          return { b: settings.plasterBuilder, a: settings.plasterAssistant };
-        case 'cubic':
-          return { b: settings.cubicBuilder, a: settings.cubicAssistant };
-        default:
-          return { b: 0, a: 0 };
-      }
-    })();
-
-    const daily = builders * rates.b + assistants * rates.a;
-    if (!(daily > 0)) return item;
-
-    const days = qty / daily;
-    const estHours = days * 8; // 8-hour workday assumption
-
-    let plannedEnd = item.plannedEnd ?? null;
-    if (item.plannedStart) {
-      const start = new Date(item.plannedStart);
-      if (!isNaN(start.getTime())) {
-        const end = new Date(start);
-        end.setDate(end.getDate() + Math.max(0, Math.ceil(days) - 1));
-        plannedEnd = end.toISOString().slice(0, 10);
-      }
-    }
-
-    return { ...item, estHours, plannedEnd };
-  });
+  return recalculateRipple(items, 0, projectStart, 30, settings); // Assuming 30m gap default for server side too
 }
 
 // --- Task reports and status ---
@@ -253,8 +213,16 @@ export async function createScheduleTaskReport(itemId: string, input: { activity
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
 
-  // ensure task exists
-  const item = await prisma.scheduleItem.findUnique({ where: { id: itemId }, select: { schedule: { select: { projectId: true } } } });
+  const item = await prisma.scheduleItem.findUnique({
+    where: { id: itemId },
+    include: {
+      schedule: {
+        include: {
+          items: { orderBy: { createdAt: 'asc' }, include: { assignees: true } }
+        }
+      }
+    }
+  });
   if (!item) throw new Error('Schedule item not found');
 
   await prisma.scheduleTaskReport.create({
@@ -269,7 +237,45 @@ export async function createScheduleTaskReport(itemId: string, input: { activity
     },
   });
 
+  // Calculate if we need a ripple push
+  // If today is past plannedEnd and not done, or if manually reporting remaining qty that exceeds original
+  const now = new Date();
+  const plannedEnd = item.plannedEnd ? new Date(item.plannedEnd) : null;
+  const isOverdue = plannedEnd && now > plannedEnd && item.status !== 'DONE';
+
+  if (isOverdue) {
+    const settings = await getProductivitySettings(item.schedule.projectId);
+    const scheduleItems = item.schedule.items.map(it => ({
+      ...it,
+      employeeIds: it.assignees.map(a => a.id)
+    }));
+    const currentIndex = scheduleItems.findIndex(it => it.id === itemId);
+
+    // Recalculate ripple starting from the current task (adjusting its end)
+    // or from the next task if current is somehow finish-able.
+    // For now, let's just shift everything forward from "now" (next working hour)
+    const updated = recalculateRipple(
+      scheduleItems as ScheduleItemMinimal[],
+      currentIndex,
+      now, // Start from now
+      30,
+      settings
+    );
+
+    await prisma.$transaction(
+      updated.map(u => prisma.scheduleItem.update({
+        where: { id: u.id! },
+        data: {
+          plannedStart: u.plannedStart ? new Date(u.plannedStart) : null,
+          plannedEnd: u.plannedEnd ? new Date(u.plannedEnd) : null,
+          estHours: u.estHours
+        }
+      }))
+    );
+  }
+
   revalidatePath(`/projects/${item.schedule.projectId}/reports`);
+  revalidatePath(`/projects/${item.schedule.projectId}/schedule`);
 }
 
 export async function updateScheduleItemStatus(itemId: string, status: 'ACTIVE' | 'ON_HOLD' | 'DONE') {
@@ -280,10 +286,53 @@ export async function updateScheduleItemStatus(itemId: string, status: 'ACTIVE' 
     throw new Error('Only Ops/Admin/MD/General Manager');
   }
 
-  const item = await prisma.scheduleItem.findUnique({ where: { id: itemId }, select: { schedule: { select: { projectId: true } } } });
+  const item = await prisma.scheduleItem.findUnique({
+    where: { id: itemId },
+    include: {
+      schedule: {
+        include: {
+          items: { orderBy: { createdAt: 'asc' }, include: { assignees: true } }
+        }
+      }
+    }
+  });
   if (!item) throw new Error('Schedule item not found');
 
   await prisma.scheduleItem.update({ where: { id: itemId }, data: { status } });
+
+  // ripple effect if DONE early or late
+  if (status === 'DONE' || status === 'ACTIVE') {
+    const settings = await getProductivitySettings(item.schedule.projectId);
+    const scheduleItems = item.schedule.items.map(it => ({
+      ...it,
+      employeeIds: it.assignees.map(a => a.id)
+    }));
+    const currentIndex = scheduleItems.findIndex(it => it.id === itemId);
+
+    // If DONE, the next item can start as early as "now" (or next working hour)
+    const nextStartIndex = status === 'DONE' ? currentIndex + 1 : currentIndex;
+    if (nextStartIndex < scheduleItems.length) {
+      const updated = recalculateRipple(
+        scheduleItems as ScheduleItemMinimal[],
+        nextStartIndex,
+        new Date(), // Start from now
+        30,
+        settings
+      );
+
+      await prisma.$transaction(
+        updated.slice(nextStartIndex - currentIndex).map(u => prisma.scheduleItem.update({
+          where: { id: u.id! },
+          data: {
+            plannedStart: u.plannedStart ? new Date(u.plannedStart) : null,
+            plannedEnd: u.plannedEnd ? new Date(u.plannedEnd) : null,
+            estHours: u.estHours
+          }
+        }))
+      );
+    }
+  }
+
   revalidatePath(`/projects/${item.schedule.projectId}/reports`);
   revalidatePath(`/projects/${item.schedule.projectId}/schedule`);
 }

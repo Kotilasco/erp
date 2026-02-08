@@ -8,6 +8,8 @@ export const QuoteLineInputSchema = z.object({
   quantity: z.number().positive(),
   unitPrice: MoneySchema,
   unit: z.string().optional(),
+  section: z.string().optional(),
+  itemType: z.string().optional(),
   discount: z
     .object({
       type: z.enum(['percent', 'fixed']),
@@ -24,6 +26,10 @@ export const CreateQuoteSchema = z.object({
   vatRate: z.number().min(0).max(1).default(parseFloat(process.env.VAT_DEFAULT || '0.15')),
   discountPolicy: z.string().nullable().optional(),
   lines: z.array(QuoteLineInputSchema).min(1),
+  pgRate: z.number().min(0).default(2.0).optional(),
+  contingencyRate: z.number().min(0).default(10.0).optional(),
+  assumptions: z.string().optional(),
+  exclusions: z.string().optional(),
 });
 
 export type CreateQuoteInput = z.infer<typeof CreateQuoteSchema>;

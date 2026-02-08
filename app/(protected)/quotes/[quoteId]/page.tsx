@@ -64,6 +64,9 @@ import QSEditButton from '@/components/QSEditButton';
 import QuoteHeader from '@/components/QuoteHeader';
 import SalesEndorsementForm from './SalesEndorsementForm';
 import NegotiationsList from './NegotiationsList';
+import QuoteSummary from '@/components/QuoteSummary';
+import QuoteNotes from '@/components/QuoteNotes';
+import { updateQuoteNotes } from './actions';
 
 const USER_ROLE_SET = new Set<UserRole>(USER_ROLES as unknown as UserRole[]);
 
@@ -187,6 +190,8 @@ type LineRow = {
   cycle: number;
 
   isCurrentCycle: boolean;
+  
+  itemType: string | null;
 };
 
 type LineGroup = {
@@ -199,27 +204,20 @@ type LineGroup = {
 
 type QuoteTotals = {
   subtotal: number;
-
   discount: number;
-
   net: number;
-
   tax: number;
-
   grandTotal: number;
 };
 
 type VersionDiff = {
   totalDelta: number | null;
-
   lineChanges: Array<{ lineId: string; description: string; previous?: number; current: number }>;
-
   removed: Array<{ lineId: string; description: string; amount: number }>;
 };
 
 function parseJson<T>(value: string | null): T | null {
   if (!value) return null;
-
   try {
     return JSON.parse(value) as T;
   } catch {
@@ -231,9 +229,7 @@ function deriveRateFromTotal(total: number, quantity: number, vatRate: number): 
   if (!(quantity > 0) || !Number.isFinite(total)) {
     return 0;
   }
-
   const netTotal = total / (1 + vatRate);
-
   return Number((netTotal / quantity).toFixed(2));
 }
 
@@ -247,14 +243,12 @@ function deriveRateFromMinor(
 
 function formatDecisionLabel(status: string): string {
   return status
-
     .toLowerCase()
-
     .replace(/_/g, ' ')
-
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+// ... (start of buildLineGroups)
 function buildLineGroups(
   lines: QuoteLine[],
 
@@ -269,8 +263,9 @@ function buildLineGroups(
   lines.forEach((line) => {
     const meta = parseJson<Record<string, unknown>>(line.metaJson);
 
-    const section =
-      typeof meta?.section === 'string' && meta.section.trim().length > 0 ? meta.section : 'Items';
+    // Prioritize DB section, then meta section, then fallback
+    const section = line.section || 
+      (typeof meta?.section === 'string' && meta.section.trim().length > 0 ? meta.section : 'Items');
 
     const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
 
@@ -298,6 +293,8 @@ function buildLineGroups(
       id: line.id,
 
       description: line.description,
+      
+      itemType: line.itemType,
 
       unit: line.unit ?? unitFromMeta,
 
@@ -1396,7 +1393,31 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
         />
       )}
 
-      <div className="flex justify-center gap-2 mb-8 no-print">
+
+      {/* Quote Summary (Barmlo Template) */}
+      <QuoteSummary 
+          lines={quote.lines.map(l => ({ 
+            lineTotalMinor: l.lineTotalMinor, 
+            itemType: l.itemType, 
+            section: l.section 
+          }))}
+          pgRate={quote.pgRate}
+          contingencyRate={quote.contingencyRate}
+          currency={quote.currency ?? undefined}
+      />
+      
+      {/* Quote Notes (Barmlo Template) */}
+      <QuoteNotes 
+          assumptions={parseJson<string[]>(quote.assumptions) ?? []} 
+          exclusions={parseJson<string[]>(quote.exclusions) ?? []} 
+          readOnly={!allowEdit}
+          onSave={allowEdit ? async (a, e) => {
+            'use server';
+            await updateQuoteNotes(quote.id, a, e);
+          } : undefined}
+      />
+
+      <div className="flex justify-center gap-2 mb-8 mt-8 no-print">
         <DownloadPdfButton 
           quoteId={quote.id} 
           generatePdf={generateQuotePdf}
@@ -1434,10 +1455,6 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
               </SubmitButton>
             </form>
           ))}
-
-          {canFinalize && (
-            <DownloadPdfButton />
-          )}
         </div>
       </div>
         </>
