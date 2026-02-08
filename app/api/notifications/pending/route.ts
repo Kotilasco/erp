@@ -111,8 +111,46 @@ export async function GET() {
       }));
     }
 
+    // Fetch project conflict notifications
+    let conflictItems: any[] = [];
+    if (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN' || (role as string) === 'PROJECT_COORDINATOR') {
+      const conflictedSchedules = await prisma.schedule.findMany({
+        where: {
+          hasConflict: true,
+          project: role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: currentUserId } : undefined
+        },
+        include: {
+          project: {
+            include: {
+              quote: {
+                include: {
+                  customer: { select: { displayName: true } }
+                }
+              }
+            }
+          }
+        },
+        take: 5
+      });
+
+      conflictItems = conflictedSchedules.map(s => {
+        const project = (s as any).project;
+        return {
+          id: `conflict-${s.id}`,
+          kind: 'SYSTEM',
+          number: project?.projectNumber,
+          status: 'ALERT',
+          client: project?.quote?.customer?.displayName ?? null,
+          link: `/projects/${s.projectId}/schedule`,
+          title: `Conflict in ${project?.projectNumber || 'Project'}`,
+          subtitle: `Schedule for ${project?.name || 'Unknown'} has resource overlaps.`,
+          timestamp: s.updatedAt
+        };
+      });
+    }
+
     // Merge and sort
-    const items = [...systemItems, ...quoteItems].sort((a, b) =>
+    const items = [...systemItems, ...quoteItems, ...conflictItems].sort((a, b) =>
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
 

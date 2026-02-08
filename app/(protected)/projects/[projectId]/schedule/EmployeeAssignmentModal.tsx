@@ -26,6 +26,7 @@ export default function EmployeeAssignmentModal({
   endDate,
   scheduleItemId,
   assignedIds,
+  projectId,
   productivity,
   itemQuantity,
   itemUnit,
@@ -41,6 +42,7 @@ export default function EmployeeAssignmentModal({
   endDate: string | null;
   scheduleItemId?: string | null;
   assignedIds: string[];
+  projectId: string;
   productivity: ProductivitySettings;
   itemQuantity: number | null;
   itemUnit?: string | null;
@@ -49,7 +51,8 @@ export default function EmployeeAssignmentModal({
 }) {
   const [localSelected, setLocalSelected] = useState<string[]>(selectedIds);
   const [busyEmployees, setBusyEmployees] = useState<string[]>([]);
-  const [checking, setChecking] = useState(false);
+  const [busyDetails, setBusyDetails] = useState<Record<string, any>>({});
+  const [checking, setChecking] = useState(false); // Initialize to false
   const [projectedEnd, setProjectedEnd] = useState<string | null>(endDate);
   const [conflicts, setConflicts] = useState<string[]>([]);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -66,39 +69,54 @@ export default function EmployeeAssignmentModal({
     setChecking(true);
     try {
       const allIds = employees.map(e => e.id);
-      const result = await checkEmployeeAvailability(allIds, currentStart, currentEnd, scheduleItemId ?? undefined);
+      const result = await checkEmployeeAvailability(allIds, currentStart, currentEnd, projectId, scheduleItemId ?? undefined);
       setBusyEmployees(result.busy);
+      setBusyDetails(result.details || {});
     } catch (err) {
       console.error('Failed to check availability', err);
     } finally {
       setChecking(false);
     }
-  }, [employees, scheduleItemId]);
+  }, [employees, scheduleItemId, projectId]);
 
-  // Handle local projections
+  // Handle local projections and availability check
   useEffect(() => {
-    if (!startDate) return;
+    if (!isOpen || !startDate) {
+      setChecking(false);
+      return;
+    }
 
-    const duration = calculateDuration({
-        title: itemTitle,
-        description: itemDescription,
-        unit: itemUnit,
-        quantity: itemQuantity,
-        employeeIds: localSelected
-    }, productivity);
+    const timer = setTimeout(() => {
+      setChecking(true);
+      const duration = calculateDuration({
+          title: itemTitle,
+          description: itemDescription,
+          unit: itemUnit,
+          quantity: itemQuantity,
+          employeeIds: localSelected
+      }, productivity);
 
-    const start = new Date(startDate);
-    const end = addWorkingTime(start, duration);
-    const endStr = end.toISOString().slice(0, 10);
-    setProjectedEnd(endStr);
+      const start = new Date(startDate);
+      const end = addWorkingTime(start, duration);
+      const endStr = end.toISOString().slice(0, 10);
+      setProjectedEnd(endStr);
 
-    checkAvailability(startDate, endStr);
-  }, [localSelected, startDate, itemTitle, itemDescription, itemUnit, itemQuantity, productivity, checkAvailability]);
+      checkAvailability(startDate, endStr);
+    }, 100); // Slightly longer timeout to allow state to settle
+
+    return () => clearTimeout(timer);
+  }, [isOpen, localSelected, startDate, itemTitle, itemDescription, itemUnit, itemQuantity, productivity, checkAvailability]);
 
   // Reset local state when modal opens
   useEffect(() => {
     if (isOpen) {
-      setLocalSelected(selectedIds);
+      // Only update if the contents are actually different to avoid loops
+      const sortedSelected = [...selectedIds].sort().join(',');
+      const sortedLocal = [...localSelected].sort().join(',');
+      if (sortedSelected !== sortedLocal) {
+        console.log('[MODAL] Syncing localSelected from props');
+        setLocalSelected(selectedIds);
+      }
     }
   }, [isOpen, selectedIds]);
 
@@ -125,20 +143,36 @@ export default function EmployeeAssignmentModal({
     return 'Assistants';
   };
 
-  const grouped: Record<string, Employee[]> = {};
-  categories.forEach((c) => (grouped[c] = []));
-  employees.forEach((e) => {
-    // Only show ACTIVE employees (unless they are already selected, we might want to keep showing them to unselect?)
-    if (e.status && e.status !== 'ACTIVE' && !selectedIds.includes(e.id)) return;
+  const grouped = React.useMemo(() => {
+    const g: Record<string, Employee[]> = {};
+    categories.forEach((c) => (g[c] = []));
+    employees.forEach((e) => {
+      if (e.status && e.status !== 'ACTIVE' && !selectedIds.includes(e.id)) return;
+      const c = roleToCategory(e.role);
+      (g[c] ||= []).push(e);
+    });
     
-    const c = roleToCategory(e.role);
-    (grouped[c] ||= []).push(e);
-  });
+    // Sort within categories
+    Object.keys(g).forEach(cat => {
+      g[cat].sort((a, b) => {
+        const aAssigned = assignedIds.includes(a.id);
+        const bAssigned = assignedIds.includes(b.id);
+        if (aAssigned && !bAssigned) return -1;
+        if (!aAssigned && bAssigned) return 1;
+        return a.givenName.localeCompare(b.givenName);
+      });
+    });
+    return g;
+  }, [employees, selectedIds, assignedIds]);
 
   const toggleEmployee = (id: string) => {
+    if (checking) return; // Prevent changes while checking
+
     if (localSelected.includes(id)) {
       setLocalSelected(localSelected.filter((sid) => sid !== id));
     } else {
+      // Must not be able to select if busy
+      if (busyEmployees.includes(id)) return;
       setLocalSelected([...localSelected, id]);
     }
   };
@@ -220,13 +254,16 @@ export default function EmployeeAssignmentModal({
                                 )}
                               >
                                 <div className="flex items-center gap-3">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => toggleEmployee(emp.id)}
-                                    disabled={isBusy && !isSelected}
-                                    className="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
-                                  />
+                                    <input
+                                      type="checkbox"
+                                      checked={isSelected}
+                                      onChange={() => toggleEmployee(emp.id)}
+                                      disabled={checking || (isBusy && !isSelected)}
+                                      className={cn(
+                                        "h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-emerald-500",
+                                        (isBusy && !isSelected) && "opacity-50 cursor-not-allowed"
+                                      )}
+                                    />
                                   <div>
                                     <p className={cn("text-sm font-medium", isBusy ? "text-gray-500" : "text-gray-900")}>
                                       {emp.givenName} {emp.surname}
@@ -234,18 +271,32 @@ export default function EmployeeAssignmentModal({
                                     <p className="text-xs text-gray-500">{emp.role}</p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                  {alreadyAssigned && (
-                                    <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                                      Assigned
-                                    </span>
-                                  )}
-                                  {isBusy && (
-                                    <span className="inline-flex items-center rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium text-gray-600">
-                                      Busy
-                                    </span>
-                                  )}
-                                </div>
+                                  <div className="flex items-center gap-2">
+                                    {alreadyAssigned && (
+                                      <span className="inline-flex items-center rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                                        Assigned
+                                      </span>
+                                    )}
+                                    {isBusy && (
+                                      <div className="flex flex-col items-end">
+                                        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 uppercase tracking-tight">
+                                          Conflict
+                                        </span>
+                                        {busyDetails[emp.id] && (
+                                          <div className="flex flex-col items-end mt-0.5">
+                                            <span className="text-[9px] font-medium text-red-600 whitespace-nowrap leading-none">
+                                              {busyDetails[emp.id].conflictProject}
+                                            </span>
+                                            <span className="text-[8px] text-gray-500 whitespace-nowrap leading-tight">
+                                              {busyDetails[emp.id].conflictStart && new Date(busyDetails[emp.id].conflictStart).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                              {' - '}
+                                              {busyDetails[emp.id].conflictEnd && new Date(busyDetails[emp.id].conflictEnd).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
                               </label>
                             );
                           })

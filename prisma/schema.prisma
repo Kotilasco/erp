@@ -594,6 +594,7 @@ model Schedule {
   updatedAt   DateTime       @updatedAt
   note        String?
   status      String         @default("DRAFT")
+  hasConflict Boolean        @default(false)
   createdBy   User?          @relation("ScheduleCreatedBy", fields: [createdById], references: [id])
   project     Project        @relation(fields: [projectId], references: [id])
   items       ScheduleItem[]
@@ -661,6 +662,8 @@ model ScheduleItem {
 
   @@index([scheduleId])
   @@index([quoteLineId])
+  @@index([plannedStart])
+  @@index([plannedEnd])
 }
 
 model Employee {

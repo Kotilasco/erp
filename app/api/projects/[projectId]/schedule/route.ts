@@ -82,6 +82,8 @@ export async function POST(
     );
   }
 
+  const hasProjectConflicts = enrichedItems.some(it => it.hasConflict);
+
   let schedule = await prisma.schedule.findFirst({ where: { projectId } });
 
   if (!schedule) {
@@ -90,7 +92,8 @@ export async function POST(
         projectId,
         createdById: user.id,
         note: note ?? null,
-        status: status || 'DRAFT'
+        status: status || 'DRAFT',
+        hasConflict: hasProjectConflicts
       },
     });
   } else {
@@ -98,7 +101,8 @@ export async function POST(
       where: { id: schedule.id },
       data: {
         note: note ?? null,
-        status: status ?? undefined // Only update if provided
+        status: status ?? undefined, // Only update if provided
+        hasConflict: hasProjectConflicts
       },
     });
   }

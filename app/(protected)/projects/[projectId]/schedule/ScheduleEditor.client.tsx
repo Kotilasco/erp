@@ -86,19 +86,42 @@ export default function ScheduleEditor({
 
   // --- Auto-Scheduling Logic ---
 
+  const calculateSchedule = useCallback((currentItems: Item[], startDate = projectStartDate) => {
+    if (!startDate) return currentItems;
+    
+    // items in Item[] format are compatible with ScheduleItemMinimal
+    const result = recalculateRipple(
+        currentItems as ScheduleItemMinimal[],
+        0, // Start from the beginning
+        new Date(startDate),
+        gapMinutes,
+        productivity
+    );
+
+    // Explicitly reset conflict status when re-scheduling
+    return (result as Item[]).map(it => ({
+        ...it,
+        hasConflict: false,
+        conflictNote: null
+    }));
+  }, [projectStartDate, gapMinutes, productivity]);
+
   const checkAllConflicts = useCallback(async (currentItems: Item[]) => {
+    // Ensure we are checking against the current calculated dates
+    const scheduled = calculateSchedule(currentItems);
+    
     setCheckingConflicts(true);
     try {
-        const payload = currentItems.map(it => ({
+        const payload = scheduled.map(it => ({
             id: it.id,
             employeeIds: it.employeeIds ?? [],
             plannedStart: it.plannedStart!,
             plannedEnd: it.plannedEnd!,
         })).filter(it => it.plannedStart && it.plannedEnd);
 
-        const result = await batchCheckConflicts(payload);
-        setItems(prev => prev.map(it => {
-            const rowId = it.id || `temp-${items.indexOf(it)}`;
+        const result = await batchCheckConflicts(projectId, payload);
+        setItems(prev => prev.map((it, idx) => {
+            const rowId = it.id || `temp-${idx}`;
             const hasConflict = result.conflictIds.includes(rowId);
             return {
                 ...it,
@@ -111,38 +134,50 @@ export default function ScheduleEditor({
     } finally {
         setCheckingConflicts(false);
     }
-  }, [items]);
+  }, [calculateSchedule]);
 
-  const calculateSchedule = useCallback((currentItems: Item[]) => {
-    if (!projectStartDate) return currentItems;
-    
-    // items in Item[] format are compatible with ScheduleItemMinimal
-    const result = recalculateRipple(
-        currentItems as ScheduleItemMinimal[],
-        0, // Start from the beginning
-        new Date(projectStartDate),
-        gapMinutes,
-        productivity
-    );
-
-    return result as Item[];
-  }, [projectStartDate, gapMinutes, productivity]);
-
-
-  // Recalculate when dependencies change
+  // Perform initial ripple if any items are missing dates (e.g. newly extracted)
   useEffect(() => {
-    const newItems = calculateSchedule(items);
-    // Only update if values actually changed to avoid infinite loop
-    // JSON.stringify comparison is a bit expensive but safe for this size
-    if (JSON.stringify(newItems) !== JSON.stringify(items)) {
-        setItems(newItems);
+    const missingDates = items.some(it => !it.plannedStart);
+    if (missingDates && items.length > 0) {
+      console.log('[SCHEDULE_EDITOR] Initializing missing dates via ripple');
+      const updated = calculateSchedule(items);
+      setItems(updated);
     }
-  }, [projectStartDate, gapMinutes, calculateSchedule, items]); // include items for correctness
-  // Wait, if I change 'items' (e.g. add row), I want schedule to update.
-  // But updating schedule updates 'items'.
-  // I need to separate 'input data' from 'calculated data' or be very careful.
-  // Better: Trigger calculation only when specific fields change.
-  
+  }, [calculateSchedule, items.length]); // We check items.length to know if items were loaded
+
+  // Automated health check on load
+  useEffect(() => {
+    const hasDates = items.length > 0 && items.every(it => it.plannedStart);
+    if (hasDates && !checkingConflicts) {
+      console.log('[SCHEDULE_EDITOR] Running automated health check');
+      checkAllConflicts(items);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length]); // Run once when items are loaded/ready
+
+  // When project start or gap changes, trigger a full re-ripple
+  const handleProjectStartChange = (newDate: string) => {
+      setProjectStartDate(newDate);
+      const updated = calculateSchedule(items, newDate);
+      setItems(updated);
+  };
+
+  const handleGapChange = (newGap: number) => {
+      setGapMinutes(newGap);
+      // calculateSchedule uses gapMinutes from state, so we pass current items
+      // but calculateSchedule itself has a dependency on gapMinutes.
+      // To be safe, we use the functional update or force dependencies.
+      const updated = recalculateRipple(
+          items as ScheduleItemMinimal[],
+          0,
+          new Date(projectStartDate),
+          newGap,
+          productivity
+      );
+      setItems(updated as Item[]);
+  };
+
   const updateItemsWithSchedule = (newItems: Item[]) => {
       const scheduled = calculateSchedule(newItems);
       setItems(scheduled);
@@ -187,6 +222,11 @@ export default function ScheduleEditor({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || 'Save failed');
+
+      // Re-run conflict check after save to ensure db state is updated in background
+      // though the API already does it, triggering client-side check keeps UI in sync
+      await checkAllConflicts(items);
+
       if (activate && (schedule?.status === 'DRAFT' || !schedule)) {
         window.location.href = '/dashboard';
       } else {
@@ -254,7 +294,7 @@ export default function ScheduleEditor({
             <input
               type="date"
               value={projectStartDate}
-              onChange={(e) => setProjectStartDate(e.target.value)}
+              onChange={(e) => handleProjectStartChange(e.target.value)}
               className="h-9 rounded-md border border-gray-300 px-3 text-sm focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
@@ -263,7 +303,7 @@ export default function ScheduleEditor({
             <input
               type="number"
               value={gapMinutes}
-              onChange={(e) => setGapMinutes(Number(e.target.value))}
+              onChange={(e) => handleGapChange(Number(e.target.value))}
               className="h-9 w-24 rounded-md border border-gray-300 px-3 text-sm focus:ring-emerald-500 focus:border-emerald-500"
             />
           </div>
@@ -316,13 +356,11 @@ export default function ScheduleEditor({
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground w-1/3 min-w-[200px]">Task</th>
                 <th className="px-2 py-2 text-center font-medium text-muted-foreground w-24">Unit</th>
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground w-28">Qty</th>
-                {!isDraft && (
                   <>
                     <th className="px-2 py-2 text-left font-medium text-muted-foreground w-32">Start (auto)</th>
                     <th className="px-2 py-2 text-left font-medium text-muted-foreground w-32">End (auto)</th>
                     <th className="px-2 py-2 text-left font-medium text-muted-foreground w-20">Hours</th>
                   </>
-                )}
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground w-24 whitespace-nowrap">Workers</th>
                 <th className="px-2 py-2 text-left font-medium text-muted-foreground w-auto min-w-[200px]">Note</th>
               </tr>
@@ -372,7 +410,6 @@ export default function ScheduleEditor({
                     />
                   </td>
 
-                  {!isDraft && (
                     <>
                       <td className="px-2 py-1">
                         <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 whitespace-nowrap overflow-hidden">
@@ -390,7 +427,6 @@ export default function ScheduleEditor({
                         </div>
                       </td>
                     </>
-                  )}
                   <td className="px-2 py-1">
                     <button
                         type="button"
@@ -504,6 +540,7 @@ export default function ScheduleEditor({
             startDate={items[activeRowIndex!]?.plannedStart ?? null}
             endDate={items[activeRowIndex!]?.plannedEnd ?? null}
             scheduleItemId={items[activeRowIndex!]?.id ?? null}
+            projectId={projectId}
             assignedIds={Array.from(
               new Set(
                 items
