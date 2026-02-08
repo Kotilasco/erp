@@ -779,49 +779,6 @@ export default function TakeOffSheet() {
         />
       </div>
 
-      {/* Construction Cost Summary */}
-      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
-        <div className="mb-4 border-b border-gray-100 pb-2 dark:border-gray-700">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Construction Cost Summary</h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Live preview of estimated totals (excl. tax)</p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg dark:bg-gray-900/50">
-            <span className="text-gray-600 dark:text-gray-400">Total Labour</span>
-            <span className="font-semibold text-gray-900 dark:text-white">
-              <Money minor={summary.totalLabour} currency={currency} />
-            </span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg dark:bg-gray-900/50">
-            <span className="text-gray-600 dark:text-gray-400">Total Materials</span>
-            <span className="font-semibold text-gray-900 dark:text-white">
-              <Money minor={summary.totalMaterials} currency={currency} />
-            </span>
-          </div>
-          <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg dark:bg-blue-900/20 col-span-1 md:col-span-2">
-            <span className="text-blue-700 font-bold dark:text-blue-400">Total Measured Works</span>
-            <span className="font-bold text-blue-900 dark:text-white">
-              <Money minor={summary.baseTotal} currency={currency} />
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 text-xs text-gray-500 flex flex-col gap-1">
-          <div className="flex justify-between">
-            <span>Add: P & G (2%)</span>
-            <span><Money minor={summary.pg} currency={currency} /></span>
-          </div>
-          <div className="flex justify-between">
-            <span>Add: Contingency (10%)</span>
-            <span><Money minor={summary.contingency} currency={currency} /></span>
-          </div>
-          <div className="flex justify-between text-sm font-bold text-gray-900 dark:text-white mt-1">
-            <span>Total Fix & Supply (estimated)</span>
-            <span><Money minor={summary.grandTotal} currency={currency} /></span>
-          </div>
-        </div>
-      </div>
 
       <div className="sticky bottom-6 z-10 mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-lg backdrop-blur-sm dark:bg-gray-800/90 dark:border-gray-700">
         <div className="flex items-center justify-between gap-4">

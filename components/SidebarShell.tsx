@@ -20,7 +20,7 @@ const PAGE_DEFS: PageDef[] = [
   { label: 'Price Reviews', href: '/procurement/approvals?view=reviews', icon: 'price-check', roles: ['SENIOR_PROCUREMENT'] },
   { label: 'Quantity Top-Ups', href: '/procurement/approvals?view=topups', icon: 'top-up', roles: ['SENIOR_PROCUREMENT'] },
   // Quotes
-  { label: 'My Quotes', href: '/quotes', icon: 'list', roles: ['QS', 'SENIOR_QS', 'ADMIN'] },
+  { label: 'My Quotes', href: '/quotes?view=my', icon: 'list', roles: ['QS', 'SENIOR_QS', 'ADMIN'] },
   { label: 'New Quotations', href: '/quotes?status=SENT_TO_SALES', icon: 'list', roles: ['SALES'] },
   { label: 'Pending Endorsements', href: '/quotes?status=REVIEWED', icon: 'clipboard', roles: ['SALES'] },
   { label: 'New Quote', href: '/quotes/new', icon: 'plus-document', roles: ['QS', 'SENIOR_QS', 'ADMIN'] },
@@ -37,7 +37,9 @@ const PAGE_DEFS: PageDef[] = [
     icon: 'chart-pie',
     roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'PROCUREMENT', 'SENIOR_PROCUREMENT'],
   },
-  // Senior PM
+  // Senior PM / Coordination / POO
+  { label: 'View Schedules', href: '/projects/schedules', icon: 'calendar', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR'] },
+  { label: 'View Daily Tasks', href: '/projects/daily-tasks', icon: 'clipboard', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR'] },
   { label: 'Active Projects', href: '/projects?tab=active', icon: 'folder', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Unassigned Projects', href: '/projects?tab=assignment', icon: 'users', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Planning Pending', href: '/projects?tab=planning', icon: 'clipboard', roles: ['PROJECT_COORDINATOR'] },

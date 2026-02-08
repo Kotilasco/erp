@@ -348,130 +348,131 @@ export default function ScheduleEditor({
           </div>
         </div>
       ) : (
-        <div className="overflow-x-auto bg-white rounded-lg border shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs border-collapse">
-            <thead className="bg-muted/50 border-b">
-              <tr>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-1/3 min-w-[200px]">Task</th>
-                <th className="px-2 py-2 text-center font-medium text-muted-foreground w-24">Unit</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-28">Qty</th>
-                  <>
-                    <th className="px-2 py-2 text-left font-medium text-muted-foreground w-32">Start (auto)</th>
-                    <th className="px-2 py-2 text-left font-medium text-muted-foreground w-32">End (auto)</th>
-                    <th className="px-2 py-2 text-left font-medium text-muted-foreground w-20">Hours</th>
-                  </>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-24 whitespace-nowrap">Workers</th>
-                <th className="px-2 py-2 text-left font-medium text-muted-foreground w-auto min-w-[200px]">Note</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {items.map((it, i) => (
-                <tr key={it.id ?? i} className={cn("transition-colors", it.hasConflict ? "bg-red-50 hover:bg-red-100" : "hover:bg-muted/50")}>
-                  <td className="px-2 py-1">
-                    <div className="flex items-center gap-2">
-                      <input
-                        value={it.title}
-                        onChange={(e) => updateField(i, 'title', e.target.value)}
-                        className={cn(
-                          "flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                          it.hasConflict && "border-rose-300 bg-rose-50"
-                        )}
-                        placeholder="Task name"
-                      />
-                      {it.hasConflict && (
-                        <div className="group relative">
-                          <span className="flex-shrink-0 cursor-help inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[10px] font-bold text-rose-700 ring-1 ring-inset ring-rose-600/20 shadow-sm animate-pulse">
-                            CONFLICT
-                          </span>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded shadow-lg z-50">
-                            {it.conflictNote || 'Resource busy on another project.'}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-2 py-1">
-                    <input
-                        value={it.unit || ''}
-                        onChange={(e) => updateField(i, 'unit', e.target.value)}
-                        onBlur={(e) => updateField(i, 'unit', normalizeUnit(e.target.value))}
-                        placeholder="Unit (e.g., r, m², m³)"
-                        className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs text-center font-medium tracking-wide shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                  </td>
-                  <td className="px-2 py-1">
-                    <input
-                        type="number"
-                        value={it.quantity ?? ''}
-                        onChange={(e) => updateField(i, 'quantity', Number(e.target.value))}
-                        className="flex h-8 w-full rounded-md border border-input bg-transparent px-2 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                    />
-                  </td>
-
-                    <>
-                      <td className="px-2 py-1">
-                        <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 whitespace-nowrap overflow-hidden">
-                          {it.plannedStart || '-'}
-                        </div>
-                      </td>
-                      <td className="px-2 py-1">
-                        <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500 whitespace-nowrap overflow-hidden">
-                          {it.plannedEnd || '-'}
-                        </div>
-                      </td>
-                      <td className="px-2 py-1">
-                         <div className="flex h-8 w-full items-center rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-500">
-                          {it.estHours || '-'}
-                        </div>
-                      </td>
-                    </>
-                  <td className="px-2 py-1">
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setActiveRowIndex(i);
-                            setModalOpen(true);
-                        }}
-                        className={cn(
-                          "inline-flex items-center justify-center rounded px-2 py-0.5 text-xs font-medium text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2",
-                          (it.employeeIds && it.employeeIds.length > 0)
-                            ? "bg-barmlo-green hover:bg-barmlo-green/90 focus:ring-barmlo-green"
-                            : "bg-green-600 hover:bg-green-700 focus:ring-green-500"
-                        )}
-                    >
-                        Select Employees
-                    </button>
-                  </td>
-                  <td className="px-2 py-1">
-                    <div className="relative">
-                      <PencilSquareIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      <input
-                        value={it.note ?? ''}
-                        onChange={(e) => updateField(i, 'note', e.target.value)}
-                        placeholder="Add note..."
-                        className={cn(
-                          "flex h-8 w-full rounded-md bg-white px-7 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1",
-                          (it.note && it.note.trim().length > 0)
-                            ? "border-emerald-300 focus-visible:ring-emerald-400 bg-emerald-50"
-                            : "border border-input focus-visible:ring-ring"
-                        )}
-                      />
-                      {it.note && it.note.trim().length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => updateField(i, 'note', '')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-600 hover:text-emerald-700"
-                        >
-                          <XMarkIcon className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
+        <div className="bg-white rounded-lg border shadow-sm flex flex-col min-h-0">
+          <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-gray-200">
+            <table className="w-full text-xs border-collapse min-w-[1200px]">
+              <thead className="bg-gray-50/50 border-b sticky top-0 z-20">
+                <tr>
+                  <th className="px-3 py-2.5 text-left font-bold text-gray-700 w-[25%] min-w-[300px]">Task</th>
+                  <th className="px-3 py-2.5 text-center font-bold text-gray-700 w-24 min-w-[96px]">Unit</th>
+                  <th className="px-3 py-2.5 text-center font-bold text-gray-700 w-24 min-w-[96px]">Qty</th>
+                  <th className="px-3 py-2.5 text-left font-bold text-gray-700 w-32 min-w-[128px]">Start (auto)</th>
+                  <th className="px-3 py-2.5 text-left font-bold text-gray-700 w-32 min-w-[128px]">End (auto)</th>
+                  <th className="px-3 py-2.5 text-center font-bold text-gray-700 w-20 min-w-[80px]">Hours</th>
+                  <th className="px-3 py-2.5 text-center font-bold text-gray-700 w-40 min-w-[160px]">Workers</th>
+                  <th className="px-3 py-2.5 text-left font-bold text-gray-700 min-w-[300px]">Note</th>
                 </tr>
-              ))}
-            </tbody>
+              </thead>
+              <tbody className="divide-y">
+                {items.map((it, i) => (
+                  <tr key={it.id ?? i} className={cn("group transition-colors", it.hasConflict ? "bg-red-50/50 hover:bg-red-100/70" : "hover:bg-gray-50/50")}>
+                    <td className="px-3 py-2">
+                      <div className="flex flex-col gap-1.5">
+                        <input
+                          value={it.title}
+                          onChange={(e) => updateField(i, 'title', e.target.value)}
+                          className={cn(
+                            "flex h-8.5 w-full rounded-md border border-gray-200 bg-white shadow-none px-2.5 py-1.5 text-xs transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500",
+                            it.hasConflict && "border-red-300 bg-red-50/30"
+                          )}
+                          placeholder="Task name"
+                        />
+                        {it.hasConflict && (
+                          <div className="flex items-center gap-2">
+                             <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm animate-pulse uppercase tracking-wider">
+                               Conflict
+                             </span>
+                             <span className="text-[10px] text-red-500 font-medium truncate">
+                               {it.conflictNote}
+                             </span>
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                          value={it.unit || ''}
+                          onChange={(e) => updateField(i, 'unit', e.target.value)}
+                          onBlur={(e) => updateField(i, 'unit', normalizeUnit(e.target.value))}
+                          placeholder="Unit"
+                          className="flex h-8.5 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-center font-bold tracking-tight shadow-none transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                          type="number"
+                          value={it.quantity ?? ''}
+                          onChange={(e) => updateField(i, 'quantity', Number(e.target.value))}
+                          className="flex h-8.5 w-full rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs text-center font-bold shadow-none transition-shadow focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex h-8.5 w-full items-center justify-center rounded-md border border-gray-100 bg-gray-50/50 px-2 text-xs text-gray-600 font-medium">
+                        {it.plannedStart || '-'}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="flex h-8.5 w-full items-center justify-center rounded-md border border-gray-100 bg-gray-50/50 px-2 text-xs text-gray-600 font-medium">
+                        {it.plannedEnd || '-'}
+                      </div>
+                    </td>
+                    <td className="px-3 py-2 text-center">
+                       <span className="text-xs font-semibold text-gray-900">
+                        {it.estHours || '-'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                          type="button"
+                          onClick={() => {
+                              setActiveRowIndex(i);
+                              setModalOpen(true);
+                          }}
+                          className={cn(
+                            "inline-flex w-full items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition-all shadow-sm",
+                            (it.employeeIds && it.employeeIds.length > 0)
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                              : "bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200"
+                          )}
+                      >
+                          {it.employeeIds && it.employeeIds.length > 0 ? (
+                            <>
+                              <CheckCircleIcon className="h-3.5 w-3.5" />
+                              {it.employeeIds.length} Assigned
+                            </>
+                          ) : (
+                            'Select Team'
+                          )}
+                      </button>
+                    </td>
+                    <td className="px-3 py-2">
+                      <div className="relative group/note">
+                        <PencilSquareIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-hover/note:text-gray-500" />
+                        <input
+                          value={it.note ?? ''}
+                          onChange={(e) => updateField(i, 'note', e.target.value)}
+                          placeholder="Add task note..."
+                          className={cn(
+                            "flex h-8.5 w-full rounded-md border bg-white pl-9 pr-8 text-xs transition-all",
+                            (it.note && it.note.trim().length > 0)
+                              ? "border-emerald-200 bg-emerald-50/30 ring-1 ring-emerald-100/50"
+                              : "border-gray-200 hover:border-gray-300 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+                          )}
+                        />
+                        {it.note && it.note.trim().length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => updateField(i, 'note', '')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-red-500 transition-colors"
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
           </table>
         </div>
 
