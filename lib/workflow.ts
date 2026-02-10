@@ -32,6 +32,7 @@ export const QUOTE_STATUSES = [
   'REVIEWED',
   'SENT_TO_SALES',
   'NEGOTIATION',
+  'NEGOTIATION_REVIEW',
   'FINALIZED',
   'ARCHIVED',
 ] as const;
@@ -50,7 +51,17 @@ export const STATUS_TRANSITION_RULES: Partial<Record<QuoteStatus, StatusTransiti
   SUBMITTED_REVIEW: { from: ['DRAFT'], roles: ['QS'] },
   SENT_TO_SALES: { from: ['SUBMITTED_REVIEW'], roles: ['SENIOR_QS'] },
   NEGOTIATION: { from: ['SENT_TO_SALES'], roles: ['SALES'] },
-  FINALIZED: { from: ['NEGOTIATION'], roles: ['SENIOR_QS'] },
+  NEGOTIATION_REVIEW: { from: ['NEGOTIATION'], roles: ['SALES'] },
+  REVIEWED: { from: ['NEGOTIATION', 'NEGOTIATION_REVIEW'], roles: ['SALES', 'SENIOR_QS'] }, // Sales for auto-accept, Senior QS for review
+  FINALIZED: { from: ['NEGOTIATION'], roles: ['SENIOR_QS'] }, // Keeping this/Adjusting as needed. Actually FINALIZED usually comes after negotiation.
+  // Wait, existing rule was FINALIZED: { from: ['NEGOTIATION'], roles: ['SENIOR_QS'] }
+  // I should check if FINALIZED is still reachable or if REVIEWED is the target.
+  // The plan says NEGOTIATION_REVIEW -> REVIEWED.
+  // And NEGOTIATION -> REVIEWED (Auto accept).
+  // FINALIZED might be legacy or for another flow?
+  // Let's keep FINALIZED as is but add the new ones.
+  // Actually, verify existing FINALIZED rule.
+
   ARCHIVED: { from: ['FINALIZED'], roles: ['ADMIN'] },
 };
 

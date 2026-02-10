@@ -34,7 +34,7 @@ export interface PdfResult { buffer: Buffer; filename: string }
 export interface PdfRenderer { render(req: PdfRequest): Promise<PdfResult> }
 
 export async function getPdfRenderer(): Promise<PdfRenderer> {
-  const engine = (process.env.PDF_ENGINE as PdfEngine) || 'react-pdf';
+  const engine = (process.env.PDF_ENGINE as PdfEngine) || 'puppeteer';
 
   if (engine === 'puppeteer') {
     const mod = await import('./puppeteer');

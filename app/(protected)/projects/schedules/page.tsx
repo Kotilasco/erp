@@ -7,6 +7,7 @@ import { WorkflowStatusBadge } from '@/components/ui/workflow-status-badge';
 import TablePagination from '@/components/ui/table-pagination';
 import ProjectTableToolbar from '../components/ProjectTableToolbar';
 import { CalendarIcon, HashtagIcon, UserIcon, MapPinIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { cn } from '@/lib/utils';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -29,6 +30,7 @@ export default async function ProjectSchedulesPage({
   const skip = (currentPage - 1) * pageSize;
 
   const where: any = {
+    schedules: { isNot: null }, // Only show projects that HAVE a schedule initialized
     ...(query
       ? {
           OR: [
@@ -53,6 +55,16 @@ export default async function ProjectSchedulesPage({
           },
         },
         assignedTo: { select: { name: true } },
+        schedules: {
+          select: {
+            hasConflict: true,
+            _count: {
+              select: {
+                items: { where: { hasConflict: true } }
+              }
+            }
+          }
+        }
       },
       take: pageSize,
       skip,
@@ -83,46 +95,63 @@ export default async function ProjectSchedulesPage({
               <tr>
                 <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Ref</th>
                 <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Customer</th>
-                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Location</th>
+                <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-500">Conflicts</th>
                 <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white dark:bg-gray-800 dark:divide-gray-700">
-              {projects.map((project) => (
-                <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm">
-                  <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
-                     <div className="flex items-center gap-2">
-                        <HashtagIcon className="h-4 w-4 text-gray-400" />
-                        {project.projectNumber || project.id.slice(0, 8)}
-                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
-                     <div className="flex items-center gap-2">
-                        <UserIcon className="h-4 w-4 text-gray-400" />
-                        {project.quote?.customer?.displayName || 'Unknown'}
-                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-500 dark:text-gray-400">
-                     <div className="flex items-center gap-2">
-                        <MapPinIcon className="h-4 w-4 text-gray-400" />
-                        {project.quote?.customer?.city || '-'}
-                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <WorkflowStatusBadge status={project.status} />
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <Link
-                      href={`/projects/${project.id}/schedule`}
-                      className="inline-flex items-center gap-1 rounded-lg border border-barmlo-blue bg-barmlo-blue px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-barmlo-blue/90 shadow-sm"
-                    >
-                      <EyeIcon className="h-3.5 w-3.5" />
-                      View Schedule
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {projects.map((project) => {
+                const conflictCount = project.schedules?._count?.items || 0;
+                const hasConflicts = conflictCount > 0;
+
+                return (
+                  <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors text-sm">
+                    <td className="px-6 py-4 font-semibold text-gray-900 dark:text-gray-100">
+                       <div className="flex items-center gap-2">
+                          <HashtagIcon className="h-4 w-4 text-gray-400" />
+                          {project.projectNumber || project.id.slice(0, 8)}
+                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600 dark:text-gray-300">
+                       <div className="flex items-center gap-2">
+                          <UserIcon className="h-4 w-4 text-gray-400" />
+                          {project.quote?.customer?.displayName || 'Unknown'}
+                       </div>
+                    </td>
+                    <td className="px-6 py-4">
+                       {hasConflicts ? (
+                          <div className="inline-flex items-center gap-1.5 rounded-full bg-red-100 px-2.5 py-1 text-xs font-bold text-red-700 ring-1 ring-inset ring-red-600/20 shadow-sm animate-pulse">
+                             <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                             </span>
+                             {conflictCount} Conflicts
+                          </div>
+                       ) : (
+                          <span className="text-gray-400 text-xs italic">No conflicts</span>
+                       )}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <WorkflowStatusBadge status={project.status} />
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <Link
+                        href={`/projects/${project.id}/schedule`}
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-bold text-white transition-all shadow-sm",
+                          hasConflicts 
+                            ? "bg-red-600 hover:bg-red-700 ring-2 ring-red-500/20" 
+                            : "bg-barmlo-blue hover:bg-barmlo-blue/90"
+                        )}
+                      >
+                        <EyeIcon className="h-3.5 w-3.5" />
+                        View Schedule
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

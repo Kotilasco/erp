@@ -7,8 +7,9 @@ export const fromMinor = (minor: bigint | number, scale = 2): number => {
   return m / Math.pow(10, scale);
 };
 
-export const toBps = (pct: number) => Math.round((pct ?? 0) * 100);
-export const fromBps = (bps: number) => (bps ?? 0) / 100;
+export const toBps = (pct: number) => Math.round((pct ?? 0) * 10000);
+export const fromBps = (bps: number) => (bps ?? 0) / 10000;
+export const fromBpsToPercent = (bps: number) => (bps ?? 0) / 100;
 
 export function toBigIntMinor(value: unknown, scale = 2): bigint {
   if (typeof value === 'bigint') return value;

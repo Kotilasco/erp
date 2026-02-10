@@ -15,7 +15,8 @@ export const SHEET_COLUMNS = 7; // matches your screenshot (A..G)
 export const TAKEOFF_LAYOUT: SheetRow[] = [
   { type: 'heading', title: 'MATERIALS' },
   { type: 'subheading', title: 'FOUNDATION' },
-  { type: 'cells',
+  {
+    type: 'cells',
     cells: [
       { code: 'A2', label: 'Truck capacity (bricks/trip)', kind: 'input' },
       { code: 'B2', label: 'Trench width (m)', kind: 'input' },
@@ -129,7 +130,7 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
   },
 
   // ---- CONTINUATION (image 2) ----
- // { type: 'subheading', title: 'BRICKS T/TRIPS • CEMENT T/TRIPS • TOTAL TRIPS' },
+  // { type: 'subheading', title: 'BRICKS T/TRIPS • CEMENT T/TRIPS • TOTAL TRIPS' },
   {
     type: 'cells',
     cells: [
@@ -143,7 +144,7 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
       { code: 'C29', label: '', kind: 'calc', expr: 'A29 + B29 + C40' },
     ],
   },
- // { type: 'subheading', title: 'BRICKS Above Ringbeam /t/t/t/t Cement' },
+  // { type: 'subheading', title: 'BRICKS Above Ringbeam /t/t/t/t Cement' },
   {
     type: 'cells',
     cells: [
@@ -153,8 +154,8 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
       { code: 'E33', label: 'Inter Plastering', kind: 'calc', expr: 'F36 / 8' },
       { code: 'F33', label: 'Ext Plastering', kind: 'calc', expr: 'E36 / 6' },
       null,
-      {code: 'A36', label: '', kind: 'calc', expr: 'A33 + B33' },
-      {code: 'B36', label: 'CEMENT TOTAL', kind: 'calc', expr: 'D22 + D33' },
+      { code: 'A36', label: '', kind: 'calc', expr: 'A33 + B33' },
+      { code: 'B36', label: 'CEMENT TOTAL', kind: 'calc', expr: 'D22 + D33' },
       { code: 'E36', label: 'Ext Walls Area m2', kind: 'calc', expr: 'A33 / 48 / 2' },
       { code: 'F36', label: 'Inter Walls Area m^2', kind: 'calc', expr: 'B33 / 48 * 2 + E36' },
       null,
@@ -174,7 +175,7 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
       null,
     ],
   },
- // { type: 'subheading', title: 'AGGREGATES — BRICK WORK' },
+  // { type: 'subheading', title: 'AGGREGATES — BRICK WORK' },
   {
     type: 'cells',
     cells: [
@@ -200,7 +201,8 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
       { code: 'D52', label: '', kind: 'calc', expr: 'D51 * 3 / 8' },
       { code: 'A54', label: '115 mm DPC', kind: 'calc', expr: 'B4 / 15' },
       { code: 'B54', label: '230mm DPC', kind: 'calc', expr: 'A4 / 15' },
-      
+      { code: 'G51', label: 'Internal Airvents', kind: 'input' },
+      { code: 'H51', label: 'External Airvents', kind: 'input' },
     ],
   },
   {

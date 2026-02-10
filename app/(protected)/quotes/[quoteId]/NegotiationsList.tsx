@@ -12,7 +12,7 @@ import {
 import Money from '@/components/Money';
 import { NegotiationActionPair } from '@/components/NegotiationActionPair';
 import { type QuoteSnapshot } from '@/lib/quoteSnapshot';
-import { type QuoteLine, type QuoteNegotiation, type QuoteNegotiationItem, type UserRole } from '@prisma/client';
+import { type QuoteLine, type QuoteNegotiation, type QuoteNegotiationItem } from '@prisma/client';
 import { fromMinor } from '@/helpers/money';
 import SubmitButton from '@/components/SubmitButton';
 
@@ -108,7 +108,7 @@ export default function NegotiationsList({
                 const isLatest = index === 0;
                 
                 const allItemsResolved = negotiation.items.every(
-                  (item) => item.status === 'OK' || item.status === 'ACCEPTED'
+                  (item) => item.status === 'OK' || item.status === 'ACCEPTED' || item.status === 'REVIEWED'
                 );
 
                 const canCloseProposal =
@@ -147,19 +147,7 @@ export default function NegotiationsList({
                             </div>
                           )}
                         </div>
-                        {canCloseProposal && (
-                          <form
-                            action={() => closeNegotiationAction(negotiation.id)}
-                            className="inline-flex"
-                          >
-                            <SubmitButton
-                              className="inline-flex items-center gap-2 rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
-                              loadingText="Closing..."
-                            >
-                              Close Proposal
-                            </SubmitButton>
-                          </form>
-                        )}
+
                       </div>
                     </div>
 

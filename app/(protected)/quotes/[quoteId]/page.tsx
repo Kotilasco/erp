@@ -35,7 +35,8 @@ import {
   PaperAirplaneIcon,
   ArchiveBoxIcon,
   ArrowRightCircleIcon,
-  ClipboardDocumentCheckIcon
+  ClipboardDocumentCheckIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { PhoneIcon, HomeIcon, EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/solid';
 import Image from 'next/image';
@@ -711,7 +712,7 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
     role === 'QS'
       ? status === 'DRAFT'
       : role === 'SENIOR_QS'
-        ? status === 'SUBMITTED_REVIEW' || status === 'NEGOTIATION'
+        ? status === 'SUBMITTED_REVIEW' || status === 'NEGOTIATION_REVIEW'
         : false;
 
   const latestNegotiation = quote.negotiations[0] ?? null;
@@ -749,6 +750,12 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
       });
     });
   }
+
+  const allItemsResolved =
+    !!latestNegotiation &&
+    latestNegotiation.items.every(
+      (item) => item.status === 'OK' || item.status === 'ACCEPTED' || item.status === 'REVIEWED'
+    );
 
   const versionNumberById = new Map(quote.versions.map((version) => [version.id, version.version]));
 
@@ -1234,14 +1241,19 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
                       <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">{row.qty.toLocaleString()}</td>
                       <td className="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">
                         {allowEdit ? (
-                          <div className="flex justify-end">
-                            <LineRateEditor
-                              quoteId={quote.id}
-                              lineId={row.id}
-                              defaultRate={row.rate}
-                              defaultQuantity={row.qty}
-                              isNegotiationPending={row.negotiation?.status === 'PENDING'}
-                            />
+                      <div className="flex justify-end">
+                            {/* Only allow editing if we have general edit permission AND (it's not a negotiation review OR the item is pending) */}
+                            {allowEdit && (quote.status !== 'NEGOTIATION_REVIEW' || row.negotiation?.status === 'PENDING') ? (
+                              <LineRateEditor
+                                quoteId={quote.id}
+                                lineId={row.id}
+                                defaultRate={row.rate}
+                                defaultQuantity={row.qty}
+                                isNegotiationPending={row.negotiation?.status === 'PENDING'}
+                              />
+                            ) : (
+                              <Money value={row.rate} />
+                            )}
                           </div>
                         ) : (
                           <Money value={row.rate} />
@@ -1457,7 +1469,26 @@ export default async function QuoteDetailPage({ params }: QuotePageParams) {
           ))}
         </div>
       </div>
-        </>
+
+      {isReviewer && latestNegotiation?.status === 'OPEN' && allItemsResolved && (
+        <form
+          action={closeNegotiationAction.bind(null, latestNegotiation.id)}
+          className="fixed bottom-8 right-8 z-50 no-print"
+        >
+          <SubmitButton
+            loadingText="Closing..."
+            className="group flex items-center gap-3 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 px-8 py-4 text-white shadow-lg shadow-green-900/20 transition-all hover:-translate-y-1 hover:shadow-xl hover:shadow-green-900/30 active:translate-y-0 active:shadow-md"
+          >
+            <span className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 group-hover:bg-white/30 transition-colors">
+                <CheckCircleIcon className="h-5 w-5" />
+              </span>
+              <span className="text-lg font-bold tracking-wide">Close Proposal</span>
+            </span>
+          </SubmitButton>
+        </form>
+      )}
+      </>
       )}
     </div>
   );

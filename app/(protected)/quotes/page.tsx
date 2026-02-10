@@ -71,7 +71,7 @@ export default async function QuotesPage(props: { searchParams: { [key: string]:
     if (view === 'my') {
       where = { ...where, createdById: me.id };
     } else {
-      where = { ...where, status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION', 'REVIEWED'] } };
+      where = { ...where, status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION_REVIEW'] } };
     }
   } else if (role === 'SALES') {
     where = { ...where, status: { in: ['REVIEWED', 'SENT_TO_SALES', 'NEGOTIATION'] } };

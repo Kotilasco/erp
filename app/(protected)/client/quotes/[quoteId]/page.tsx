@@ -5,12 +5,11 @@ import clsx from 'clsx';
 import Money from '@/components/Money';
 import { proposeNegotiationAmountOnly } from '@/app/(protected)/quotes/[quoteId]/actions';
 import { prisma } from '@/lib/db';
-import type { QuoteNegotiationItem } from '@prisma/client';
+import type { QuoteLine, QuoteNegotiationItem } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth';
 import { setFlashMessage } from '@/lib/flash.server';
 import { getErrorMessage } from '@/lib/errors';
 import { fromMinor } from '@/helpers/money';
-import { NEGOTIATION_BADGE_CLASSES } from '@/app/(protected)/quotes/[quoteId]/page';
 import SubmitButton from '@/components/SubmitButton';
 import Image from 'next/image';
 import { PhoneIcon, HomeIcon, EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/solid';
@@ -31,8 +30,18 @@ const STATUS_LABELS: Record<string, string> = {
   REVIEWED: 'Reviewed',
   SENT_TO_SALES: 'Sent to Sales',
   NEGOTIATION: 'Negotiation',
+  NEGOTIATION_REVIEW: 'Negotiation Review',
   FINALIZED: 'Finalized',
   ARCHIVED: 'Archived',
+};
+
+const NEGOTIATION_BADGE_CLASSES: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  OK: 'bg-blue-100 text-blue-700',
+  ACCEPTED: 'bg-emerald-100 text-emerald-700',
+  REJECTED: 'bg-red-100 text-red-700',
+  REVIEWED: 'bg-indigo-100 text-indigo-700',
+  FINAL: 'bg-indigo-100 text-indigo-700',
 };
 
 type ClientQuotePageParams = {

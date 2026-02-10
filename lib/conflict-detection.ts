@@ -59,6 +59,15 @@ export async function detectAndNotifyConflicts(
             }
         });
 
+        if (conflicts.length > 0) {
+            // Mark the item in the input array as conflicted
+            const item = items.find(it => it.title === check.title);
+            if (item) {
+                item.hasConflict = true;
+                item.conflictNote = `Double-booked with ${conflicts.map(c => c.schedule.project.projectNumber).join(', ')}`;
+            }
+        }
+
         // 3. Notify
         for (const conflict of conflicts) {
             const otherProject = conflict.schedule.project;
@@ -87,6 +96,12 @@ export async function detectAndNotifyConflicts(
                         conflictNote: `Double-booked by ${currentProjectNumber} for task "${check.title}"`
                     }
                 });
+
+                // 5. Explicitly flag the other project's schedule as having conflicts
+                await prisma.schedule.update({
+                    where: { id: conflict.scheduleId },
+                    data: { hasConflict: true }
+                }).catch(err => console.error('[CONFLICT_DETECTION] Failed to flag other project schedule', err));
             }
         }
     }

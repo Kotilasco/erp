@@ -374,7 +374,7 @@ async function PendingTasks({
     // 2. Negotiations needing review (Sales Proposals)
     negotiationReviews = await prisma.quote.findMany({
       where: {
-        status: { in: ['NEGOTIATION', 'SENT_TO_SALES'] },
+        status: 'NEGOTIATION_REVIEW',
         negotiations: {
           some: {
             status: 'OPEN',
@@ -1653,7 +1653,7 @@ export default async function DashboardPage({
   if (user.role === 'SENIOR_QS') {
     const reviewCount = await prisma.quote.count({
       where: {
-        status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION'] },
+        status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION_REVIEW'] },
         office: user.office ?? undefined,
       },
     });

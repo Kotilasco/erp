@@ -9,7 +9,7 @@ const styles = StyleSheet.create({
   page: { padding: 30, fontSize: 9, fontFamily: 'Helvetica', color: '#1f2937' },
   
   // Header
-  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 2, borderBottomColor: '#166534' }, // Green-700
+  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 2, borderBottomColor: '#166534' },
   logoContainer: { width: 150 },
   companyInfo: { alignItems: 'flex-end', flex: 1 },
   companyText: { fontSize: 8, color: '#166534', marginBottom: 2 },
@@ -24,16 +24,16 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#166534', marginTop: 15, marginBottom: 5, textTransform: 'uppercase', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 2 },
   
   // Table
-  tableHeader: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingVertical: 4 },
-  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingVertical: 4 },
+  tableHeader: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingVertical: 4, alignItems: 'center' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingVertical: 4, alignItems: 'flex-start' },
   
-  // Columns
-  colIdx: { width: '5%', textAlign: 'center' },
-  colDesc: { width: '45%' },
-  colUnit: { width: '10%', textAlign: 'center' },
-  colQty: { width: '10%', textAlign: 'right' },
-  colRate: { width: '15%', textAlign: 'right' },
-  colAmt: { width: '15%', textAlign: 'right', paddingRight: 4 },
+  // Columns - Fixed widths for numbers to align right perfectly, Flex for description
+  colIdx: { width: 25, textAlign: 'center' },
+  colDesc: { flexGrow: 1, paddingRight: 5 }, 
+  colUnit: { width: 35, textAlign: 'center' },
+  colQty: { width: 45, textAlign: 'right' },
+  colRate: { width: 60, textAlign: 'right' },
+  colAmt: { width: 70, textAlign: 'right', paddingRight: 4 },
   
   // Cells
   th: { fontSize: 8, fontWeight: 'bold', color: '#374151' },
@@ -42,10 +42,11 @@ const styles = StyleSheet.create({
   // Subtotal
   sectionSubtotal: { flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 4, marginTop: 2 },
   subtotalLabel: { fontSize: 9, fontWeight: 'bold', marginRight: 10 },
-  subtotalValue: { fontSize: 9, fontWeight: 'bold', width: '15%', textAlign: 'right', paddingRight: 4 },
+  subtotalValue: { fontSize: 9, fontWeight: 'bold', width: 70, textAlign: 'right', paddingRight: 4 },
   
   // Summary
   summaryContainer: { marginTop: 20, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10, marginLeft: 'auto', width: '50%' },
+  summaryTitle: { fontSize: 10, fontWeight: 'bold', color: '#166534', marginBottom: 8, textTransform: 'uppercase' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   summaryLabel: { fontSize: 9, color: '#374151' },
   summaryValue: { fontSize: 9, fontWeight: 'bold' },
@@ -129,7 +130,13 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
   const subtotal1 = baseTotal + pgAmount;
   const contingencyAmount = (subtotal1 * quote.contingencyRate) / 100;
   const subtotal2 = subtotal1 + contingencyAmount;
-  const vatRate = quote.vatBps / 10000;
+  
+  // Fix VAT: If bps < 100, assume it's a percentage (15 = 15%) => 1500 bps
+  const effectiveVatBps = (quote.vatBps > 0 && quote.vatBps < 100) 
+    ? quote.vatBps * 100 
+    : quote.vatBps;
+    
+  const vatRate = effectiveVatBps / 10000;
   const vatAmount = subtotal2 * vatRate;
   const grandTotal = subtotal2 + vatAmount;
 
@@ -142,8 +149,8 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
         
         {/* Header */}
         <View style={styles.headerContainer}>
-          <View style={styles.logoContainer}>
-            {logoData && <Image src={logoData} style={{ width: 120, height: 50, objectFit: 'contain' }} />}
+          <View style={{ width: 180 }}>
+            {logoData && <Image src={logoData} style={{ width: 160, height: 70, objectFit: 'contain' }} />}
           </View>
           <View style={styles.companyInfo}>
              <Text style={[styles.companyText, { fontWeight: 'bold' }]}>BARMLO CONSTRUCTION</Text>
@@ -188,7 +195,7 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
                 <Text style={[styles.colDesc, styles.td]}>{line.description}</Text>
                 <Text style={[styles.colUnit, styles.td]}>{line.unit}</Text>
                 <Text style={[styles.colQty, styles.td]}>{line.quantity}</Text>
-                <Text style={[styles.colRate, styles.td]}>{formatMoney((line.lineTotalMinor / line.quantity), '')}</Text>
+                <Text style={[styles.colRate, styles.td]}>{formatMoney((line.lineTotalMinor / (line.quantity || 1)), '')}</Text>
                 <Text style={[styles.colAmt, styles.td]}>{formatMoney(line.lineTotalMinor, '')}</Text>
               </View>
             ))}
@@ -201,8 +208,9 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
           </View>
         ))}
 
-        {/* Summary Footer */}
+        {/* Summary Footer which can break across pages if needed, but preferable kept together */}
         <View style={styles.summaryContainer} wrap={false}>
+          <Text style={styles.summaryTitle}>Construction Cost Summary</Text>
           <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>TOTAL LABOUR</Text>
             <Text style={styles.summaryValue}>{formatMoney(totalLabour, currency)}</Text>
@@ -241,7 +249,7 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
           </View>
 
           <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Add VAT ({(quote.vatBps / 100).toFixed(1)}%)</Text>
+            <Text style={styles.summaryLabel}>Add VAT ({(effectiveVatBps / 100).toFixed(1)}%)</Text>
             <Text style={styles.summaryValue}>{formatMoney(vatAmount, currency)}</Text>
           </View>
           
@@ -251,7 +259,6 @@ export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; 
           </View>
         </View>
 
-        {/* Notes */}
         {/* Notes */}
         {(assumptions.length > 0 || exclusions.length > 0) && (
           <View style={styles.notesContainer} wrap={false}>
