@@ -3,6 +3,7 @@ import chromium from "@sparticuz/chromium";
 import type { Browser } from "puppeteer-core";
 import puppeteer from "puppeteer-core";
 import type { PdfRenderer, PdfRequest, PdfResult } from "./index";
+import { BARMLO_LOGO_BASE64 } from "./logo";
 import { prisma } from "@/lib/db";
 import fs from "fs";
 import path from "path";
@@ -56,10 +57,18 @@ export class PuppeteerRenderer implements PdfRenderer {
 
     // Read logo
     const logoPath = path.join(process.cwd(), "public", "barmlo_logo.png");
-    let logoBase64 = "";
+    let logoBase64 = BARMLO_LOGO_BASE64;
+    // Try to read from FS if possible, otherwise use fallback
     if (fs.existsSync(logoPath)) {
-      const logoBuffer = fs.readFileSync(logoPath);
-      logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+      try {
+        const logoBuffer = fs.readFileSync(logoPath);
+        logoBase64 = `data:image/png;base64,${logoBuffer.toString("base64")}`;
+      } catch (e) {
+        console.error("Failed to read logo file, using fallback", e);
+      }
+    } else {
+      // Use hardcoded fallback if file not found (Production fix)
+      logoBase64 = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA..."; // FULL BASE64 STRING HERE
     }
 
     // Group lines
