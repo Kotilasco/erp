@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'node:crypto';
 import { redirect } from 'next/navigation';
 import { getRemainingDispatchMap } from '@/lib/dispatch';
+import { recalculateRipple, ScheduleItemMinimal, addWorkingTime, inferTaskType as engineInferTaskType, ProductivitySettings as EngineProductivitySettings } from '@/lib/schedule-engine';
 
 
 const ROLE_SET = new Set<UserRole>(USER_ROLES as unknown as UserRole[]);
@@ -186,12 +187,7 @@ function inferTaskType(unit?: string | null, description?: string | null): 'exca
   return null;
 }
 
-import {
-  inferTaskType as engineInferTaskType,
-  recalculateRipple,
-  ScheduleItemMinimal,
-  ProductivitySettings as EngineProductivitySettings
-} from '@/lib/schedule-engine';
+
 
 export async function computeEstimatesForItems(
   items: ScheduleItemMinimal[],
@@ -4019,4 +4015,317 @@ export async function sendRequisitionForReview(requisitionId: string) {
   revalidatePath(`/projects/${req.projectId}`);
 }
 
+// Refactored to avoid "Unknown argument" on potentially stale client
+export async function getProjectsForReports() {
+  const user = await getCurrentUser();
+  if (!user) return [];
 
+  const role = user.role || 'VIEWER';
+  const isProjectManager = role === 'PROJECT_OPERATIONS_OFFICER';
+  const isForeman = role === 'FOREMAN';
+
+  // Base Logic from projects/page.tsx
+  const where: Prisma.ProjectWhereInput = {
+    // We want "Active" projects.
+    // In projects/page.tsx, "Active" tab for PMs means schedule status is ACTIVE
+    // For others, it generally implies the project is not closed.
+  };
+
+  if (isProjectManager) {
+    // Match /projects?tab=active logic
+    where.assignedToId = user.id;
+    where.schedules = { status: 'ACTIVE' };
+  } else if (isForeman) {
+    // Foremen logic
+    where.schedules = { items: { some: { assignees: { some: { userId: user.id } } } }, status: 'ACTIVE' };
+  } else {
+    // For Admins/Sales/Senior PMs, show all "Live" projects
+    where.status = {
+      in: ['PLANNED', 'PREPARING', 'READY', 'ONGOING', 'ON_HOLD', 'SCHEDULING_PENDING']
+    };
+  }
+
+  try {
+    const projects = await prisma.project.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        office: true,
+        quote: {
+          select: {
+            customer: { select: { displayName: true } }
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    return projects.map(p => ({
+      id: p.id,
+      name: p.name,
+      client: p.quote?.customer?.displayName || 'Unknown Client',
+      location: p.office || 'N/A',
+      status: p.status,
+    }));
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return [];
+  }
+}
+
+export async function getDailyReportData(projectId: string, dateStr: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      name: true,
+      assignedToId: true,
+      projectNumber: true,
+      status: true,
+      office: true,
+      quote: {
+        select: {
+          customer: { select: { displayName: true, city: true } }
+        }
+      }
+    }
+  });
+
+  if (!project) throw new Error("Project not found");
+
+  // Role Checks
+  const role = user.role;
+  if (role === 'PROJECT_OPERATIONS_OFFICER') {
+    if (project.assignedToId !== user.id) {
+      throw new Error("You are not assigned to this project.");
+    }
+  }
+  // Other roles (Admin, Coordinator) can view if they have access to the page basically.
+
+  // Parse date
+  const date = new Date(dateStr);
+  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+  // Fetch Schedule Items that have REPORTS for this day OR were Active
+  // For End of Day report, we typically just want to show what happened (Reports).
+  // If no report was made, maybe we don't show it? 
+  // User asked for "end of day report... daily tasks updating the schedule".
+  // Let's fetch items that have at least one report on this day.
+
+  const items = await prisma.scheduleItem.findMany({
+    where: {
+      schedule: { projectId },
+      reports: {
+        some: {
+          reportedForDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        }
+      }
+    },
+    include: {
+      reports: {
+        where: {
+          reportedForDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        include: { reporter: { select: { name: true } } }
+      },
+      assignees: {
+        select: {
+          id: true,
+          givenName: true,
+          surname: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  // Calculate unique men on site from the reported tasks
+  const uniqueWorkerIds = new Set<string>();
+  items.forEach(item => {
+    item.assignees.forEach(a => uniqueWorkerIds.add(a.id));
+  });
+
+  return {
+    project: {
+      name: project.name,
+      number: project.projectNumber,
+      customer: project.quote?.customer?.displayName,
+      location: project.quote?.customer?.city || project.office,
+      status: project.status
+    },
+    date: startOfDay.toISOString(),
+    tasks: items.map(item => ({
+      id: item.id,
+      title: item.title,
+      unit: item.unit,
+      reports: item.reports.map(r => ({
+        id: r.id,
+        activity: r.activity,
+        usedQty: r.usedQty,
+        reporter: r.reporter?.name || 'Unknown'
+      })),
+      totalUsed: item.reports.reduce((acc, r) => acc + (r.usedQty || 0), 0),
+      status: item.status,
+      assignees: item.assignees
+    })),
+    stats: {
+      totalMen: uniqueWorkerIds.size,
+      totalTasksReported: items.length
+    }
+  };
+}
+
+export async function rescheduleOverdueTasks(projectId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { assignedToId: true }
+  });
+  if (!project) throw new Error("Project not found");
+
+  const role = user.role;
+  if (role === 'PROJECT_OPERATIONS_OFFICER' && project.assignedToId !== user.id) {
+    throw new Error("You are not assigned to this project.");
+  }
+
+  // Fetch Schedule
+  const schedule = await prisma.schedule.findUnique({
+    where: { projectId },
+    include: {
+      items: {
+        orderBy: { plannedStart: 'asc' },
+        include: { assignees: true }
+      }
+    }
+  });
+
+  if (!schedule) throw new Error("No schedule found");
+
+  const now = new Date();
+
+  const items = schedule.items;
+  let firstOverdueIndex = -1;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.status === 'DONE') continue;
+
+    // Check if plannedEnd is in the past (yesterday or earlier)
+    // We compare against start of today to be strict "overdue"
+    // or just "now". "Now" is safer.
+    const end = item.plannedEnd ? new Date(item.plannedEnd) : null;
+    if (end && end < now) {
+      firstOverdueIndex = i;
+      break;
+    }
+  }
+
+  if (firstOverdueIndex === -1) {
+    return { success: true, message: "No overdue tasks found." };
+  }
+
+  // Prepare items for recalculation
+  const minimalItems: ScheduleItemMinimal[] = items.map(it => ({
+    id: it.id,
+    title: it.title,
+    unit: it.unit,
+    quantity: it.quantity,
+    plannedStart: it.plannedStart,
+    plannedEnd: it.plannedEnd,
+    employees: it.employees,
+    // @ts-ignore
+    employeeIds: it.assignees.map(a => a.id),
+    estHours: it.estHours,
+    description: it.description
+  }));
+
+  // Shift to Tomorrow 07:00
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(7, 0, 0, 0);
+
+  // We need productivity settings for recalculation
+  const productivity = await getProductivitySettings(projectId);
+
+  // Recalculate from the overdue item index
+  // Note: recalculateRipple expects Date object for startAt
+  const updatedItems = recalculateRipple(
+    minimalItems,
+    firstOverdueIndex,
+    tomorrow,
+    30,
+    productivity
+  );
+
+  // Update Database
+  const toUpdate = updatedItems.slice(firstOverdueIndex);
+
+  await prisma.$transaction(
+    toUpdate.map(u => prisma.scheduleItem.update({
+      where: { id: u.id! },
+      data: {
+        plannedStart: u.plannedStart ? new Date(u.plannedStart) : null,
+        plannedEnd: u.plannedEnd ? new Date(u.plannedEnd) : null,
+        estHours: u.estHours
+      }
+    }))
+  );
+
+  revalidatePath(`/projects/${projectId}/schedule`);
+  return { success: true, message: `Rescheduled ${toUpdate.length} tasks starting from '${items[firstOverdueIndex].title}'` };
+}
+
+
+
+export async function getGlobalDailyReportData(date: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const role = assertRole(user.role);
+  if (!['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'PM_CLERK'].includes(role)) {
+    throw new Error("Unauthorized");
+  }
+
+  // Fetch Active Projects
+  const where: any = {
+    status: 'ONGOING',
+    ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: user.id } : {})
+  };
+
+  const projects = await prisma.project.findMany({
+    where,
+    select: { id: true, name: true }
+  });
+
+  const reports = [];
+
+  for (const project of projects) {
+    try {
+      const reportData = await getDailyReportData(project.id, date);
+      // Only include projects with activity or force all?
+      // User said "summary of what was entered", so if nothing entered, maybe skip?
+      // But "Report" usually implies status check.
+      // Let's include all to show "No Activity" if nothing happened.
+      reports.push(reportData);
+    } catch (e) {
+      console.error(`Failed to generate report for project ${project.name}`, e);
+      // Skip projects that fail (e.g. no schedule)
+    }
+  }
+
+  return reports;
+}

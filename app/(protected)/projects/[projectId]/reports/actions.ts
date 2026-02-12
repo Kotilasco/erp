@@ -7,7 +7,6 @@ import { fromMinor } from '@/helpers/money';
 export type ReportData = {
     deliveries: DeliveryItem[];
     quoteLines: QuoteLineData[];
-    // ... we'll expand this for other reports
 };
 
 export type DeliveryItem = {
@@ -20,6 +19,7 @@ export type DeliveryItem = {
     avgRate: number;
     totalAmount: number;
     quoteLineIds: string[];
+    section?: string; // Derived from quote line
 };
 
 export type QuoteLineData = {
@@ -29,14 +29,89 @@ export type QuoteLineData = {
     quantity: number;
     unitPrice: number;
     amount: number;
+    section: string;
+    itemType: string;
 };
+
+// Helper for sorting sections if we knew the order, but for now specific order:
+// Helper for sorting sections if we knew the order, but for now specific order:
+const SECTION_ORDER = [
+    "PRELIMINARIES", "SUBSTRUCTURE", "SUPERSTRUCTURE", "ROOFING", "PLUMBING", "ELECTRICAL", "FINISHES", "EXTERNAL WORKS"
+]; // approximate standard
+
+function normalizeSection(section: string | null | undefined): string {
+    if (!section) return 'General';
+    const upper = section.toUpperCase().trim();
+
+    // Map variations to standard sections
+    if (upper.includes('FOUNDATION') || upper.includes('SUBSTRUCTURE')) return 'SUBSTRUCTURE';
+    if (upper.includes('SUPERSTRUCTURE') || upper.includes('WALLS')) return 'SUPERSTRUCTURE';
+    if (upper.includes('ROOF')) return 'ROOFING';
+    if (upper.includes('PLUMBING')) return 'PLUMBING';
+    if (upper.includes('ELECTRICAL')) return 'ELECTRICAL';
+    if (upper.includes('FINISH')) return 'FINISHES';
+    if (upper.includes('EXTERNAL')) return 'EXTERNAL WORKS';
+    if (upper.includes('PRELIM')) return 'PRELIMINARIES';
+
+    return section.trim(); // Return original if no match, but trimmed
+}
+
+function getSectionRank(section: string | undefined) {
+    if (!section) return 999;
+    // Normalize first so we match the order array
+    const normalized = normalizeSection(section);
+    const idx = SECTION_ORDER.findIndex(s => normalized.toUpperCase() === s);
+    return idx === -1 ? 100 : idx;
+}
 
 export async function getProjectReportData(projectId: string): Promise<ReportData> {
 
-    // 1. Fetch Dispatches & Items
-    // We want items that are "DELIVERED" (i.e. status is DISPATCHED/DELIVERED/APPROVED?) 
-    // Actually, "Deliveries Report" implies items sent to site. 
-    // We'll consider any dispatch that is NOT 'DRAFT'.
+    // 1. Fetch Quote Lines First to build the "Section Map"
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { quoteId: true }
+    });
+
+    let quoteLines: QuoteLineData[] = [];
+    const quoteLineMap = new Map<string, QuoteLineData>();
+
+    if (project?.quoteId) {
+        const lines = await prisma.quoteLine.findMany({
+            where: {
+                quoteId: project.quoteId,
+                // Explicitly hide this section as requested by user
+                NOT: { section: 'LABOUR — SUB-STRUCTURE' }
+            },
+            orderBy: [
+                // We can't easily sort by 'section order' here, so we sort by description or insertion?
+                // Let's sort by ID or just description. We will sort in JS.
+                { description: 'asc' }
+            ]
+        });
+
+        quoteLines = lines.map(line => ({
+            id: line.id,
+            description: line.description,
+            unit: line.unit ?? null,
+            quantity: line.quantity,
+            unitPrice: line.unitPriceMinor ? fromMinor(line.unitPriceMinor) : 0,
+            amount: line.lineTotalMinor ? fromMinor(line.lineTotalMinor) : 0,
+            section: normalizeSection(line.section),
+            itemType: line.itemType || 'MATERIAL'
+        }));
+
+        // Sort by Section Rank then Description
+        quoteLines.sort((a, b) => {
+            const rankA = getSectionRank(a.section);
+            const rankB = getSectionRank(b.section);
+            if (rankA !== rankB) return rankA - rankB;
+            return a.description.localeCompare(b.description);
+        });
+
+        quoteLines.forEach(q => quoteLineMap.set(q.id, q));
+    }
+
+    // 2. Fetch Dispatches & Items
     const dispatches = await prisma.dispatch.findMany({
         where: { projectId, status: { not: 'DRAFT' } },
         include: {
@@ -54,35 +129,40 @@ export async function getProjectReportData(projectId: string): Promise<ReportDat
 
     for (const d of dispatches) {
         for (const item of d.items) {
-            // Group by description + unit (simple fuzzy grouping)
-            // If we have a quoteLineId, we could use that as a primary grouping key?
-            // For now, let's stick to description/unit but store the quoteLineId if unique/consistent
             const key = `${item.description.toLowerCase().trim()}|${item.unit?.toLowerCase().trim() ?? ''}`;
-
             const existing = deliveryMap.get(key);
 
             const qty = Number(item.qty);
-            const handedOut = Math.max(0, qty - Number(item.returnedQty ?? 0)); // Net delivered to site
+            const handedOut = Math.max(0, qty - Number(item.returnedQty ?? 0));
             const used = Number(item.usedOutQty ?? 0);
-            const price = item.estPriceMinor ? fromMinor(item.estPriceMinor) : 0; // simplistic avg rate
+            const price = item.estPriceMinor ? fromMinor(item.estPriceMinor) : 0;
             const quoteLineId = item.requisitionItem?.quoteLineId;
 
-            if (existing) {
-                // Weighted average rate calculation
-                const totalVal = (existing.avgRate * existing.qtyDelivered) + (price * handedOut);
+            // Attempt to derive section from linked quote line
+            let section = 'General';
+            if (quoteLineId) {
+                const ql = quoteLineMap.get(quoteLineId);
+                if (ql) section = ql.section;
+            }
 
+            if (existing) {
+                const totalVal = (existing.avgRate * existing.qtyDelivered) + (price * handedOut);
                 existing.qtyDelivered += handedOut;
                 existing.qtyUsed += used;
                 existing.qtyBalance = existing.qtyDelivered - existing.qtyUsed;
-                // Avoid division by zero
                 existing.avgRate = existing.qtyDelivered > 0 ? totalVal / existing.qtyDelivered : 0;
                 existing.totalAmount += (price * handedOut);
+
                 if (quoteLineId && !existing.quoteLineIds.includes(quoteLineId)) {
                     existing.quoteLineIds.push(quoteLineId);
+                    // Update section if we found a better one and existing was default
+                    if (existing.section === 'General' && section !== 'General') {
+                        existing.section = section;
+                    }
                 }
             } else {
                 deliveryMap.set(key, {
-                    id: item.id, // reference ID
+                    id: item.id,
                     description: item.description,
                     unit: item.unit ?? null,
                     qtyDelivered: handedOut,
@@ -90,39 +170,23 @@ export async function getProjectReportData(projectId: string): Promise<ReportDat
                     qtyBalance: handedOut - used,
                     avgRate: price,
                     totalAmount: price * handedOut,
-                    quoteLineIds: quoteLineId ? [quoteLineId] : []
+                    quoteLineIds: quoteLineId ? [quoteLineId] : [],
+                    section
                 });
             }
         }
     }
 
-
-    // 2. Fetch Quote Lines
-    const project = await prisma.project.findUnique({
-        where: { id: projectId },
-        select: { quoteId: true }
+    // Sort deliveries by Section then Description
+    const deliveries = Array.from(deliveryMap.values()).sort((a, b) => {
+        const rankA = getSectionRank(a.section);
+        const rankB = getSectionRank(b.section);
+        if (rankA !== rankB) return rankA - rankB;
+        return a.description.localeCompare(b.description);
     });
 
-    let quoteLines: QuoteLineData[] = [];
-
-    if (project?.quoteId) {
-        const lines = await prisma.quoteLine.findMany({
-            where: { quoteId: project.quoteId },
-            orderBy: { description: 'asc' }
-        });
-
-        quoteLines = lines.map(line => ({
-            id: line.id,
-            description: line.description,
-            unit: line.unit ?? null,
-            quantity: line.quantity,
-            unitPrice: line.unitPriceMinor ? fromMinor(line.unitPriceMinor) : 0,
-            amount: line.lineTotalMinor ? fromMinor(line.lineTotalMinor) : 0,
-        }));
-    }
-
     return {
-        deliveries: Array.from(deliveryMap.values()).sort((a, b) => a.description.localeCompare(b.description)),
-        quoteLines: quoteLines, // Populated
+        deliveries,
+        quoteLines
     };
 }

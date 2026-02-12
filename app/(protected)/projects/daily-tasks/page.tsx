@@ -12,6 +12,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const DEFAULT_PAGE_SIZE = 20;
+import GlobalDailyReportGenerator from './components/GlobalDailyReportGenerator';
 
 export default async function ProjectDailyTasksPage({
   searchParams,
@@ -62,13 +63,18 @@ export default async function ProjectDailyTasksPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3 border-b border-gray-200 pb-6">
-        <div className="p-2 bg-emerald-100 rounded-lg dark:bg-emerald-900/30">
-          <ClipboardDocumentListIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+      <div className="flex items-center justify-between border-b border-gray-200 pb-6">
+        <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 rounded-lg dark:bg-emerald-900/30">
+            <ClipboardDocumentListIcon className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Project Daily Tasks</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Track and manage ground-level execution and daily work progress.</p>
+            </div>
         </div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Project Daily Tasks</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Track and manage ground-level execution and daily work progress.</p>
+            <GlobalDailyReportGenerator />
         </div>
       </div>
 

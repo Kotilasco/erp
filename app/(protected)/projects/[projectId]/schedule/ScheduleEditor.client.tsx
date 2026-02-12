@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import EmployeeAssignmentModal from './EmployeeAssignmentModal';
-import { PlusIcon, CalendarIcon, DocumentTextIcon, CheckCircleIcon, PencilSquareIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CalendarIcon, DocumentTextIcon, CheckCircleIcon, PencilSquareIcon, XMarkIcon, ClockIcon } from '@heroicons/react/24/outline';
 
 import { 
   recalculateRipple, 
@@ -10,6 +10,8 @@ import {
   ProductivitySettings
 } from '@/lib/schedule-engine';
 import { batchCheckConflicts } from './actions';
+import { rescheduleOverdueTasks } from '../../actions';
+import { useRouter } from 'next/navigation';
 
 type Item = {
   id?: string | null;
@@ -284,6 +286,25 @@ export default function ScheduleEditor({
 
 
 
+  async function handleReschedule() {
+    if (!confirm("This will move all overdue tasks (that are not done) to start Tomorrow at 7:00 AM and shift all subsequent tasks accordingly. Continue?")) return;
+    
+    setLoading(true);
+    try {
+        const result = await rescheduleOverdueTasks(projectId);
+        if (result.success) {
+            alert(result.message);
+            window.location.reload();
+        } else {
+            alert(result.message || "Failed");
+        }
+    } catch (e: any) {
+        alert(e.message);
+    } finally {
+        setLoading(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Toolbar */}
@@ -309,7 +330,17 @@ export default function ScheduleEditor({
           </div>
         </div>
 
-          <button
+        <div className="flex items-center gap-2">
+           <button
+             onClick={handleReschedule}
+             disabled={loading}
+             className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-red-600 shadow-sm ring-1 ring-inset ring-red-200 hover:bg-red-50 transition-colors"
+           >
+             <ClockIcon className="h-4 w-4" />
+             Reschedule Overdue
+           </button>
+
+           <button
             onClick={() => checkAllConflicts(items)}
             disabled={checkingConflicts}
             className={cn(
@@ -330,6 +361,7 @@ export default function ScheduleEditor({
             Add Task
           </button>
        </div>
+      </div>
 
       {/* Table */}
       {items.length === 0 ? (

@@ -57,7 +57,7 @@ export default async function ProjectReportsPage({
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[500px]">
-            <ProjectReportsClient data={reportData} />
+            <ProjectReportsClient data={reportData} projectId={projectId} />
         </div>
 
       </div>
