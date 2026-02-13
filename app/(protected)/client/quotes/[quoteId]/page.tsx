@@ -254,6 +254,12 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
 
     revalidatePath(`/client/quotes/${quote.id}`);
     revalidatePath(`/quotes/${quote.id}`);
+
+    const currentUser = await getCurrentUser();
+    if (currentUser?.role === 'SALES') {
+      redirect('/dashboard');
+    }
+
     redirect(`/quotes/${quote.id}`);
   };
 

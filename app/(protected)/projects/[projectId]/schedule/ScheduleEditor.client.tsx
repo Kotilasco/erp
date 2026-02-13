@@ -11,6 +11,7 @@ import {
 } from '@/lib/schedule-engine';
 import { batchCheckConflicts } from './actions';
 import { rescheduleOverdueTasks } from '../../actions';
+import { ProductivitySettingsDialog } from './ProductivitySettingsDialog';
 import { useRouter } from 'next/navigation';
 
 type Item = {
@@ -331,6 +332,8 @@ export default function ScheduleEditor({
         </div>
 
         <div className="flex items-center gap-2">
+           <ProductivitySettingsDialog projectId={projectId} initialSettings={productivity} />
+           
            <button
              onClick={handleReschedule}
              disabled={loading}

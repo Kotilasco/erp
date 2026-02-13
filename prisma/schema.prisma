@@ -614,6 +614,8 @@ model ProjectProductivitySetting {
   plasterAssistant    Float   @default(16)
   cubicBuilder        Float   @default(5)
   cubicAssistant      Float   @default(5)
+  tilerBuilder        Float   @default(20)
+  tilerAssistant      Float   @default(20)
   project             Project @relation(fields: [projectId], references: [id])
 }
 

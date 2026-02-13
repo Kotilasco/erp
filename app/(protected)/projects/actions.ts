@@ -150,42 +150,8 @@ export async function requestFunding(requisitionId: string, amountMajor?: number
   return submitProcurementRequest(requisitionId, amountMajor);
 }
 
-type ProductivitySettings = {
-  builderShare: number;
-  excavationBuilder: number;
-  excavationAssistant: number;
-  brickBuilder: number;
-  brickAssistant: number;
-  plasterBuilder: number;
-  plasterAssistant: number;
-  cubicBuilder: number;
-  cubicAssistant: number;
-};
+// Old functions removed - see new implementation below
 
-export async function getProductivitySettings(projectId: string): Promise<ProductivitySettings> {
-  const settings = await prisma.projectProductivitySetting.findUnique({ where: { projectId } });
-  return {
-    builderShare: settings?.builderShare ?? 0.3333,
-    excavationBuilder: settings?.excavationBuilder ?? 5,
-    excavationAssistant: settings?.excavationAssistant ?? 5,
-    brickBuilder: settings?.brickBuilder ?? 500,
-    brickAssistant: settings?.brickAssistant ?? 500,
-    plasterBuilder: settings?.plasterBuilder ?? 16,
-    plasterAssistant: settings?.plasterAssistant ?? 16,
-    cubicBuilder: settings?.cubicBuilder ?? 5,
-    cubicAssistant: settings?.cubicAssistant ?? 5,
-  };
-}
-
-function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | null {
-  const u = (unit || '').toLowerCase();
-  const d = (description || '').toLowerCase();
-  if (u.includes('m3') || u.includes('cubic')) return 'cubic';
-  if (u.includes('m2') || u.includes('sqm') || d.includes('plaster')) return 'plaster';
-  if (u.includes('brick') || d.includes('brick')) return 'brick';
-  if (u === 'm' || d.includes('excav')) return 'excavation';
-  return null;
-}
 
 
 
@@ -3615,6 +3581,34 @@ export async function generatePaymentSchedule(projectId: string) {
 // (Removed duplicate createDispatchFromInventory definition)
 
 // --- New: Approve/hand-out dispatch and post inventory OUT moves
+export async function getProductivitySettings(projectId: string): Promise<ProductivitySettings> {
+  const settings = await prisma.projectProductivitySetting.findUnique({ where: { projectId } });
+  return {
+    builderShare: settings?.builderShare ?? 0.3333,
+    excavationBuilder: settings?.excavationBuilder ?? 5,
+    excavationAssistant: settings?.excavationAssistant ?? 5,
+    brickBuilder: settings?.brickBuilder ?? 500,
+    brickAssistant: settings?.brickAssistant ?? 500,
+    plasterBuilder: settings?.plasterBuilder ?? 16,
+    plasterAssistant: settings?.plasterAssistant ?? 16,
+    cubicBuilder: settings?.cubicBuilder ?? 5,
+    cubicAssistant: settings?.cubicAssistant ?? 5,
+    tilerBuilder: settings?.tilerBuilder ?? 20,
+    tilerAssistant: settings?.tilerAssistant ?? 20,
+  };
+}
+
+function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | 'tiler' | null {
+  const u = (unit || '').toLowerCase();
+  const d = (description || '').toLowerCase();
+  if (d.includes('tile') || d.includes('tiling')) return 'tiler';
+  if (u.includes('m3') || u.includes('cubic')) return 'cubic';
+  if (u.includes('m2') || u.includes('sqm') || d.includes('plaster')) return 'plaster';
+  if (u.includes('brick') || d.includes('brick')) return 'brick';
+  if (u === 'm' || d.includes('excav')) return 'excavation';
+  return null;
+}
+
 export async function approveAndHandoutDispatch(dispatchId: string) {
   const me = await getCurrentUser();
   assertOneOf(me?.role, ['SECURITY', 'ADMIN']);
@@ -3672,24 +3666,44 @@ export async function createScheduleFromQuote(projectId: string) {
   if (!quote) throw new Error('No quote found for project');
 
   const labourLines = quote.lines.filter((l) => {
-    try {
-      const meta =
-        typeof l.metaJson === 'string' ? JSON.parse(l.metaJson || '{}') : (l.metaJson || {});
-      const sectionRaw = meta?.section;
-      const section = typeof sectionRaw === 'string' ? sectionRaw.toLowerCase() : '';
-      const type = (meta?.type || '').toString().toUpperCase();
-      if (meta?.isLabour === true) return true;
-      if (section.includes('labour')) return true;
-      if (type === 'LABOUR') return true;
-      const desc = (l.description || '').toLowerCase();
-      if (desc.includes('labour')) return true;
-    } catch {
-      /* ignore malformed meta */
-    }
+    // 1. Check native fields first if strict filtering requested
+    // The user requested "LABOUR SUB-STRUCTURE". This maps to section='FOUNDATIONS' and itemType='LABOUR' in quoteMap.ts
+
+    const meta = typeof l.metaJson === 'string' ? JSON.parse(l.metaJson || '{}') : (l.metaJson || {});
+    const section = (l.section || meta.section || '').toUpperCase();
+    const type = (l.itemType || meta.itemType || meta.type || '').toUpperCase();
+
+    // Strict filter: MUST be Labour type
+    const isLabour = type === 'LABOUR' || meta.isLabour === true;
+    if (!isLabour) return false;
+
+    // Optional strict section filter: if user wants ONLY "LABOUR SUB-STRUCTURE", we check for FOUNDATIONS
+    // However, usually we want ALL labour items. But user was specific.
+    // Let's modify logic to include ALL labour items for now, but prioritize FOUNDATIONS if we need to distinguish.
+    // Wait, user said "Restrict schedule items to... items categorized under 'LABOUR SUB-STRUCTURE'".
+    // This implies EXCLUDING huge lists of materials.
+    // If I include ALL labour, does that fulfill request? probably.
+
+    // Filter for Labour Sub-structure specifically:
+    // In quoteMap.ts, these are section='FOUNDATIONS'.
+    // If I comment this out, I get all labour. I will check for 'FOUNDATIONS' or 'SUBSTRUCTURE' in section.
+
+    if (section === 'FOUNDATIONS' || section.includes('SUBSTRUCTURE') || section.includes('SUB-STRUCTURE')) return true;
+
+    // Also allow explicit Tiler or other labour if needed?
+    // If user wants ONLY sub-structure labour, ignore others.
+    // But maybe they want all labour? "only include items categorized under 'LABOUR SUB-STRUCTURE'".
+    // I will adhere strictly to that request.
+
     return false;
   });
-  console.log({ labourLines });
-  const selectedLines = labourLines.length > 0 ? labourLines : quote.lines;
+
+  // Fallback: If no labour found (maybe old quote format), try loose description matching BUT restricted
+  // Actually, better to return nothing than wrong stuff if strict mode.
+  // I will relax slightly to include 'LABOUR' items generally if they look like labour, to avoid breaking other projects?
+  // No, user request is specific.
+
+  const selectedLines = labourLines; // Remove fallback to all lines
 
   const items = selectedLines.map((ln) => {
     const meta = typeof ln.metaJson === 'string' ? JSON.parse(ln.metaJson || '{}') : (ln.metaJson || {});

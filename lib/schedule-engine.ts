@@ -1,4 +1,4 @@
-export type TaskType = 'excavation' | 'brick' | 'plaster' | 'cubic';
+export type TaskType = 'excavation' | 'brick' | 'plaster' | 'cubic' | 'tiler';
 
 export interface ProductivitySettings {
     builderShare: number;
@@ -10,6 +10,8 @@ export interface ProductivitySettings {
     plasterAssistant: number;
     cubicBuilder: number;
     cubicAssistant: number;
+    tilerBuilder: number;
+    tilerAssistant: number;
 }
 
 export interface ScheduleItemMinimal {
@@ -35,6 +37,7 @@ export const HOURS_PER_DAY = WORK_END_HOUR - WORK_START_HOUR; // 10 hours
 export function inferTaskType(unit?: string | null, description?: string | null): TaskType | null {
     const u = (unit || '').toLowerCase();
     const d = (description || '').toLowerCase();
+    if (d.includes('tile') || d.includes('tiling')) return 'tiler';
     if (u.includes('m3') || u.includes('cubic')) return 'cubic';
     if (u.includes('m2') || u.includes('sqm') || d.includes('plaster')) return 'plaster';
     if (u.includes('brick') || d.includes('brick')) return 'brick';
@@ -136,6 +139,7 @@ export function calculateDuration(
                 case 'brick': return { b: productivity.brickBuilder, a: productivity.brickAssistant };
                 case 'plaster': return { b: productivity.plasterBuilder, a: productivity.plasterAssistant };
                 case 'cubic': return { b: productivity.cubicBuilder, a: productivity.cubicAssistant };
+                case 'tiler': return { b: productivity.tilerBuilder, a: productivity.tilerAssistant };
                 default: return { b: 0, a: 0 };
             }
         })();
