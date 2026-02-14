@@ -3581,7 +3581,7 @@ export async function generatePaymentSchedule(projectId: string) {
 // (Removed duplicate createDispatchFromInventory definition)
 
 // --- New: Approve/hand-out dispatch and post inventory OUT moves
-export async function getProductivitySettings(projectId: string): Promise<ProductivitySettings> {
+export async function getProductivitySettings(projectId: string): Promise<EngineProductivitySettings> {
   const settings = await prisma.projectProductivitySetting.findUnique({ where: { projectId } });
   return {
     builderShare: settings?.builderShare ?? 0.3333,
@@ -3723,6 +3723,36 @@ export async function createScheduleFromQuote(projectId: string) {
       plannedEnd: meta?.plannedEnd ? new Date(meta.plannedEnd) : undefined,
       note: meta?.note ?? null,
     };
+  });
+
+  // Sort items based on specific user request
+  const preferredOrder = [
+    'Site clearance',
+    'Setting out',
+    'Excavation',
+    'Concrete works',
+    'Footing brickwork',
+    'Ramming',
+    'Floor slab'
+  ];
+
+  items.sort((a, b) => {
+    const getOrderIndex = (title: string) => {
+      const lowerTitle = title.toLowerCase();
+      // Find index where the key is contained in the title
+      const index = preferredOrder.findIndex(key => lowerTitle.includes(key.toLowerCase()));
+      return index === -1 ? 999 : index;
+    };
+
+    const indexA = getOrderIndex(a.title);
+    const indexB = getOrderIndex(b.title);
+
+    if (indexA !== indexB) {
+      return indexA - indexB;
+    }
+
+    // If same order index (or both not found), sort by original line ID (proxy for creation order)
+    return a.quoteLineId.localeCompare(b.quoteLineId);
   });
 
   const schedule = await prisma.schedule.create({

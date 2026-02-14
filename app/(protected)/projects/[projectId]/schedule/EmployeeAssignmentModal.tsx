@@ -155,15 +155,28 @@ export default function EmployeeAssignmentModal({
     // Sort within categories
     Object.keys(g).forEach(cat => {
       g[cat].sort((a, b) => {
-        const aAssigned = assignedIds.includes(a.id);
-        const bAssigned = assignedIds.includes(b.id);
-        if (aAssigned && !bAssigned) return -1;
-        if (!aAssigned && bAssigned) return 1;
+        const isAssignedA = assignedIds.includes(a.id);
+        const isBusyA = busyEmployees.includes(a.id);
+        const isAssignedB = assignedIds.includes(b.id);
+        const isBusyB = busyEmployees.includes(b.id);
+
+        const getScore = (assigned: boolean, busy: boolean) => {
+            if (assigned && !busy) return 0;
+            if (assigned && busy) return 1;
+            if (!assigned && !busy) return 2; // Available
+            if (!assigned && busy) return 3; // Conflict
+            return 4;
+        };
+
+        const scoreA = getScore(isAssignedA, isBusyA);
+        const scoreB = getScore(isAssignedB, isBusyB);
+
+        if (scoreA !== scoreB) return scoreA - scoreB;
         return a.givenName.localeCompare(b.givenName);
       });
     });
     return g;
-  }, [employees, selectedIds, assignedIds]);
+  }, [employees, selectedIds, assignedIds, busyEmployees]);
 
   const toggleEmployee = (id: string) => {
     if (checking) return; // Prevent changes while checking
@@ -206,14 +219,6 @@ export default function EmployeeAssignmentModal({
             <div className="divide-y divide-gray-100">
               {categories.map((cat) => {
                 const list = grouped[cat] || [];
-                // Sort list: alreadyAssigned first, then alphabetically
-                list.sort((a, b) => {
-                    const aAssigned = assignedIds.includes(a.id);
-                    const bAssigned = assignedIds.includes(b.id);
-                    if (aAssigned && !bAssigned) return -1;
-                    if (!aAssigned && bAssigned) return 1;
-                    return a.givenName.localeCompare(b.givenName);
-                });
                 const open = openSections[cat];
                 return (
                   <div key={cat}>
