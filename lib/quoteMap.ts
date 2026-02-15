@@ -10,51 +10,53 @@ export type QuoteLineSource = {
 // Extend this list with all items you want on the printed quotation.
 export const QUOTE_LINE_MAP: QuoteLineSource[] = [
   // FOUNDATION (examples)
-  { code: 'A15', description: 'Common bricks', unit: 'no', rate: 0.16, section: 'FOUNDATION' },
-  { code: 'B8+8', description: 'River sand', unit: 'm3', rate: 20.0, section: 'FOUNDATION' },
-  { code: 'C8+1', description: 'Pit sand', unit: 'm3', rate: 20.0, section: 'FOUNDATION' },
-  { code: 'D8+8', description: '19mm Grenite Quarry Stone aggregate', unit: 'm3', rate: 45.0, section: 'FOUNDATION' },
-  { code: 'G7', description: 'Imported  inert granular fill/Hrdcore', unit: 'm3', rate: 10.0, section: 'FOUNDATION' },
-  { code: 'F15', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.50, section: 'FOUNDATION' },
-  //{ code: 'F15', description: 'Cement (50kg bag)', unit: 'bags', rate: 12.50, section: 'FOUNDATION' },
-  { code: 'G12*5', description: 'Termite Poison', unit: 'litre', rate: 0.90, section: 'FOUNDATION' },
-  { code: 'D4', description: '250 Micron black polythene sheeting', unit: 'm2', rate: 1.0, section: 'FOUNDATION' },
-  { code: 'E7', description: 'Brickforce for one brick wall (20 metre rolls) Ref C2', unit: 'rolls', rate: 2.50, section: 'FOUNDATION' },
-  { code: 'F7', description: 'Brickforce for half brick wall (20 metre rolls) Ref C2', unit: 'rolls', rate: 2.50, section: 'FOUNDATION' },
-  { code: 'D16', description: 'Transport', unit: 'Km', rate: 0.65, section: 'FOUNDATION' },
+  { code: 'A15', description: 'Common bricks', unit: 'no', rate: 0.16, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'B8', description: 'Washed River sand', unit: 'm3', rate: 20.0, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'C8', description: 'Pit sand', unit: 'm3', rate: 20.0, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'D8', description: '19mm Grenite Quarry Stone aggregate', unit: 'm3', rate: 45.0, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'G7', description: 'Imported  inert granular fill/Hrdcore', unit: 'm3', rate: 10.0, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'G15 + 10', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.50, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'G12', description: 'Termite Poison', unit: 'litre', rate: 0.90, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'D4', description: '250 Micron black polythene sheeting', unit: 'm2', rate: 1.0, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'E7', description: 'Brickforce for one brick wall (20 metre rolls) Ref C2', unit: 'rolls', rate: 2.50, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'F7', description: 'Brickforce for half brick wall (20 metre rolls) Ref C2', unit: 'rolls', rate: 2.50, section: 'SUBSTRUCTURE ( FOUNDATION )' },
+  { code: 'D16', description: 'Transport', unit: 'Km', rate: 0.65, section: 'SUBSTRUCTURE ( FOUNDATION )' },
   
 
   // SUPERSTRUCTURE (updates requested)
-  { code: 'B45', description: 'Pit sand', unit: 'm3', rate: 20, section: 'SUPERSTRUCTURE' },
-  { code: 'A45+1', description: 'River Sand', unit: 'm3', rate: 20, section: 'SUPERSTRUCTURE' },
-  { code: 'D22+D33+G22', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.5, section: 'SUPERSTRUCTURE' },
- // {code: '', description: '19mm Grenite Quarry Stone aggrecates', unit: 'm3', rate: 45, section: 'SUPERSTRUCTURE' },
-  { code: 'A36+A25', description: 'Common bricks', unit: 'no', rate: 0.16, section: 'SUPERSTRUCTURE' },
-  { code: 'B54', description: 'Damp proof course for one brick wall (22 metre rolls) (230mm)', unit: 'rolls', rate: 3.0, section: 'SUPERSTRUCTURE' },
-  { code: 'A54', description: 'Damp proof course for half brick wall (22 metre rolls) (115mm)', unit: 'rolls', rate: 2.0, section: 'SUPERSTRUCTURE' },
-  { code: 'F45', description: 'Brickforce for one brick wall (20 metre rolls)  (230mm)', unit: 'rolls', rate: 2.50, section: 'SUPERSTRUCTURE' },
-  { code: 'G45', description: 'Brickforce for half  brick wall (20 metre rolls)(115mm)', unit: 'rolls', rate: 2.50, section: 'SUPERSTRUCTURE' },
-  { code: 'D48', description: 'Y16 reinforcemet steel', unit: 'Length', rate: 8.80, section: 'SUPERSTRUCTURE' },
-  { code: 'F54+D45', description: 'Y12 reinforcemet steel', unit: 'Length', rate: 5.20, section: 'SUPERSTRUCTURE' },
-  { code: 'E45', description: 'Y10 reinforcement steel', unit: 'Length', rate: 3.90, section: 'SUPERSTRUCTURE' },
-  { code: 'E54', description: 'Bailing wire', unit: 'kgs', rate: 3.0, section: 'SUPERSTRUCTURE' },
-  { code: 'C29', description: 'Transport', unit: 'Km', rate: 0.65, section: 'SUPERSTRUCTURE' },
+  { code: 'B45', description: 'Pit sand', unit: 'm3', rate: 20, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'A45', description: 'Washed River Sand', unit: 'm3', rate: 20, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'D22+D33+G22+6', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.5, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  {code: 'C45', description: '19mm Grenite Quarry Stone aggrecates', unit: 'm3', rate: 32.5, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'A36+A25', description: 'Common bricks', unit: 'no', rate: 0.16, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'B54', description: 'Damp proof course for one brick wall (22 metre rolls) (230mm)', unit: 'rolls', rate: 3.0, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'A54', description: 'Damp proof course for half brick wall (22 metre rolls) (115mm)', unit: 'rolls', rate: 2.0, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'F45', description: 'Brickforce for one brick wall (20 metre rolls)  (230mm)', unit: 'rolls', rate: 2.50, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'G45', description: 'Brickforce for half  brick wall (20 metre rolls)(115mm)', unit: 'rolls', rate: 2.50, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  
+  { code: 'D48', description: 'Y16 reinforcemet steel', unit: 'Length', rate: 8.80, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'F54+D45', description: 'Y12 reinforcemet steel', unit: 'Length', rate: 5.20, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'E45', description: 'Y10 reinforcement steel', unit: 'Length', rate: 3.90, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'E54', description: 'Bailing wire', unit: 'kgs', rate: 3.0, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'A4/6', description: '228*38mm*6m', unit: 'Length', rate: 3.0, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
+  { code: 'C29', description: 'Transport', unit: 'Km', rate: 0.65, section: 'SUPERSTRUCTURE (BRICKWORK, CONCRETE)' },
 
 
   // METALWORK
-  // { code: 'A66', description: ' Door Frame size 815 x 115 mm.', unit: 'Length', rate: 5.20, section: 'METALWORK' },
-  // { code: 'B66', description: 'Door Frame Size  815x 230', unit: 'Length', rate: 3.90, section: 'METALWORK' },
+   { code: 'D54', description: ' Door Frame size 815 x 115 mm.', unit: 'Length', rate: 5.20, section: 'METALWORK' },
+   { code: 'C54', description: 'Door Frame Size  815x 230', unit: 'Length', rate: 3.90, section: 'METALWORK' },
 
   //PLASTERING
   { code: 'E22+E33', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.5, section: 'PLASTERING' },
    { code: 'H22-150', description: 'One coat 1:4 cement sand plaster finished with a wood float on internal walls.', unit: 'm2', rate: 2.50, section: 'PLASTERING' },
    { code: 'I22', description: 'One coat 1:4 cement sand plaster finished with a wood float on extenal wall', unit: 'm3', rate: 2.50, section: 'PLASTERING' },
+   { code: 'A52', description: 'Pitsand', unit: 'cm3', rate: 20, section: 'PLASTERING' },
   // { code: 'D71', description: 'Transport', unit: 'Km', rate: 0.65, section: 'PLASTERING' },
 
   //EXTERNAL PLASTERING
-  { code: 'F22+F33+8', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.5, section: 'EXTERNAL PLASTERING' },
+  { code: 'F22+F33', description: 'Cement PC 15 (50kg bags)', unit: 'bags', rate: 12.5, section: 'EXTERNAL PLASTERING' },
    { code: 'D52', description: 'Pit sand', unit: 'cm3', rate: 20, section: 'EXTERNAL PLASTERING' },
-  // { code: 'H71', description: 'River sand', unit: 'm3', rate: 20, section: 'EXTERNAL PLASTERING' },
+  { code: 'H71', description: 'Precast concrete external air vent.(ab)', unit: 'no', rate: 0.65, section: 'EXTERNAL PLASTERING' },
   // { code: 'I71', description: 'Transport', unit: 'Km', rate: 0.65, section: 'EXTERNAL PLASTERING' },
 
   // GRANO/POWERVLOAT FLOOR 
@@ -87,13 +89,13 @@ export const QUOTE_LINE_MAP: QuoteLineSource[] = [
   { code: 'N6', description: 'Floor slab (100mm, 1:2:4)', unit: 'm3', rate: 20.00, section: 'LABOUR — SUB-STRUCTURE' },
 
   // SUPER STRUCTURE TO RING BEAM
-  { code: 'H12-80', description: 'Brickwork', unit: 'm2', rate: 4.50, section: 'SUPER STRUCTURE TO RING BEAM' },
+  { code: 'H12', description: 'Brickwork', unit: 'm2', rate: 4.50, section: 'SUPER STRUCTURE TO RING BEAM' },
   { code: 'D54+C54', description: 'Door Frame Fittings', unit: 'no', rate: 5.50, section: 'SUPER STRUCTURE TO RING BEAM' },
 
   // ABOVE RING BEAM
-  { code: 'L12-50', description: 'Brickwork', unit: 'm2', rate: 4.50, section: 'ABOVE RING BEAM' },
+  { code: 'L12', description: 'Brickwork', unit: 'm2', rate: 4.50, section: 'ABOVE RING BEAM' },
   { code: 'K12', description: 'Shuttering', unit: 'm2', rate: 25.00, section: 'ABOVE RING BEAM' },
-  { code: 'L12-500', description: 'Steel fixing', unit: 'kgs', rate: 3.00, section: 'ABOVE RING BEAM' },
+  { code: 'L12', description: 'Steel fixing', unit: 'kgs', rate: 3.00, section: 'ABOVE RING BEAM' },
   { code: 'J12', description: 'Ring beam and column concrete mixing', unit: 'm3', rate: 15, section: 'ABOVE RING BEAM' },
   { code: 'H15', description: 'Beam filing', unit: 'm2', rate: 12.50, section: 'ABOVE RING BEAM' },
 
