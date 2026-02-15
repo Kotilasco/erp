@@ -96,7 +96,7 @@ export type ManualRowInput = z.infer<typeof ManualRowSchema>;
     const quote = await tx.quote.findUnique({ where: { id: quoteId }, include: quoteInclude });
     if (!quote) throw new Error('Quote not found');
 
-    const vatRate = fromBps(quote.vatBps) / 100;
+    const vatRate = fromBps(quote.vatBps);
     const newLineIds: string[] = [];
 
     for (const row of parsedRows) {
@@ -158,7 +158,7 @@ export type ManualRowInput = z.infer<typeof ManualRowSchema>;
 } */
 
 
-  // Reuse the same options you used elsewhere to avoid short tx timeouts.
+// Reuse the same options you used elsewhere to avoid short tx timeouts.
 
 const ManualRowSchema = z.object({
   description: z.string().min(1),
@@ -206,7 +206,7 @@ const ManualRowSchema = z.object({
     });
     if (!quote) throw new Error('Quote not found');
 
-    const vatRate = fromBps(quote.vatBps) / 100;
+    const vatRate = fromBps(quote.vatBps);
 
     // Create manual lines first (no version id yet)
     const createdIds: string[] = [];
@@ -285,7 +285,7 @@ const ManualRowSchema = z.object({
   redirect(`/quotes/${quoteId}`);
 } */
 
-  export async function addManualLines(quoteId: string, rows: ManualRowInput[]) {
+export async function addManualLines(quoteId: string, rows: ManualRowInput[]) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
@@ -323,7 +323,7 @@ const ManualRowSchema = z.object({
     });
     if (!quote) throw new Error('Quote not found');
 
-    const vatRate = fromBps(quote.vatBps) / 100;
+    const vatRate = fromBps(quote.vatBps);
 
     // Create manual lines first (no version id yet)
     const createdIds: string[] = [];

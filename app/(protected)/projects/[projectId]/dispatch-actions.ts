@@ -132,21 +132,26 @@ export async function markDispatchReceived(
 }
 
 export async function getProjectDispatchableItems(projectId: string) {
-  const approvedReqItems = await prisma.procurementRequisitionItem.findMany({
+  const remainingMap = await getRemainingDispatchMap(projectId);
+  const relevantItemIds = Array.from(remainingMap.entries())
+    .filter(([_, qty]) => qty > 0)
+    .map(([id]) => id);
+
+  if (relevantItemIds.length === 0) {
+    return [];
+  }
+
+  const items = await prisma.procurementRequisitionItem.findMany({
     where: {
-      requisition: {
-        projectId: projectId,
-        status: { in: ['APPROVED', 'ORDERED', 'PURCHASED', 'PARTIAL', 'RECEIVED', 'COMPLETE'] }
-      },
+      id: { in: relevantItemIds },
     },
   });
 
-  const remainingMap = await getRemainingDispatchMap(projectId);
-
-  const dispatchableItems = approvedReqItems
+  const dispatchableItems = items
     .map((ri) => {
       const remaining = remainingMap.get(ri.id) ?? 0;
 
+      // Double check, though we filtered keys already
       if (remaining <= 0) return null;
 
       return {

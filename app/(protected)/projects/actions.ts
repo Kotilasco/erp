@@ -12,6 +12,7 @@ import { revalidatePath } from 'next/cache';
 import crypto from 'node:crypto';
 import { redirect } from 'next/navigation';
 import { getRemainingDispatchMap } from '@/lib/dispatch';
+import { recalculateRipple, ScheduleItemMinimal, addWorkingTime, inferTaskType as engineInferTaskType, ProductivitySettings as EngineProductivitySettings } from '@/lib/schedule-engine';
 
 
 const ROLE_SET = new Set<UserRole>(USER_ROLES as unknown as UserRole[]);
@@ -149,103 +150,24 @@ export async function requestFunding(requisitionId: string, amountMajor?: number
   return submitProcurementRequest(requisitionId, amountMajor);
 }
 
-type ProductivitySettings = {
-  builderShare: number;
-  excavationBuilder: number;
-  excavationAssistant: number;
-  brickBuilder: number;
-  brickAssistant: number;
-  plasterBuilder: number;
-  plasterAssistant: number;
-  cubicBuilder: number;
-  cubicAssistant: number;
-};
+// Old functions removed - see new implementation below
 
-export async function getProductivitySettings(projectId: string): Promise<ProductivitySettings> {
-  const settings = await prisma.projectProductivitySetting.findUnique({ where: { projectId } });
-  return {
-    builderShare: settings?.builderShare ?? 0.3333,
-    excavationBuilder: settings?.excavationBuilder ?? 5,
-    excavationAssistant: settings?.excavationAssistant ?? 5,
-    brickBuilder: settings?.brickBuilder ?? 500,
-    brickAssistant: settings?.brickAssistant ?? 500,
-    plasterBuilder: settings?.plasterBuilder ?? 16,
-    plasterAssistant: settings?.plasterAssistant ?? 16,
-    cubicBuilder: settings?.cubicBuilder ?? 5,
-    cubicAssistant: settings?.cubicAssistant ?? 5,
-  };
-}
 
-function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | null {
-  const u = (unit || '').toLowerCase();
-  const d = (description || '').toLowerCase();
-  if (u.includes('m3') || u.includes('cubic')) return 'cubic';
-  if (u.includes('m2') || u.includes('sqm') || d.includes('plaster')) return 'plaster';
-  if (u.includes('brick') || d.includes('brick')) return 'brick';
-  if (u === 'm' || d.includes('excav')) return 'excavation';
-  return null;
-}
+
 
 export async function computeEstimatesForItems(
-  items: {
-    id?: string | null;
-    title: string;
-    description?: string | null;
-    unit?: string | null;
-    quantity?: number | null;
-    plannedStart?: string | null;
-    plannedEnd?: string | null;
-    employees?: number | null;
-    estHours?: number | null;
-    note?: string | null;
-  }[],
-  settings: ProductivitySettings,
+  items: ScheduleItemMinimal[],
+  settings: EngineProductivitySettings,
 ): Promise<any[]> {
-  return items.map((item) => {
-    const type = inferTaskType(item.unit, item.description);
-    const qty = Number(item.quantity ?? 0);
-    const employeesFromIds = Array.isArray((item as any).employeeIds)
-      ? (item as any).employeeIds.filter((id: any) => typeof id === 'string' && id.trim().length > 0).length
-      : 0;
-    const employees = Number(item.employees ?? employeesFromIds ?? 0);
-    if (!type || !(qty > 0) || !(employees > 0)) return item;
+  if (!items.length) return [];
 
-    const builders = Math.max(1, Math.round(employees * settings.builderShare));
-    const assistants = Math.max(0, employees - builders);
+  // Use the ripple engine starting from the first item
+  // If we don't have a start date for the first item, we use today's working hour
+  const projectStart = items[0].plannedStart
+    ? new Date(items[0].plannedStart)
+    : new Date();
 
-    const rates = (() => {
-      switch (type) {
-        case 'excavation':
-          return { b: settings.excavationBuilder, a: settings.excavationAssistant };
-        case 'brick':
-          return { b: settings.brickBuilder, a: settings.brickAssistant };
-        case 'plaster':
-          return { b: settings.plasterBuilder, a: settings.plasterAssistant };
-        case 'cubic':
-          return { b: settings.cubicBuilder, a: settings.cubicAssistant };
-        default:
-          return { b: 0, a: 0 };
-      }
-    })();
-
-    const daily = builders * rates.b + assistants * rates.a;
-    if (!(daily > 0)) return item;
-
-    const days = qty / daily;
-    const estHours = days * 8; // 8-hour workday assumption
-
-    let plannedEnd = item.plannedEnd ?? null;
-    if (item.plannedStart) {
-      const start = new Date(item.plannedStart);
-      if (!isNaN(start.getTime())) {
-        const end = new Date(start);
-        end.setDate(end.getDate() + Math.max(0, Math.ceil(days) - 1));
-        plannedEnd = end.toISOString().slice(0, 10);
-      }
-    }
-
-    return { ...item, estHours, plannedEnd };
-  });
+  return recalculateRipple(items, 0, projectStart, 30, settings); // Assuming 30m gap default for server side too
 }
 
 // --- Task reports and status ---
@@ -253,8 +175,16 @@ export async function createScheduleTaskReport(itemId: string, input: { activity
   const user = await getCurrentUser();
   if (!user) throw new Error('Auth required');
 
-  // ensure task exists
-  const item = await prisma.scheduleItem.findUnique({ where: { id: itemId }, select: { schedule: { select: { projectId: true } } } });
+  const item = await prisma.scheduleItem.findUnique({
+    where: { id: itemId },
+    include: {
+      schedule: {
+        include: {
+          items: { orderBy: { createdAt: 'asc' }, include: { assignees: true } }
+        }
+      }
+    }
+  });
   if (!item) throw new Error('Schedule item not found');
 
   await prisma.scheduleTaskReport.create({
@@ -269,7 +199,45 @@ export async function createScheduleTaskReport(itemId: string, input: { activity
     },
   });
 
+  // Calculate if we need a ripple push
+  // If today is past plannedEnd and not done, or if manually reporting remaining qty that exceeds original
+  const now = new Date();
+  const plannedEnd = item.plannedEnd ? new Date(item.plannedEnd) : null;
+  const isOverdue = plannedEnd && now > plannedEnd && item.status !== 'DONE';
+
+  if (isOverdue) {
+    const settings = await getProductivitySettings(item.schedule.projectId);
+    const scheduleItems = item.schedule.items.map(it => ({
+      ...it,
+      employeeIds: it.assignees.map(a => a.id)
+    }));
+    const currentIndex = scheduleItems.findIndex(it => it.id === itemId);
+
+    // Recalculate ripple starting from the current task (adjusting its end)
+    // or from the next task if current is somehow finish-able.
+    // For now, let's just shift everything forward from "now" (next working hour)
+    const updated = recalculateRipple(
+      scheduleItems as ScheduleItemMinimal[],
+      currentIndex,
+      now, // Start from now
+      30,
+      settings
+    );
+
+    await prisma.$transaction(
+      updated.map(u => prisma.scheduleItem.update({
+        where: { id: u.id! },
+        data: {
+          plannedStart: u.plannedStart ? new Date(u.plannedStart) : null,
+          plannedEnd: u.plannedEnd ? new Date(u.plannedEnd) : null,
+          estHours: u.estHours
+        }
+      }))
+    );
+  }
+
   revalidatePath(`/projects/${item.schedule.projectId}/reports`);
+  revalidatePath(`/projects/${item.schedule.projectId}/schedule`);
 }
 
 export async function updateScheduleItemStatus(itemId: string, status: 'ACTIVE' | 'ON_HOLD' | 'DONE') {
@@ -280,10 +248,53 @@ export async function updateScheduleItemStatus(itemId: string, status: 'ACTIVE' 
     throw new Error('Only Ops/Admin/MD/General Manager');
   }
 
-  const item = await prisma.scheduleItem.findUnique({ where: { id: itemId }, select: { schedule: { select: { projectId: true } } } });
+  const item = await prisma.scheduleItem.findUnique({
+    where: { id: itemId },
+    include: {
+      schedule: {
+        include: {
+          items: { orderBy: { createdAt: 'asc' }, include: { assignees: true } }
+        }
+      }
+    }
+  });
   if (!item) throw new Error('Schedule item not found');
 
   await prisma.scheduleItem.update({ where: { id: itemId }, data: { status } });
+
+  // ripple effect if DONE early or late
+  if (status === 'DONE' || status === 'ACTIVE') {
+    const settings = await getProductivitySettings(item.schedule.projectId);
+    const scheduleItems = item.schedule.items.map(it => ({
+      ...it,
+      employeeIds: it.assignees.map(a => a.id)
+    }));
+    const currentIndex = scheduleItems.findIndex(it => it.id === itemId);
+
+    // If DONE, the next item can start as early as "now" (or next working hour)
+    const nextStartIndex = status === 'DONE' ? currentIndex + 1 : currentIndex;
+    if (nextStartIndex < scheduleItems.length) {
+      const updated = recalculateRipple(
+        scheduleItems as ScheduleItemMinimal[],
+        nextStartIndex,
+        new Date(), // Start from now
+        30,
+        settings
+      );
+
+      await prisma.$transaction(
+        updated.slice(nextStartIndex - currentIndex).map(u => prisma.scheduleItem.update({
+          where: { id: u.id! },
+          data: {
+            plannedStart: u.plannedStart ? new Date(u.plannedStart) : null,
+            plannedEnd: u.plannedEnd ? new Date(u.plannedEnd) : null,
+            estHours: u.estHours
+          }
+        }))
+      );
+    }
+  }
+
   revalidatePath(`/projects/${item.schedule.projectId}/reports`);
   revalidatePath(`/projects/${item.schedule.projectId}/schedule`);
 }
@@ -934,8 +945,8 @@ export async function deleteDispatch(dispatchId: string) {
     });
   });
 
-  revalidatePath(`/projects/${dispatch.projectId}`);
-  redirect(`/projects/${dispatch.projectId}?tab=dispatches`);
+  revalidatePath('/dispatches');
+  redirect('/dispatches');
 }
 
 // --- Inventory Returns ---
@@ -1328,7 +1339,7 @@ export async function updateDispatchItems(
   if (d.status !== 'DRAFT') throw new Error('Only DRAFT dispatch is editable');
 
   const projectId = (await prisma.dispatch.findUnique({ where: { id: dispatchId }, select: { projectId: true } }))?.projectId;
-  const remainingMap = projectId ? await getRemainingDispatchMap(projectId) : new Map<string, number>();
+  const remainingMap = projectId ? await getRemainingDispatchMap(projectId, dispatchId) : new Map<string, number>();
 
   for (const u of updates) {
     const item = await prisma.dispatchItem.findUnique({ where: { id: u.id }, include: { purchase: true } });
@@ -1342,10 +1353,8 @@ export async function updateDispatchItems(
     // Validate project-specific items
     if (item.requisitionItemId && projectId) {
       const left = remainingMap.get(item.requisitionItemId) ?? 0;
-      // The map already includes 'oldQty' as consumed.
-      // So available is left + oldQty.
-      if (newQty > (left + oldQty)) {
-        throw new Error(`Line "${item.description}" exceeds remaining project stock (${left + oldQty}).`);
+      if (newQty > left) {
+        throw new Error(`Line "${item.description}" exceeds remaining project stock (${left}).`);
       }
     }
 
@@ -1399,7 +1408,7 @@ export async function submitDispatch(dispatchId: string) {
   if (selected.length === 0) throw new Error('Select at least one item to submit');
 
   if (dispatch.projectId) {
-    const remainingMap = await getRemainingDispatchMap(dispatch.projectId);
+    const remainingMap = await getRemainingDispatchMap(dispatch.projectId, dispatchId);
     for (const it of selected) {
       if (it.requisitionItemId) {
         const left = remainingMap.get(it.requisitionItemId) ?? 0;
@@ -3572,6 +3581,34 @@ export async function generatePaymentSchedule(projectId: string) {
 // (Removed duplicate createDispatchFromInventory definition)
 
 // --- New: Approve/hand-out dispatch and post inventory OUT moves
+export async function getProductivitySettings(projectId: string): Promise<EngineProductivitySettings> {
+  const settings = await prisma.projectProductivitySetting.findUnique({ where: { projectId } });
+  return {
+    builderShare: settings?.builderShare ?? 0.3333,
+    excavationBuilder: settings?.excavationBuilder ?? 5,
+    excavationAssistant: settings?.excavationAssistant ?? 5,
+    brickBuilder: settings?.brickBuilder ?? 500,
+    brickAssistant: settings?.brickAssistant ?? 500,
+    plasterBuilder: settings?.plasterBuilder ?? 16,
+    plasterAssistant: settings?.plasterAssistant ?? 16,
+    cubicBuilder: settings?.cubicBuilder ?? 5,
+    cubicAssistant: settings?.cubicAssistant ?? 5,
+    tilerBuilder: settings?.tilerBuilder ?? 20,
+    tilerAssistant: settings?.tilerAssistant ?? 20,
+  };
+}
+
+function inferTaskType(unit?: string | null, description?: string | null): 'excavation' | 'brick' | 'plaster' | 'cubic' | 'tiler' | null {
+  const u = (unit || '').toLowerCase();
+  const d = (description || '').toLowerCase();
+  if (d.includes('tile') || d.includes('tiling')) return 'tiler';
+  if (u.includes('m3') || u.includes('cubic')) return 'cubic';
+  if (u.includes('m2') || u.includes('sqm') || d.includes('plaster')) return 'plaster';
+  if (u.includes('brick') || d.includes('brick')) return 'brick';
+  if (u === 'm' || d.includes('excav')) return 'excavation';
+  return null;
+}
+
 export async function approveAndHandoutDispatch(dispatchId: string) {
   const me = await getCurrentUser();
   assertOneOf(me?.role, ['SECURITY', 'ADMIN']);
@@ -3629,24 +3666,44 @@ export async function createScheduleFromQuote(projectId: string) {
   if (!quote) throw new Error('No quote found for project');
 
   const labourLines = quote.lines.filter((l) => {
-    try {
-      const meta =
-        typeof l.metaJson === 'string' ? JSON.parse(l.metaJson || '{}') : (l.metaJson || {});
-      const sectionRaw = meta?.section;
-      const section = typeof sectionRaw === 'string' ? sectionRaw.toLowerCase() : '';
-      const type = (meta?.type || '').toString().toUpperCase();
-      if (meta?.isLabour === true) return true;
-      if (section.includes('labour')) return true;
-      if (type === 'LABOUR') return true;
-      const desc = (l.description || '').toLowerCase();
-      if (desc.includes('labour')) return true;
-    } catch {
-      /* ignore malformed meta */
-    }
+    // 1. Check native fields first if strict filtering requested
+    // The user requested "LABOUR SUB-STRUCTURE". This maps to section='FOUNDATIONS' and itemType='LABOUR' in quoteMap.ts
+
+    const meta = typeof l.metaJson === 'string' ? JSON.parse(l.metaJson || '{}') : (l.metaJson || {});
+    const section = (l.section || meta.section || '').toUpperCase();
+    const type = (l.itemType || meta.itemType || meta.type || '').toUpperCase();
+
+    // Strict filter: MUST be Labour type
+    const isLabour = type === 'LABOUR' || meta.isLabour === true;
+    if (!isLabour) return false;
+
+    // Optional strict section filter: if user wants ONLY "LABOUR SUB-STRUCTURE", we check for FOUNDATIONS
+    // However, usually we want ALL labour items. But user was specific.
+    // Let's modify logic to include ALL labour items for now, but prioritize FOUNDATIONS if we need to distinguish.
+    // Wait, user said "Restrict schedule items to... items categorized under 'LABOUR SUB-STRUCTURE'".
+    // This implies EXCLUDING huge lists of materials.
+    // If I include ALL labour, does that fulfill request? probably.
+
+    // Filter for Labour Sub-structure specifically:
+    // In quoteMap.ts, these are section='FOUNDATIONS'.
+    // If I comment this out, I get all labour. I will check for 'FOUNDATIONS' or 'SUBSTRUCTURE' in section.
+
+    if (section === 'FOUNDATIONS' || section.includes('SUBSTRUCTURE') || section.includes('SUB-STRUCTURE')) return true;
+
+    // Also allow explicit Tiler or other labour if needed?
+    // If user wants ONLY sub-structure labour, ignore others.
+    // But maybe they want all labour? "only include items categorized under 'LABOUR SUB-STRUCTURE'".
+    // I will adhere strictly to that request.
+
     return false;
   });
-  console.log({ labourLines });
-  const selectedLines = labourLines.length > 0 ? labourLines : quote.lines;
+
+  // Fallback: If no labour found (maybe old quote format), try loose description matching BUT restricted
+  // Actually, better to return nothing than wrong stuff if strict mode.
+  // I will relax slightly to include 'LABOUR' items generally if they look like labour, to avoid breaking other projects?
+  // No, user request is specific.
+
+  const selectedLines = labourLines; // Remove fallback to all lines
 
   const items = selectedLines.map((ln) => {
     const meta = typeof ln.metaJson === 'string' ? JSON.parse(ln.metaJson || '{}') : (ln.metaJson || {});
@@ -3666,6 +3723,36 @@ export async function createScheduleFromQuote(projectId: string) {
       plannedEnd: meta?.plannedEnd ? new Date(meta.plannedEnd) : undefined,
       note: meta?.note ?? null,
     };
+  });
+
+  // Sort items based on specific user request
+  const preferredOrder = [
+    'Site clearance',
+    'Setting out',
+    'Excavation',
+    'Concrete works',
+    'Footing brickwork',
+    'Ramming',
+    'Floor slab'
+  ];
+
+  items.sort((a, b) => {
+    const getOrderIndex = (title: string) => {
+      const lowerTitle = title.toLowerCase();
+      // Find index where the key is contained in the title
+      const index = preferredOrder.findIndex(key => lowerTitle.includes(key.toLowerCase()));
+      return index === -1 ? 999 : index;
+    };
+
+    const indexA = getOrderIndex(a.title);
+    const indexB = getOrderIndex(b.title);
+
+    if (indexA !== indexB) {
+      return indexA - indexB;
+    }
+
+    // If same order index (or both not found), sort by original line ID (proxy for creation order)
+    return a.quoteLineId.localeCompare(b.quoteLineId);
   });
 
   const schedule = await prisma.schedule.create({
@@ -3972,4 +4059,317 @@ export async function sendRequisitionForReview(requisitionId: string) {
   revalidatePath(`/projects/${req.projectId}`);
 }
 
+// Refactored to avoid "Unknown argument" on potentially stale client
+export async function getProjectsForReports() {
+  const user = await getCurrentUser();
+  if (!user) return [];
 
+  const role = user.role || 'VIEWER';
+  const isProjectManager = role === 'PROJECT_OPERATIONS_OFFICER';
+  const isForeman = role === 'FOREMAN';
+
+  // Base Logic from projects/page.tsx
+  const where: Prisma.ProjectWhereInput = {
+    // We want "Active" projects.
+    // In projects/page.tsx, "Active" tab for PMs means schedule status is ACTIVE
+    // For others, it generally implies the project is not closed.
+  };
+
+  if (isProjectManager) {
+    // Match /projects?tab=active logic
+    where.assignedToId = user.id;
+    where.schedules = { status: 'ACTIVE' };
+  } else if (isForeman) {
+    // Foremen logic
+    where.schedules = { items: { some: { assignees: { some: { userId: user.id } } } }, status: 'ACTIVE' };
+  } else {
+    // For Admins/Sales/Senior PMs, show all "Live" projects
+    where.status = {
+      in: ['PLANNED', 'PREPARING', 'READY', 'ONGOING', 'ON_HOLD', 'SCHEDULING_PENDING']
+    };
+  }
+
+  try {
+    const projects = await prisma.project.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        status: true,
+        office: true,
+        quote: {
+          select: {
+            customer: { select: { displayName: true } }
+          }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
+    return projects.map(p => ({
+      id: p.id,
+      name: p.name,
+      client: p.quote?.customer?.displayName || 'Unknown Client',
+      location: p.office || 'N/A',
+      status: p.status,
+    }));
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return [];
+  }
+}
+
+export async function getDailyReportData(projectId: string, dateStr: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: {
+      id: true,
+      name: true,
+      assignedToId: true,
+      projectNumber: true,
+      status: true,
+      office: true,
+      quote: {
+        select: {
+          customer: { select: { displayName: true, city: true } }
+        }
+      }
+    }
+  });
+
+  if (!project) throw new Error("Project not found");
+
+  // Role Checks
+  const role = user.role;
+  if (role === 'PROJECT_OPERATIONS_OFFICER') {
+    if (project.assignedToId !== user.id) {
+      throw new Error("You are not assigned to this project.");
+    }
+  }
+  // Other roles (Admin, Coordinator) can view if they have access to the page basically.
+
+  // Parse date
+  const date = new Date(dateStr);
+  const startOfDay = new Date(date.setHours(0, 0, 0, 0));
+  const endOfDay = new Date(date.setHours(23, 59, 59, 999));
+
+  // Fetch Schedule Items that have REPORTS for this day OR were Active
+  // For End of Day report, we typically just want to show what happened (Reports).
+  // If no report was made, maybe we don't show it? 
+  // User asked for "end of day report... daily tasks updating the schedule".
+  // Let's fetch items that have at least one report on this day.
+
+  const items = await prisma.scheduleItem.findMany({
+    where: {
+      schedule: { projectId },
+      reports: {
+        some: {
+          reportedForDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        }
+      }
+    },
+    include: {
+      reports: {
+        where: {
+          reportedForDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
+        },
+        include: { reporter: { select: { name: true } } }
+      },
+      assignees: {
+        select: {
+          id: true,
+          givenName: true,
+          surname: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  // Calculate unique men on site from the reported tasks
+  const uniqueWorkerIds = new Set<string>();
+  items.forEach(item => {
+    item.assignees.forEach(a => uniqueWorkerIds.add(a.id));
+  });
+
+  return {
+    project: {
+      name: project.name,
+      number: project.projectNumber,
+      customer: project.quote?.customer?.displayName,
+      location: project.quote?.customer?.city || project.office,
+      status: project.status
+    },
+    date: startOfDay.toISOString(),
+    tasks: items.map(item => ({
+      id: item.id,
+      title: item.title,
+      unit: item.unit,
+      reports: item.reports.map(r => ({
+        id: r.id,
+        activity: r.activity,
+        usedQty: r.usedQty,
+        reporter: r.reporter?.name || 'Unknown'
+      })),
+      totalUsed: item.reports.reduce((acc, r) => acc + (r.usedQty || 0), 0),
+      status: item.status,
+      assignees: item.assignees
+    })),
+    stats: {
+      totalMen: uniqueWorkerIds.size,
+      totalTasksReported: items.length
+    }
+  };
+}
+
+export async function rescheduleOverdueTasks(projectId: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { assignedToId: true }
+  });
+  if (!project) throw new Error("Project not found");
+
+  const role = user.role;
+  if (role === 'PROJECT_OPERATIONS_OFFICER' && project.assignedToId !== user.id) {
+    throw new Error("You are not assigned to this project.");
+  }
+
+  // Fetch Schedule
+  const schedule = await prisma.schedule.findUnique({
+    where: { projectId },
+    include: {
+      items: {
+        orderBy: { plannedStart: 'asc' },
+        include: { assignees: true }
+      }
+    }
+  });
+
+  if (!schedule) throw new Error("No schedule found");
+
+  const now = new Date();
+
+  const items = schedule.items;
+  let firstOverdueIndex = -1;
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.status === 'DONE') continue;
+
+    // Check if plannedEnd is in the past (yesterday or earlier)
+    // We compare against start of today to be strict "overdue"
+    // or just "now". "Now" is safer.
+    const end = item.plannedEnd ? new Date(item.plannedEnd) : null;
+    if (end && end < now) {
+      firstOverdueIndex = i;
+      break;
+    }
+  }
+
+  if (firstOverdueIndex === -1) {
+    return { success: true, message: "No overdue tasks found." };
+  }
+
+  // Prepare items for recalculation
+  const minimalItems: ScheduleItemMinimal[] = items.map(it => ({
+    id: it.id,
+    title: it.title,
+    unit: it.unit,
+    quantity: it.quantity,
+    plannedStart: it.plannedStart,
+    plannedEnd: it.plannedEnd,
+    employees: it.employees,
+    // @ts-ignore
+    employeeIds: it.assignees.map(a => a.id),
+    estHours: it.estHours,
+    description: it.description
+  }));
+
+  // Shift to Tomorrow 07:00
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(7, 0, 0, 0);
+
+  // We need productivity settings for recalculation
+  const productivity = await getProductivitySettings(projectId);
+
+  // Recalculate from the overdue item index
+  // Note: recalculateRipple expects Date object for startAt
+  const updatedItems = recalculateRipple(
+    minimalItems,
+    firstOverdueIndex,
+    tomorrow,
+    30,
+    productivity
+  );
+
+  // Update Database
+  const toUpdate = updatedItems.slice(firstOverdueIndex);
+
+  await prisma.$transaction(
+    toUpdate.map(u => prisma.scheduleItem.update({
+      where: { id: u.id! },
+      data: {
+        plannedStart: u.plannedStart ? new Date(u.plannedStart) : null,
+        plannedEnd: u.plannedEnd ? new Date(u.plannedEnd) : null,
+        estHours: u.estHours
+      }
+    }))
+  );
+
+  revalidatePath(`/projects/${projectId}/schedule`);
+  return { success: true, message: `Rescheduled ${toUpdate.length} tasks starting from '${items[firstOverdueIndex].title}'` };
+}
+
+
+
+export async function getGlobalDailyReportData(date: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const role = assertRole(user.role);
+  if (!['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'PM_CLERK'].includes(role)) {
+    throw new Error("Unauthorized");
+  }
+
+  // Fetch Active Projects
+  const where: any = {
+    status: 'ONGOING',
+    ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: user.id } : {})
+  };
+
+  const projects = await prisma.project.findMany({
+    where,
+    select: { id: true, name: true }
+  });
+
+  const reports = [];
+
+  for (const project of projects) {
+    try {
+      const reportData = await getDailyReportData(project.id, date);
+      // Only include projects with activity or force all?
+      // User said "summary of what was entered", so if nothing entered, maybe skip?
+      // But "Report" usually implies status check.
+      // Let's include all to show "No Activity" if nothing happened.
+      reports.push(reportData);
+    } catch (e) {
+      console.error(`Failed to generate report for project ${project.name}`, e);
+      // Skip projects that fail (e.g. no schedule)
+    }
+  }
+
+  return reports;
+}

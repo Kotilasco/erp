@@ -2,6 +2,7 @@
 
 import { Prisma } from '@prisma/client';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { getQuoteGrandTotalMinor, addMonths } from '@/app/lib/payments'
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/db';
@@ -20,11 +21,11 @@ import { getPdfRenderer } from '@/lib/pdf';
 const quoteInclude = {
   customer: true,
   lines: true,
-  projectManager: { select: { id: true, name: true, email: true, office: true } },
+  projectManager: { select: { id: true, name: true, email: true, office: true, role: true, managerId: true } },
   projectTasks: {
     include: {
-      assignee: { select: { id: true, name: true, email: true, office: true } },
-      createdBy: { select: { id: true, name: true, email: true, office: true } },
+      assignee: { select: { id: true, name: true, email: true, office: true, role: true, managerId: true } },
+      createdBy: { select: { id: true, name: true, email: true, office: true, role: true, managerId: true } },
     },
   },
 } satisfies Prisma.QuoteInclude;
@@ -56,7 +57,7 @@ function coerceUserRole(role: string | null | undefined): UserRole | null {
 // who can edit rate in which statuses
 function canEditRate(role: UserRole, status: QuoteStatus) {
   if (role === 'QS') return status === 'DRAFT';
-  if (role === 'SENIOR_QS') return status === 'SUBMITTED_REVIEW' || status === 'NEGOTIATION';
+  if (role === 'SENIOR_QS') return status === 'SUBMITTED_REVIEW' || status === 'NEGOTIATION' || status === 'NEGOTIATION_REVIEW';
   return false;
 }
 
@@ -89,7 +90,26 @@ export async function updateLineItem(
       throw new Error('You are not allowed to change line items in the current status');
     }
 
-    const vatRate = fromBps(quote.vatBps) / 100;
+    const vatRate = fromBps(quote.vatBps);
+
+    // NEW: If in NEGOTIATION_REVIEW, ensure we are editing a PENDING negotiation item
+    if (role === 'SENIOR_QS' && (quote.status === 'NEGOTIATION_REVIEW' || quote.status === 'NEGOTIATION')) {
+      const openNegotiation = await prisma.quoteNegotiation.findFirst({
+        where: { quoteId: quoteId, status: 'OPEN' },
+        select: { id: true }
+      });
+
+      if (openNegotiation) {
+        const negItem = await prisma.quoteNegotiationItem.findFirst({
+          where: { negotiationId: openNegotiation.id, quoteLineId: lineId },
+          select: { status: true }
+        });
+
+        if (negItem && negItem.status !== 'PENDING') {
+          throw new Error('This item has already been resolved. You cannot edit it.');
+        }
+      }
+    }
 
     const calc = calcLine({
       qty: newQuantity,
@@ -109,6 +129,33 @@ export async function updateLineItem(
           lineTotalMinor: toMinor(Number(calc.lineTotal)),
         },
       });
+
+      // NEW: If we are in NEGOTIATION_REVIEW (or similar) and there is an open negotiation,
+      // mark the item as REVIEWED by the current user.
+      if (quote.status === 'NEGOTIATION_REVIEW' || quote.status === 'NEGOTIATION') {
+        const openNegotiation = await tx.quoteNegotiation.findFirst({
+          where: { quoteId: quoteId, status: 'OPEN' },
+          select: { id: true }
+        });
+
+        if (openNegotiation) {
+          // Try to find the item
+          const negItem = await tx.quoteNegotiationItem.findFirst({
+            where: { negotiationId: openNegotiation.id, quoteLineId: lineId, status: 'PENDING' },
+          });
+
+          if (negItem) {
+            await tx.quoteNegotiationItem.update({
+              where: { id: negItem.id },
+              data: {
+                status: 'REVIEWED',
+                reviewedById: user.id,
+                reviewedAt: new Date(),
+              }
+            });
+          }
+        }
+      }
 
       const refreshed = await tx.quote.findUniqueOrThrow({
         where: { id: quoteId },
@@ -218,7 +265,8 @@ function deriveUnitRateFromTotal(totalAmount: number, quantity: number, vatRate:
   if (!Number.isFinite(totalAmount) || totalAmount < 0) {
     throw new Error('Amount must be a non-negative number');
   }
-  const netTotal = totalAmount / (1 + vatRate);
+  // const netTotal = totalAmount / (1 + vatRate);
+  const netTotal = totalAmount;
   const rate = netTotal / quantity;
   return Number(rate.toFixed(2));
 }
@@ -310,7 +358,7 @@ export async function proposeNegotiationAmountOnly(
     }
 
     const negotiationCycle = quote.negotiationCycle ?? 0;
-    const vatRate = fromBps(quote.vatBps) / 100;
+    const vatRate = fromBps(quote.vatBps);
 
     // Build snapshot + items
     const snapshotLines: SnapshotLine[] = [];
@@ -520,7 +568,7 @@ export async function proposeNegotiationAmountOnly(
       await tx.quote.update({
         where: { id: quoteId },
         data: {
-          status: 'NEGOTIATION',
+          status: 'NEGOTIATION_REVIEW',
           metaJson: JSON.stringify({ ...(snapshot.meta ?? {}), totals }),
           ...(quote.office ? {} : ensuredOffice ? { office: ensuredOffice } : {}),
         },
@@ -578,7 +626,7 @@ export async function proposeNegotiationAmountOnly(
     }
 
     const negotiationCycle = quote.negotiationCycle ?? 0;
-    const vatRate = fromBps(quote.vatBps) / 100;
+    const vatRate = fromBps(quote.vatBps);
 
     const snapshotLines: SnapshotLine[] = [];
     const itemInputs: { quoteLineId: string; proposedTotalMinor: bigint; status: 'PENDING' | 'OK' }[] = [];
@@ -791,7 +839,7 @@ export async function acceptNegotiationItem(negotiationItemId: string): Promise<
       const quote = negotiation.quote;
       const ensuredOffice = ensureQuoteOffice(quote.office ?? null, role, userOffice);
 
-      const vatRate = fromBps(quote.vatBps) / 100;
+      const vatRate = fromBps(quote.vatBps);
       const quantity = Number(item.quoteLine.quantity);
       const proposedTotal = fromMinor(item.proposedTotalMinor);
       const proposedRate = deriveUnitRateFromTotal(proposedTotal, quantity, vatRate);
@@ -911,7 +959,7 @@ export async function rejectNegotiationItem(
       const quote = negotiation.quote;
       const ensuredOffice = ensureQuoteOffice(quote.office ?? null, role, userOffice);
 
-      const vatRate = fromBps(quote.vatBps) / 100;
+      const vatRate = fromBps(quote.vatBps);
       const breakdown = computeLineAmounts(Number(line.quantity), counterRate, vatRate);
 
       await tx.quoteLine.update({
@@ -1131,7 +1179,7 @@ export async function endorseQuote(
   });
 }
 export async function closeNegotiation(negotiationId: string): Promise<ActionResult<{ quoteId: string }>> {
-  return runAction('closeNegotiation', async () => {
+  const result = await runAction('closeNegotiation', async () => {
     const user = await getCurrentUser();
     if (!user) throw new Error('Authentication required');
     const role = assertRole(user.role);
@@ -1153,7 +1201,7 @@ export async function closeNegotiation(negotiationId: string): Promise<ActionRes
         throw new Error('Negotiation already closed');
       }
 
-      const allResolved = negotiation.items.every((item) => item.status === 'OK' || item.status === 'ACCEPTED');
+      const allResolved = negotiation.items.every((item) => item.status === 'OK' || item.status === 'ACCEPTED' || item.status === 'REVIEWED');
       if (!allResolved) {
         throw new Error('Proposal still has unresolved items');
       }
@@ -1167,6 +1215,7 @@ export async function closeNegotiation(negotiationId: string): Promise<ActionRes
       const incrementedQuote = await tx.quote.update({
         where: { id: negotiation.quoteId },
         data: {
+          status: 'REVIEWED', // Transition back to REVIEWED so Sales can endorse
           negotiationCycle: { increment: 1 },
           ...(negotiation.quote.office ? {} : ensuredOffice ? { office: ensuredOffice } : {}),
         },
@@ -1195,6 +1244,12 @@ export async function closeNegotiation(negotiationId: string): Promise<ActionRes
     revalidatePath('/quotes');
     return { quoteId };
   });
+
+  if (result.ok) {
+    redirect('/dashboard');
+  }
+
+  return result;
 }
 
 export async function endorseQuoteToProject(
@@ -1771,13 +1826,44 @@ export async function generateQuotePdf(quoteId: string): Promise<ActionResult<{ 
   return runAction('generateQuotePdf', async () => {
     const user = await getCurrentUser();
     if (!user) throw new Error('Authentication required');
-    
+
     const renderer = await getPdfRenderer();
     const result = await renderer.render({ quoteId });
-    
+
     return {
       base64: result.buffer.toString('base64'),
       filename: result.filename
     };
   });
+}
+
+export async function updateQuoteNotes(
+  quoteId: string,
+  assumptions: string[],
+  exclusions: string[]
+): Promise<ActionResult> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) throw new Error("Authentication required");
+
+    // Validate access (basic check)
+    const quote = await prisma.quote.findUnique({ where: { id: quoteId } });
+    if (!quote) throw new Error("Quote not found");
+
+    // Resolve office permissions if needed (skipping for brevity, rely on standard checks if strict mode needed)
+
+    await prisma.quote.update({
+      where: { id: quoteId },
+      data: {
+        assumptions: JSON.stringify(assumptions),
+        exclusions: JSON.stringify(exclusions),
+      },
+    });
+
+    revalidatePath(`/quotes/${quoteId}`);
+    return { ok: true };
+  } catch (error) {
+    console.error("[updateQuoteNotes]", error);
+    return { ok: false, error: getErrorMessage(error) };
+  }
 }

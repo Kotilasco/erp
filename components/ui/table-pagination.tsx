@@ -9,9 +9,10 @@ interface Props {
   totalPages?: number;
   currentPage: number;
   pageSize: number;
+  onPageChange?: (page: number) => void;
 }
 
-export default function TablePagination({ total, totalItems, totalPages: explicitTotalPages, currentPage, pageSize }: Props) {
+export default function TablePagination({ total, totalItems, totalPages: explicitTotalPages, currentPage, pageSize, onPageChange }: Props) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -21,17 +22,26 @@ export default function TablePagination({ total, totalItems, totalPages: explici
   const calculatedTotalPages = Math.max(1, Math.ceil(effectiveTotal / effectivePageSize));
   const totalPages = explicitTotalPages ?? calculatedTotalPages;
   
+  // Guard against invalid array length
+  if (!Number.isFinite(totalPages) || totalPages < 0) return null;
+  
   if (effectiveTotal === 0 && !explicitTotalPages) return null;
   // If explicitly 0 pages, also return null
   if (totalPages === 0) return null;
-  
-  // Guard against invalid array length
-  if (!Number.isFinite(totalPages) || totalPages < 0) return null;
+
 
   const createPageURL = (pageNumber: number | string) => {
+    if (onPageChange) return '#';
     const params = new URLSearchParams(searchParams.toString());
     params.set('page', pageNumber.toString());
     return `${pathname}?${params.toString()}`;
+  };
+
+  const handlePageChange = (e: React.MouseEvent, page: number) => {
+    if (onPageChange) {
+        e.preventDefault();
+        onPageChange(page);
+    }
   };
 
   return (
@@ -39,12 +49,14 @@ export default function TablePagination({ total, totalItems, totalPages: explici
       <div className="flex flex-1 justify-between sm:hidden">
         <a
           href={currentPage > 1 ? createPageURL(currentPage - 1) : '#'}
+          onClick={(e) => currentPage > 1 && handlePageChange(e, currentPage - 1)}
           className={`relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
         >
           Previous
         </a>
         <a
           href={currentPage < totalPages ? createPageURL(currentPage + 1) : '#'}
+          onClick={(e) => currentPage < totalPages && handlePageChange(e, currentPage + 1)}
           className={`relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 ${currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
         >
           Next
@@ -62,6 +74,7 @@ export default function TablePagination({ total, totalItems, totalPages: explici
           <nav className="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
             <a
               href={currentPage > 1 ? createPageURL(currentPage - 1) : '#'}
+              onClick={(e) => currentPage > 1 && handlePageChange(e, currentPage - 1)}
               className={`relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${currentPage <= 1 ? 'pointer-events-none opacity-50' : ''}`}
             >
               <span className="sr-only">Previous</span>
@@ -76,10 +89,11 @@ export default function TablePagination({ total, totalItems, totalPages: explici
                         <a
                             key={p}
                             href={createPageURL(p)}
+                            onClick={(e) => handlePageChange(e, p)}
                             aria-current={p === currentPage ? 'page' : undefined}
-                            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold ${
+                            className={`relative inline-flex items-center px-4 py-2 text-sm font-semibold cursor-pointer ${
                                 p === currentPage
-                                    ? 'z-10 bg-barmlo-blue text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-barmlo-blue'
+                                    ? 'z-10 bg-green-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-green-600'
                                     : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 dark:text-gray-200 dark:ring-gray-600 dark:hover:bg-gray-700'
                             }`}
                         >
@@ -94,6 +108,7 @@ export default function TablePagination({ total, totalItems, totalPages: explici
 
             <a
               href={currentPage < totalPages ? createPageURL(currentPage + 1) : '#'}
+              onClick={(e) => currentPage < totalPages && handlePageChange(e, currentPage + 1)}
               className={`relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 ${currentPage >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
             >
               <span className="sr-only">Next</span>

@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
  * remainingDispatchQty: (VerifiedGRNs + FinalizedPurchases) - sum(dispatchedQty)
  * We must filter by projectId to ensure isolation and project-wide visibility.
  */
-export async function getRemainingDispatchMap(projectId: string) {
+export async function getRemainingDispatchMap(projectId: string, excludeDispatchId?: string) {
   // 1. Get quantities from Verified Goods Received Notes for this PROJECT
   const verifiedGrnItems = await prisma.goodsReceivedNoteItem.findMany({
     where: {
@@ -33,7 +33,10 @@ export async function getRemainingDispatchMap(projectId: string) {
     by: ['requisitionItemId'],
     where: {
       requisitionItemId: { not: null },
-      dispatch: { projectId },
+      dispatch: {
+        projectId,
+        id: excludeDispatchId ? { not: excludeDispatchId } : undefined
+      },
     },
     _sum: { qty: true } as any,
   });

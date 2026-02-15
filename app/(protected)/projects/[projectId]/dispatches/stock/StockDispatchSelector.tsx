@@ -203,7 +203,7 @@ export default function StockDispatchSelector({
                   Creating Draft...
                 </>
               ) : (
-                'Create Draft Stock Dispatch'
+                'Create Stock Dispatch'
               )}
             </button>
           </div>

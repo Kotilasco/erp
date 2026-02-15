@@ -1,0 +1,45 @@
+Error in getProjectsForReports:
+{
+  "name": "PrismaClientValidationError",
+  "clientVersion": "6.16.2"
+}
+PrismaClientValidationError: 
+Invalid `prisma.project.findMany()` invocation:
+
+{
+  where: {
+    assignedToId: "cmldjqnkt006istlwi254d0ec",
+    schedules: {
+      status: "ACTIVE"
+    }
+  },
+  select: {
+    id: true,
+    name: true,
+    status: true,
+    office: true,
+    quote: {
+      select: {
+        customer: {
+          select: {
+            name: true,
+            ~~~~
+?           id?: true,
+?           displayName?: true,
+?           email?: true,
+?           phone?: true,
+?           addressJson?: true,
+?           city?: true,
+?           quotes?: true,
+?           _count?: true
+          }
+        }
+      }
+    }
+  },
+  orderBy: {
+    name: "asc"
+  }
+}
+
+Unknown field `name` for select statement on model `Customer`. Available options are marked with ?.

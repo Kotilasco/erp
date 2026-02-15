@@ -58,12 +58,21 @@ export default async function QuotesPage(props: { searchParams: { [key: string]:
 
   // Role-based filters + Search filters
   let where: any = {};
+  const view = searchParams.view as string | undefined;
 
   // Base role filter
   if (role === 'QS') {
-    where = { ...where, status: 'DRAFT' /*, createdById: me.id */ };
+    if (view === 'my') {
+      where = { ...where, createdById: me.id };
+    } else {
+      where = { ...where, status: 'DRAFT' };
+    }
   } else if (role === 'SENIOR_QS') {
-    where = { ...where, status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION', 'REVIEWED'] } };
+    if (view === 'my') {
+      where = { ...where, createdById: me.id };
+    } else {
+      where = { ...where, status: { in: ['SUBMITTED_REVIEW', 'NEGOTIATION_REVIEW'] } };
+    }
   } else if (role === 'SALES') {
     where = { ...where, status: { in: ['REVIEWED', 'SENT_TO_SALES', 'NEGOTIATION'] } };
   } // ADMIN sees all
@@ -129,7 +138,10 @@ export default async function QuotesPage(props: { searchParams: { [key: string]:
   let pageTitle = 'Quotes';
   let pageDescription = 'Manage and view your quotations';
 
-  if (statusFilter === 'SENT_TO_SALES') {
+  if (view === 'my') {
+    pageTitle = 'My Quotes';
+    pageDescription = 'Quotations created by you';
+  } else if (statusFilter === 'SENT_TO_SALES') {
     pageTitle = 'New Quotations';
     pageDescription = 'Quotations sent to sales pending review';
   } else if (statusFilter === 'REVIEWED') {

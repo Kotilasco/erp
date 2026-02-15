@@ -39,7 +39,7 @@ export default function PurchaseOrderHeader({
       {/* Top Header Section */}
       <div className="flex flex-col md:flex-row justify-between items-start mb-8 border-b-2 border-orange-500 pb-6 print:mb-4 print:pb-4">
         <div className="flex flex-col items-start">
-          <div className="relative w-48 h-20 mb-2">
+          <div className="relative w-64 h-28 mb-2">
             <Image 
               src="/barmlo_logo.png" 
               alt="Barmlo Logo" 
@@ -47,7 +47,6 @@ export default function PurchaseOrderHeader({
               className="object-contain object-left" 
             />
           </div>
-          <p className="text-orange-500 italic font-medium text-sm">Your happiness is our pride</p>
           
           <div className="mt-6 text-sm font-bold text-gray-700 dark:text-gray-300">
             <p>TIN NO: 2000873176</p>

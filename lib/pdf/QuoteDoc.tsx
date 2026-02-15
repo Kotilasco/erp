@@ -1,26 +1,67 @@
 // lib/pdf/QuoteDoc.tsx
 import React from 'react';
-import { Document, Page, View, Text, StyleSheet, Image, Svg, Path } from '@react-pdf/renderer';
+import { Document, Page, View, Text, StyleSheet, Image, Svg, Path, Font } from '@react-pdf/renderer';
+
+// Register a nice font if possible, otherwise default
+// Font.register({ family: 'Inter', src: '...' });
 
 const styles = StyleSheet.create({
-  page: { padding: 24, fontSize: 10 },
-  h1: { fontSize: 14, marginBottom: 6 },
-  row: { flexDirection: 'row' },
-  header: { marginTop: 8, marginBottom: 6, fontSize: 12, fontWeight: 700 },
-  cell: { paddingVertical: 2, paddingRight: 6 },
-  th: {
-    fontWeight: 700,
-    borderBottomWidth: 1,
-    borderBottomColor: '#000',
-    paddingBottom: 3,
-    marginBottom: 3,
-  },
-  // simple fixed widths to avoid layout warnings
-  cIdx: { width: 32 },
-  cDesc: { width: 240 },
-  cUnit: { width: 60 },
-  cQty: { width: 60, textAlign: 'right' },
-  cAmt: { width: 80, textAlign: 'right' },
+  page: { padding: 30, fontSize: 9, fontFamily: 'Helvetica', color: '#1f2937' },
+  
+  // Header
+  headerContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, paddingBottom: 15, borderBottomWidth: 2, borderBottomColor: '#166534' },
+  logoContainer: { width: 150 },
+  companyInfo: { alignItems: 'flex-end', flex: 1 },
+  companyText: { fontSize: 8, color: '#166534', marginBottom: 2 },
+  
+  // Quote Info
+  infoContainer: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
+  infoBlock: { width: '48%' },
+  infoLabel: { fontSize: 8, color: '#6b7280', textTransform: 'uppercase', marginBottom: 2 },
+  infoValue: { fontSize: 10, fontWeight: 'bold' },
+  
+  // Section
+  sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#166534', marginTop: 15, marginBottom: 5, textTransform: 'uppercase', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', paddingBottom: 2 },
+  
+  // Table
+  tableHeader: { flexDirection: 'row', backgroundColor: '#f3f4f6', borderBottomWidth: 1, borderBottomColor: '#d1d5db', paddingVertical: 4, alignItems: 'center' },
+  tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#f3f4f6', paddingVertical: 4, alignItems: 'flex-start' },
+  
+  // Columns - Fixed widths for numbers to align right perfectly, Flex for description
+  colIdx: { width: 25, textAlign: 'center' },
+  colDesc: { flexGrow: 1, paddingRight: 5 }, 
+  colUnit: { width: 35, textAlign: 'center' },
+  colQty: { width: 45, textAlign: 'right' },
+  colRate: { width: 60, textAlign: 'right' },
+  colAmt: { width: 70, textAlign: 'right', paddingRight: 4 },
+  
+  // Cells
+  th: { fontSize: 8, fontWeight: 'bold', color: '#374151' },
+  td: { fontSize: 9 },
+  
+  // Subtotal
+  sectionSubtotal: { flexDirection: 'row', justifyContent: 'flex-end', paddingVertical: 4, marginTop: 2 },
+  subtotalLabel: { fontSize: 9, fontWeight: 'bold', marginRight: 10 },
+  subtotalValue: { fontSize: 9, fontWeight: 'bold', width: 70, textAlign: 'right', paddingRight: 4 },
+  
+  // Summary
+  summaryContainer: { marginTop: 20, borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10, marginLeft: 'auto', width: '50%' },
+  summaryTitle: { fontSize: 10, fontWeight: 'bold', color: '#166534', marginBottom: 8, textTransform: 'uppercase' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  summaryLabel: { fontSize: 9, color: '#374151' },
+  summaryValue: { fontSize: 9, fontWeight: 'bold' },
+  grandTotalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8, borderTopWidth: 2, borderTopColor: '#166534', paddingTop: 4 },
+  grandTotalLabel: { fontSize: 11, fontWeight: 'bold', color: '#166534' },
+  grandTotalValue: { fontSize: 11, fontWeight: 'bold', color: '#166534' },
+  
+  // Notes
+  notesContainer: { marginTop: 20, padding: 10, backgroundColor: '#f9fafb', borderRadius: 4 },
+  noteTitle: { fontSize: 10, fontWeight: 'bold', marginBottom: 4, color: '#374151' },
+  noteItem: { fontSize: 8, marginBottom: 2, color: '#4b5563', flexDirection: 'row' },
+  bullet: { width: 10, textAlign: 'center' },
+  
+  // Footer
+  footer: { position: 'absolute', bottom: 30, left: 30, right: 30, textAlign: 'center', fontSize: 8, color: '#9ca3af', borderTopWidth: 1, borderTopColor: '#e5e7eb', paddingTop: 10 },
 });
 
 type PdfLine = {
@@ -29,90 +70,242 @@ type PdfLine = {
   unit: string;
   quantity: number;
   lineTotalMinor: number;
+  section: string;
+  itemType: string;
 };
 
 type PdfQuote = {
   id: string;
   number: string | null;
   currency: string;
-  vatBps: number; // e.g. 1500
+  vatBps: number;
   status: string;
+  pgRate: number;
+  contingencyRate: number;
+  assumptions: string;
+  exclusions: string;
   customer: { displayName: string } | null;
+  createdAt: string;
 };
 
-const money = (minor: number, currency: string) =>
-  `${currency === 'USD' ? 'US$' : ''}${(minor / 100).toFixed(2)}`;
+const formatMoney = (minor: number, currency: string) => {
+  const val = minor / 100;
+  return val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 export default function QuoteDoc({ quote, lines, logoData }: { quote: PdfQuote; lines: PdfLine[]; logoData?: string }) {
-  const currency = String(quote.currency || 'USD');
-  const number = quote.number ? String(quote.number) : `#${quote.id.slice(0, 6)}`;
-  const customerName = quote.customer?.displayName ? String(quote.customer.displayName) : '';
+  const currency = quote.currency || 'USD';
+  const currencySymbol = currency === 'USD' ? '$' : currency;
 
-  // guard: ensure only numbers/strings end up in <Text>
-  const safeLines = Array.isArray(lines) ? lines : [];
+  // Group lines
+  const groups: Record<string, { section: string; lines: PdfLine[]; subtotal: number }> = {};
+  
+  lines.forEach(l => {
+    const section = l.section || 'Items';
+    if (!groups[section]) {
+      groups[section] = { section, lines: [], subtotal: 0 };
+    }
+    groups[section].lines.push(l);
+    groups[section].subtotal += l.lineTotalMinor;
+  });
+  
+  // Sort groups if needed (Materials, Labour, Others)
+  const sortedGroups = Object.values(groups).sort((a, b) => {
+    const order = { 'MATERIALS': 1, 'LABOUR': 2, 'FIX_SUPPLY': 3 };
+    const orderA = order[a.section as keyof typeof order] || 99;
+    const orderB = order[b.section as keyof typeof order] || 99;
+    return orderA - orderB;
+  });
+
+  // LABOUR vs MATERIALS calculation based on itemType
+  const labourLines = lines.filter(l => l.itemType === 'LABOUR');
+  const materialLines = lines.filter(l => l.itemType !== 'LABOUR'); // Default to material if missing/other
+
+  const totalLabour = labourLines.reduce((acc, l) => acc + l.lineTotalMinor, 0);
+  const totalMaterials = materialLines.reduce((acc, l) => acc + l.lineTotalMinor, 0);
+
+  // Calculations
+  const baseTotal = totalLabour + totalMaterials;
+  const pgAmount = (baseTotal * quote.pgRate) / 100;
+  const subtotal1 = baseTotal + pgAmount;
+  const contingencyAmount = (subtotal1 * quote.contingencyRate) / 100;
+  const subtotal2 = subtotal1 + contingencyAmount;
+  
+  // Fix VAT: If bps < 100, assume it's a percentage (15 = 15%) => 1500 bps
+  const effectiveVatBps = (quote.vatBps > 0 && quote.vatBps < 100) 
+    ? quote.vatBps * 100 
+    : quote.vatBps;
+    
+  const vatRate = effectiveVatBps / 10000;
+  const vatAmount = subtotal2 * vatRate;
+  const grandTotal = subtotal2 + vatAmount;
+
+  const assumptions = quote.assumptions ? JSON.parse(quote.assumptions) as string[] : [];
+  const exclusions = quote.exclusions ? JSON.parse(quote.exclusions) as string[] : [];
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header Section */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20, borderBottomWidth: 2, borderBottomColor: '#581c87', paddingBottom: 10 }}>
-          <View style={{ alignItems: 'center' }}>
-            {/* eslint-disable-next-line jsx-a11y/alt-text */}
-            {logoData ? (
-              <Image src={logoData} style={{ width: 150, height: 60, objectFit: 'contain' }} />
-            ) : null}
-            <Text style={{ color: '#f97316', fontStyle: 'italic', fontSize: 10, marginTop: 4, fontWeight: 'medium' }}>Your happiness is our pride</Text>
+        
+        {/* Header */}
+        <View style={styles.headerContainer}>
+          <View style={{ width: 180 }}>
+            {logoData && <Image src={logoData} style={{ width: 160, height: 70, objectFit: 'contain' }} />}
           </View>
-          
-          <View style={{ flexDirection: 'column', gap: 4 }}>
-             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Svg viewBox="0 0 24 24" style={{ width: 12, height: 12, color: '#581c87' }}>
-                   <Path fill="#581c87" d="M11.47 3.84a.75.75 0 011.06 0l8.69 8.69a.75.75 0 101.06-1.06l-8.689-8.69a2.25 2.25 0 00-3.182 0l-8.69 8.69a.75.75 0 001.061 1.06l8.69-8.69z M12 5.432l8.159 8.159c.03.03.06.058.091.086v6.198c0 1.035-.84 1.875-1.875 1.875H15a.75.75 0 01-.75-.75v-4.5a.75.75 0 00-.75-.75h-3a.75.75 0 00-.75.75V21a.75.75 0 01-.75.75H5.625a1.875 1.875 0 01-1.875-1.875v-6.198a2.29 2.29 0 00.091-.086L12 5.43z" />
-                </Svg>
-                <Text style={{ fontSize: 9, color: '#581c87', fontStyle: 'italic', fontWeight: 'bold' }}>3294, Light Industry Mberengwa{'\n'}Business Center</Text>
-             </View>
-             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Svg viewBox="0 0 24 24" style={{ width: 12, height: 12, color: '#581c87' }}>
-                   <Path fill="#581c87" d="M1.5 8.67v8.58a3 3 0 003 3h15a3 3 0 003-3V8.67l-8.928 5.493a3 3 0 01-3.144 0L1.5 8.67z M22.5 6.908V6.75a3 3 0 00-3-3h-15a3 3 0 00-3 3v.158l9.714 5.978a1.5 1.5 0 001.572 0L22.5 6.908z" />
-                </Svg>
-                <Text style={{ fontSize: 9, color: '#581c87', fontStyle: 'italic', fontWeight: 'bold' }}>info@barmlo.co.zw</Text>
-             </View>
-             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                <Svg viewBox="0 0 24 24" style={{ width: 12, height: 12, color: '#581c87' }}>
-                   <Path fill="#581c87" d="M21.721 12.752a9.711 9.711 0 00-.945-5.003 12.754 12.754 0 01-4.339 2.708 18.991 18.991 0 01-.214 4.772 17.165 17.165 0 005.498-2.477z M14.634 15.55a17.324 17.324 0 00.332-4.647c-.952.227-1.945.347-2.966.347-1.021 0-2.014-.12-2.966-.347a17.515 17.515 0 00.332 4.647 17.387 17.387 0 005.268 0z M9.772 17.119a18.963 18.963 0 004.456 0A17.182 17.182 0 0112 21.724a17.16 17.16 0 01-2.228-4.605z M7.777 15.275a18.991 18.991 0 01-.214-4.772 12.754 12.754 0 01-4.339-2.708 9.711 9.711 0 00-.944 5.003 17.165 17.165 0 005.497 2.477z M21.356 14.752a9.765 9.765 0 01-7.478 6.817 18.64 18.64 0 001.988-4.718 18.627 18.627 0 005.49-2.099z M2.644 14.752c1.682.971 3.53 1.688 5.49 2.099a18.64 18.64 0 001.988 4.718 9.765 9.765 0 01-7.478-6.817z M6.111 7.79a17.158 17.158 0 011.903-4.407 9.686 9.686 0 00-3.61 3.002 18.7 18.7 0 001.707 1.405z M12 2.276a17.152 17.152 0 012.805 4.495 17.2 17.2 0 00-5.61 0A17.151 17.151 0 0112 2.276z M15.986 3.383a17.158 17.158 0 011.903 4.407 18.7 18.7 0 001.707-1.405 9.686 9.686 0 00-3.61-3.002z" />
-                </Svg>
-                <Text style={{ fontSize: 9, color: '#581c87', fontStyle: 'italic', fontWeight: 'bold' }}>www.barmlo.co.zw</Text>
-             </View>
+          <View style={styles.companyInfo}>
+             <Text style={[styles.companyText, { fontWeight: 'bold' }]}>BARMLO CONSTRUCTION</Text>
+             <Text style={styles.companyText}>3294, Light Industry, Mberengwa</Text>
+             <Text style={styles.companyText}>info@barmlo.co.zw</Text>
+             <Text style={styles.companyText}>www.barmlo.co.zw</Text>
           </View>
         </View>
 
-        <Text style={styles.h1}>Quote {number}</Text>
-        <Text>Customer: {customerName}</Text>
-        <Text>VAT: {(quote.vatBps / 100).toFixed(2)}%</Text>
-        <Text>Status: {String(quote.status || '')}</Text>
-
-        <Text style={styles.header}>Items</Text>
-
-        <View style={[styles.row, styles.th]}>
-          <Text style={[styles.cell, styles.cIdx]}>Item</Text>
-          <Text style={[styles.cell, styles.cDesc]}>Description</Text>
-          <Text style={[styles.cell, styles.cUnit]}>Unit</Text>
-          <Text style={[styles.cell, styles.cQty]}>Qty</Text>
-          <Text style={[styles.cell, styles.cAmt]}>Amount</Text>
+        {/* Quote Info */}
+        <View style={styles.infoContainer}>
+          <View style={styles.infoBlock}>
+             <Text style={styles.infoLabel}>To</Text>
+             <Text style={styles.infoValue}>{quote.customer?.displayName || 'Customer'}</Text>
+          </View>
+          <View style={[styles.infoBlock, { alignItems: 'flex-end' }]}>
+             <Text style={styles.infoLabel}>Quotation #{quote.number || quote.id.slice(0, 8)}</Text>
+             <Text style={styles.infoValue}>Date: {new Date(quote.createdAt).toLocaleDateString()}</Text>
+             <Text style={styles.infoValue}>Currency: {currency}</Text>
+          </View>
         </View>
-
-        {safeLines.map((l, i) => (
-          <View key={String(l.id)} style={styles.row}>
-            <Text style={[styles.cell, styles.cIdx]}>{String(i + 1)}</Text>
-            <Text style={[styles.cell, styles.cDesc]}>{String(l.description || '')}</Text>
-            <Text style={[styles.cell, styles.cUnit]}>{String(l.unit || '')}</Text>
-            <Text style={[styles.cell, styles.cQty]}>{Number(l.quantity || 0).toFixed(3)}</Text>
-            <Text style={[styles.cell, styles.cAmt]}>
-              {money(Number(l.lineTotalMinor || 0), currency)}
-            </Text>
+        
+        {/* Line Items by Group */}
+        {sortedGroups.map((group) => (
+          <View key={group.section} wrap={false}>
+            <Text style={styles.sectionTitle}>{group.section}</Text>
+            
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+              <Text style={[styles.colIdx, styles.th]}>#</Text>
+              <Text style={[styles.colDesc, styles.th]}>Description</Text>
+              <Text style={[styles.colUnit, styles.th]}>Unit</Text>
+              <Text style={[styles.colQty, styles.th]}>Qty</Text>
+              <Text style={[styles.colRate, styles.th]}>Rate</Text>
+              <Text style={[styles.colAmt, styles.th]}>Amount</Text>
+            </View>
+            
+            {/* Rows */}
+            {group.lines.map((line, idx) => (
+              <View key={line.id} style={styles.tableRow}>
+                <Text style={[styles.colIdx, styles.td]}>{idx + 1}</Text>
+                <Text style={[styles.colDesc, styles.td]}>{line.description}</Text>
+                <Text style={[styles.colUnit, styles.td]}>{line.unit}</Text>
+                <Text style={[styles.colQty, styles.td]}>{line.quantity}</Text>
+                <Text style={[styles.colRate, styles.td]}>{formatMoney((line.lineTotalMinor / (line.quantity || 1)), '')}</Text>
+                <Text style={[styles.colAmt, styles.td]}>{formatMoney(line.lineTotalMinor, '')}</Text>
+              </View>
+            ))}
+            
+            {/* Group Subtotal */}
+            <View style={styles.sectionSubtotal}>
+              <Text style={styles.subtotalLabel}>Subtotal {group.section}</Text>
+              <Text style={styles.subtotalValue}>{currencySymbol} {formatMoney(group.subtotal, currency)}</Text>
+            </View>
           </View>
         ))}
+
+        {/* Summary Footer which can break across pages if needed, but preferable kept together */}
+        <View style={styles.summaryContainer} wrap={false}>
+          <Text style={styles.summaryTitle}>Construction Cost Summary</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>TOTAL LABOUR</Text>
+            <Text style={styles.summaryValue}>{formatMoney(totalLabour, currency)}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>TOTAL MATERIALS</Text>
+            <Text style={styles.summaryValue}>{formatMoney(totalMaterials, currency)}</Text>
+          </View>
+          <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: '#d1d5db', marginTop: 2, paddingTop: 2 }]}>
+            <Text style={[styles.summaryLabel, { fontWeight: 'bold' }]}>TOTAL FIX AND SUPPLY</Text>
+            <Text style={[styles.summaryValue, { fontWeight: 'bold' }]}>{formatMoney(baseTotal, currency)}</Text>
+          </View>
+          
+          {quote.pgRate > 0 && (
+             <View style={styles.summaryRow}>
+               <Text style={styles.summaryLabel}>Add P&Gs ({quote.pgRate}%)</Text>
+               <Text style={styles.summaryValue}>{formatMoney(pgAmount, currency)}</Text>
+             </View>
+          )}
+
+          <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 2 }]}>
+             <Text style={styles.summaryLabel}>SUB-TOTAL</Text>
+             <Text style={styles.summaryValue}>{formatMoney(subtotal1, currency)}</Text>
+          </View>
+
+          {quote.contingencyRate > 0 && (
+             <View style={styles.summaryRow}>
+               <Text style={styles.summaryLabel}>Add Contingency ({quote.contingencyRate}%)</Text>
+               <Text style={styles.summaryValue}>{formatMoney(contingencyAmount, currency)}</Text>
+             </View>
+          )}
+          
+          <View style={[styles.summaryRow, { borderTopWidth: 1, borderTopColor: '#f3f4f6', paddingTop: 2 }]}>
+             <Text style={[styles.summaryLabel, { fontWeight: 'bold' }]}>SUB-TOTAL (Net)</Text>
+             <Text style={[styles.summaryValue, { fontWeight: 'bold' }]}>{formatMoney(subtotal2, currency)}</Text>
+          </View>
+
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Add VAT ({(effectiveVatBps / 100).toFixed(1)}%)</Text>
+            <Text style={styles.summaryValue}>{formatMoney(vatAmount, currency)}</Text>
+          </View>
+          
+          <View style={styles.grandTotalRow}>
+             <Text style={styles.grandTotalLabel}>GRAND TOTAL</Text>
+             <Text style={styles.grandTotalLabel}>{currencySymbol} {formatMoney(grandTotal, currency)}</Text>
+          </View>
+        </View>
+
+        {/* Notes */}
+        {(assumptions.length > 0 || exclusions.length > 0) && (
+          <View style={styles.notesContainer} wrap={false}>
+            {/* Treat assumptions[0] as the full notes text if it exists and looks like the new format */}
+            {assumptions.length > 0 && (
+              <View>
+                {assumptions.length === 1 && assumptions[0].includes('\n') ? (
+                   // New format: Single block of text
+                   <Text style={{ fontSize: 8, color: '#374151', lineHeight: 1.5 }}>
+                     {assumptions[0]}
+                   </Text>
+                ) : (
+                  // Fallback: Legacy list format
+                  <View>
+                    <Text style={styles.noteTitle}>Assumptions & Conditions:</Text>
+                    {assumptions.map((note, i) => (
+                      <View key={i} style={styles.noteItem}>
+                        <Text style={styles.bullet}>•</Text>
+                        <Text style={{ flex: 1 }}>{note}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+              </View>
+            )}
+            
+            {/* Legacy Exclusions support (if any exist independently) */}
+            {exclusions.length > 0 && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={styles.noteTitle}>Exclusions:</Text>
+                {exclusions.map((note, i) => (
+                  <View key={i} style={styles.noteItem}>
+                    <Text style={styles.bullet}>•</Text>
+                    <Text style={{ flex: 1 }}>{note}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+        <Text style={styles.footer} fixed>
+          This is a computer-generated document. No signature is required. | Barmlo Construction | {new Date().getFullYear()}
+        </Text>
+        
       </Page>
     </Document>
   );
 }
+

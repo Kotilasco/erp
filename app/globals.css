@@ -38,8 +38,8 @@ html, body, :root {
 
 @media print {
   @page {
-    margin: 0;
-    size: auto;
+    margin: 5mm;
+    size: landscape;
   }
 
   /* Hide sidebar and header only - keep buttons visible as requested */
@@ -95,8 +95,8 @@ html, body, :root {
 
   /* Reduce base font size for print to fit more content */
   body {
-    font-size: 11px !important;
-    line-height: 1.2 !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
   }
   
   /* Reduce heading sizes */

@@ -13,6 +13,7 @@ import {
   ClockIcon
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
+import DailyReportGenerator from './components/DailyReportGenerator';
 
 export default async function DailyTasksPage({
   params,
@@ -147,6 +148,7 @@ export default async function DailyTasksPage({
            </h1>
         </div>
         <div className="flex flex-wrap gap-3">
+          <DailyReportGenerator projectId={projectId} />
           <Link
             href={`/projects/${projectId}/reports`}
             className="inline-flex items-center gap-2 rounded-md bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm border border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

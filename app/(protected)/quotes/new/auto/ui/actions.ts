@@ -91,12 +91,44 @@ export async function computeAutoQuote(baseInputs: Record<string, number>) {
   return { values };
 }
 
+
+// --- SECTION & TYPE MAPPING ---
+
+// Helper to deduce section & type from the code string
+// In a real app, you might have a DB table for this mapping.
+// For now, we'll use a static mapping based on the Barmlo template codes.
+function getLineCategory(code: string): { section: string; itemType: 'MATERIAL' | 'LABOUR' | 'FIX_SUPPLY' } {
+  const c = code.toUpperCase();
+
+  // Materials commonly reference "Take Off" or specific material names
+  if (c.includes('SAND') || c.includes('CEMENT') || c.includes('BRICK') || c.includes('WIRE') || c.includes('CONCRETE')) {
+    if (c.includes('FOUNDATION') || c.includes('SUBSTRUCTURE')) return { section: 'SUBSTRUCTURE', itemType: 'MATERIAL' };
+    if (c.includes('ROOF')) return { section: 'ROOFING', itemType: 'MATERIAL' };
+    if (c.includes('PLASTER')) return { section: 'PLASTERING', itemType: 'MATERIAL' };
+    return { section: 'GENERAL MATERIALS', itemType: 'MATERIAL' };
+  }
+
+  // Labour items often have 'LABOUR' in name or are distinct
+  if (c.includes('LABOUR') || c.includes('FIXING') || c.includes('INSTALL')) {
+    return { section: 'LABOUR', itemType: 'LABOUR' };
+  }
+
+  // Fallback defaults based on potential prefixes
+  if (c.startsWith('SUB')) return { section: 'SUBSTRUCTURE', itemType: 'MATERIAL' };
+  if (c.startsWith('SUP')) return { section: 'SUPERSTRUCTURE', itemType: 'MATERIAL' };
+  if (c.startsWith('ROOF')) return { section: 'ROOFING', itemType: 'MATERIAL' };
+
+  return { section: 'GENERAL', itemType: 'MATERIAL' };
+}
+
 export async function createAutoQuote(input: {
   baseInputs: Record<string, number>;
   include: { code: string; value: number; unit?: string }[];
   customerId?: string;
-  vatRate?: number;            // optional override in %
+  vatRate?: number;
   currency?: string;
+  assumptions?: string[];
+  exclusions?: string[];
 }) {
   // ensure customer
   let customerId = input.customerId;
@@ -136,6 +168,13 @@ export async function createAutoQuote(input: {
       currency,
       vatBps: toBps(vatPct), // 15 -> 1500
       discountPolicy: "none",
+
+      // New Summary & Notes Fields
+      pgRate: 2.0,             // Default 2%
+      contingencyRate: 10.0,   // Default 10%
+      assumptions: input.assumptions ? JSON.stringify(input.assumptions) : null,
+      exclusions: input.exclusions ? JSON.stringify(input.exclusions) : null,
+
       metaJson: JSON.stringify({
         baseInputs: input.baseInputs,
         totalsPreview: {
@@ -154,10 +193,18 @@ export async function createAutoQuote(input: {
           const c = linesCalced[idx];
           const qty = 1;
           const price = Number(i.value ?? 0);
+
+          // Determine section and type
+          const { section, itemType } = getLineCategory(i.code);
+
           return {
             description: i.code,
-            unit: i.unit ?? null, // keep if your schema has `unit String?`
-            quantity: qty, // Float, number (not string)
+            unit: i.unit ?? null,
+            quantity: qty,
+
+            // New Categorization Fields
+            section,
+            itemType,
 
             // Money in MINOR UNITS (BigInt)
             unitPriceMinor: toMinor(price),

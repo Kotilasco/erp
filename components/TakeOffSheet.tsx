@@ -6,7 +6,9 @@ import { SHEET_COLUMNS, TAKEOFF_LAYOUT } from '@/lib/takeoffLayout';
 import { createQuote, upsertCustomer } from '@/app/(protected)/actions';
 import { QUOTE_LINE_MAP } from '@/lib/quoteMap';
 import { normalizeContext, missingVars, evalExpr } from '@/lib/expr';
+import { DEFAULT_NOTES } from '@/lib/quoteDefaults';
 import ClearableNumberInput from './ClearableNumberInput';
+import Money from '@/components/Money';
 import { UserIcon, EnvelopeIcon, PhoneIcon, BuildingOfficeIcon, MapPinIcon, WrenchScrewdriverIcon, BeakerIcon, ArrowDownTrayIcon, PlusIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 const parser = new Parser({ allowMemberAccess: false });
@@ -58,7 +60,9 @@ export default function TakeOffSheet() {
   const [customItems, setCustomItems] = useState<CustomItem[]>([
     { description: '', unit: '', qty: 0, rate: 0, section: '' },
   ]);
+  const [notesText, setNotesText] = useState(DEFAULT_NOTES);
   const [formError, setFormError] = useState<string | null>(null);
+
 
   // Per-cell numeric literal overrides, by literal index
   const [constOverrides, setConstOverrides] = useState<Record<string, Record<number, number>>>({});
@@ -193,6 +197,67 @@ export default function TakeOffSheet() {
     return { ctx, missing };
   }, [vals, applyOverrides]);
 
+  const quoteLinesPreview = useMemo(() => {
+    const lines: any[] = [];
+    const ctx = normalizeContext(context);
+
+    // 1) QUOTE_LINE_MAP items
+    for (const m of QUOTE_LINE_MAP) {
+      const qty = evalExpr(ctx, m.code); 
+      if (!(qty > 0)) continue;
+
+      lines.push({
+        description: m.description,
+        quantity: Math.ceil(Number(qty)),
+        unitPrice: m.rate ?? 0,
+        section: m.section,
+        itemType: m.itemType || 'MATERIAL',
+        lineTotalMinor: BigInt(Math.round(Math.ceil(Number(qty)) * (m.rate ?? 0) * 100)),
+        unit: m.unit,
+        code: m.code,
+      });
+    }
+
+    // 2) custom items
+    for (const ci of customItems) {
+      if (!ci.description || !(Number.isFinite(ci.qty) && ci.qty > 0)) continue;
+      
+      // Heuristic: if description contains 'labour' or 'labor', it's labour.
+      // Or if the section is 'LABOUR'
+      const isLabour = ci.description.toLowerCase().includes('labour') || 
+                       ci.description.toLowerCase().includes('labor') ||
+                       (ci.section || '').toUpperCase().includes('LABOUR');
+
+      lines.push({
+        description: ci.description,
+        quantity: Math.ceil(Number(ci.qty)),
+        unitPrice: Number(ci.rate || 0),
+        section: ci.section || 'CUSTOM',
+        itemType: isLabour ? 'LABOUR' : 'MATERIAL',
+        lineTotalMinor: BigInt(Math.round(Math.ceil(Number(ci.qty)) * Number(ci.rate || 0) * 100)),
+        unit: ci.unit,
+        code: 'MANUAL',
+      });
+    }
+    return lines;
+  }, [context, customItems]); // Removed 'tab' dependency
+
+  const summary = useMemo(() => {
+    let totalLabour = 0n;
+    let totalMaterials = 0n;
+    quoteLinesPreview.forEach(l => {
+      if (l.itemType === 'LABOUR') totalLabour += l.lineTotalMinor;
+      else totalMaterials += l.lineTotalMinor;
+    });
+    const baseTotal = totalLabour + totalMaterials;
+    const pg = BigInt(Math.round(Number(baseTotal) * 0.02)); // 2% 
+    const subtotal1 = baseTotal + pg;
+    const contingency = BigInt(Math.round(Number(subtotal1) * 0.10)); // 10%
+    const grandTotal = subtotal1 + contingency;
+
+    return { totalLabour, totalMaterials, baseTotal, pg, contingency, grandTotal };
+  }, [quoteLinesPreview]);
+
   useEffect(() => {
     setMissingByCode(missing);
   }, [missing]);
@@ -283,53 +348,20 @@ export default function TakeOffSheet() {
         addressJson: customerAddress ? JSON.stringify({ line1: customerAddress }) : null,
       });
 
-      // 1) normalize once for case-insensitive, numeric-safe lookups
-      const ctx = normalizeContext(context);
-
-      const lines: any[] = [];
-
-      // 2) compute qty from expressions
-      for (const m of QUOTE_LINE_MAP) {
-        console.log(m);
-        const qty = evalExpr(ctx, m.code); // handles A36, A36+A25, D22+D33+G22, J22*0.05, A4/3*3.6, etc.
-
-        console.log('qty', m.code, '==>', qty);
-        if (!(qty > 0)) continue;
-
-        // (optional) debug missing variables
-        // const miss = missingVars(m.code, ctx);
-        // if (miss.length) console.warn(`Missing in '${m.code}':`, miss);
-
-        lines.push({
-          description: m.description,
-          quantity: Math.ceil(Number(qty)),
-          unitPrice: m.rate ?? 0,
-          metaJson: {
-            unit: m.unit || '',
-            code: m.code,
-            label: m.description,
-            section: m.section || null,
-            from: 'TakeOffSheet',
-          },
-        });
-      }
-
-      // Manual items unchanged
-      for (const ci of customItems) {
-        if (!ci.description || !(Number.isFinite(ci.qty) && ci.qty > 0)) continue;
-        lines.push({
-          description: ci.description,
-          quantity: Math.ceil(Number(ci.qty)),
-          unitPrice: Number(ci.rate || 0),
-          metaJson: {
-            unit: ci.unit || '',
-            code: 'MANUAL',
-            label: ci.description,
-            section: ci.section || 'CUSTOM',
-            from: 'Manual',
-          },
-        });
-      }
+      const lines = quoteLinesPreview.map(l => ({
+        description: l.description,
+        quantity: l.quantity,
+        unitPrice: l.unitPrice,
+        section: l.section,
+        itemType: l.itemType,
+        metaJson: {
+          unit: l.unit || '',
+          code: l.code,
+          label: l.description,
+          section: l.section || null,
+          from: 'TakeOffSheet',
+        },
+      }));
 
       if (lines.length === 0) {
         setFormError('No items to include. Enter inputs so at least one value is > 0.');
@@ -342,9 +374,12 @@ export default function TakeOffSheet() {
         vatRate,
         discountPolicy: 'none',
         lines,
+        assumptions: JSON.stringify([notesText]),
+        exclusions: JSON.stringify([]),
+        pgRate: 2.0,
+        contingencyRate: 10.0,
       });
 
-      // router.push(`/quotes/${res.quoteId}`);
       router.push(`/dashboard`);
     } catch (err: any) {
       console.error('Quote creation failed:', err);
@@ -729,6 +764,21 @@ export default function TakeOffSheet() {
           </button>
         </div>
       </div>
+
+      {/* Quotation Notes */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-sm dark:bg-gray-800 dark:border-gray-700 transition-all hover:shadow-md">
+        <div className="mb-4 border-b border-gray-100 pb-2 dark:border-gray-700">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Quotation Notes</h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Assumptions, Exclusions, and Points to Note</p>
+        </div>
+        <textarea
+          className="block w-full h-64 rounded-lg border border-gray-200 bg-gray-50 py-2.5 px-3 text-sm text-gray-900 font-mono transition-all focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:focus:border-blue-400"
+          placeholder="Enter detailed notes..."
+          value={notesText}
+          onChange={(e) => setNotesText(e.target.value)}
+        />
+      </div>
+
 
       <div className="sticky bottom-6 z-10 mx-auto max-w-2xl rounded-2xl border border-gray-200 bg-white/90 p-4 shadow-lg backdrop-blur-sm dark:bg-gray-800/90 dark:border-gray-700">
         <div className="flex items-center justify-between gap-4">

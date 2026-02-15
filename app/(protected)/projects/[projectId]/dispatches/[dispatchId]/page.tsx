@@ -16,6 +16,8 @@ import { ArrowLeftIcon, CheckIcon, ShieldCheckIcon, TrashIcon } from '@heroicons
 import { cn } from '@/lib/utils';
 import DispatchAcknowledgment from '@/components/dispatch-acknowledgment';
 import QuoteHeader from '@/components/QuoteHeader';
+import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
+import AssignDriverForm from '@/components/AssignDriverForm';
 
 export const runtime = 'nodejs';
 
@@ -33,10 +35,7 @@ export default async function DispatchDetail({
     where: { id: dispatchId },
     include: { 
         project: { 
-            select: { 
-                id: true, 
-                name: true,
-                projectNumber: true,
+            include: { 
                 quote: { include: { customer: true, project: true } }
             } 
         }, 
@@ -54,6 +53,10 @@ export default async function DispatchDetail({
   const isSecurity = role === 'SECURITY' || role === 'ADMIN';
   const isDriver = role === 'DRIVER' || role === 'ADMIN';
   const canReturn = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN') && dispatch.status === 'DELIVERED';
+
+  // Fetch drivers for security/admin if status is ready for assignment
+  const canAssignDriver = isSecurity && ['APPROVED', 'DISPATCHED', 'IN_TRANSIT'].includes(dispatch.status);
+  const drivers = canAssignDriver ? await getDrivers() : [];
 
   // ---------- server actions ----------
   
@@ -86,7 +89,7 @@ export default async function DispatchDetail({
     // persist any current edits first
     await saveAction(fd);
     await submitDispatch(dispatchId);
-    revalidatePath(`/dispatches/${dispatchId}`);
+    redirect('/dispatches');
   };
 
   // DRIVER: acknowledge received for a single line
@@ -230,7 +233,7 @@ export default async function DispatchDetail({
         <div className="flex flex-col gap-4">
           <nav className="flex items-center text-sm font-medium text-gray-500">
             <Link 
-              href={`/projects/${dispatch.project.id}/dispatches`} 
+              href="/dispatches" 
               className="hover:text-green-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
             >
               <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-green-600" />
@@ -240,10 +243,15 @@ export default async function DispatchDetail({
 
           {/* Letterhead */}
           {dispatch.project.quote ? (
-            <QuoteHeader quote={dispatch.project.quote} title="Dispatch Form" />
+            <QuoteHeader 
+              quote={dispatch.project.quote} 
+              title={isDriver && ['DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'ARRIVED'].includes(dispatch.status) ? "Delivery Note" : "Dispatch Form"} 
+            />
           ) : (
             <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-sm">
-              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Dispatch Details</h1>
+              <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">
+                {isDriver && ['DISPATCHED', 'IN_TRANSIT', 'DELIVERED', 'ARRIVED'].includes(dispatch.status) ? "Delivery Note" : "Dispatch Details"}
+              </h1>
               <p className="mt-2 text-gray-500">Project: {dispatch.project.name}</p>
             </div>
           )}
@@ -311,10 +319,10 @@ export default async function DispatchDetail({
                                                         <input type="hidden" name="qty" value={it.qty.toString()} />
                                                         <LoadingButton
                                                             type="submit"
-                                                            className="inline-flex items-center rounded border border-transparent bg-indigo-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-indigo-700"
+                                                            className="inline-flex items-center rounded border border-transparent bg-barmlo-blue px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-barmlo-blue/90"
                                                             loadingText="..."
                                                         >
-                                                            Hand Out
+                                                            Dispatch
                                                         </LoadingButton>
                                                     </form>
                                                 )}
@@ -326,9 +334,13 @@ export default async function DispatchDetail({
                                                     !it.receivedAt && (
                                                     <form action={acknowledgeReceived}>
                                                         <input type="hidden" name="itemId" value={it.id} />
-                                                        <button className="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700">
+                                                        <LoadingButton 
+                                                            type="submit"
+                                                            className="inline-flex items-center rounded border border-transparent bg-barmlo-green px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-barmlo-green/90"
+                                                            loadingText="..."
+                                                        >
                                                             Received
-                                                        </button>
+                                                        </LoadingButton>
                                                     </form>
                                                 )}
                                             </div>
@@ -363,22 +375,35 @@ export default async function DispatchDetail({
                         )}
                     </div>
 
+                    {canAssignDriver && (
+                        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
+                            <h4 className="text-sm font-bold text-gray-700 mb-3">Assign Transport / Driver</h4>
+                            <AssignDriverForm 
+                                dispatchId={dispatch.id} 
+                                drivers={drivers} 
+                                currentDriverId={dispatch.assignedToDriverId} 
+                            />
+                        </div>
+                    )}
+
                     {canEdit && (
                         <div className="flex flex-wrap gap-3">
                             <form id="editForm" action={saveAction} className="flex gap-2">
                                 <LoadingButton 
                                     type="submit"
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50 text-nowrap"
+                                    loadingText="Saving..."
                                 >
                                     {!isProjectOps && <CheckIcon className="h-4 w-4" />}
                                     Save Changes
                                 </LoadingButton>
                                 <LoadingButton
                                     formAction={submitAction}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 hover:shadow-lg"
+                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-barmlo-green px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-green/90 hover:shadow-lg text-nowrap"
+                                    loadingText="Dispatching..."
                                 >
                                     {!isProjectOps && <ShieldCheckIcon className="h-4 w-4" />}
-                                    Submit to Security
+                                    Dispatch
                                 </LoadingButton>
                             </form>
                             
@@ -386,6 +411,7 @@ export default async function DispatchDetail({
                                 'use server';
                                 const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
                                 await deleteDispatch(dispatchId);
+                                redirect('/dispatches');
                             }}>
                                 <LoadingButton 
                                     type="submit" 
@@ -464,7 +490,8 @@ export default async function DispatchDetail({
                             <div className="mt-6 flex justify-end">
                                 <LoadingButton 
                                     type="submit"
-                                    className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-indigo-700"
+                                    className="rounded-xl bg-barmlo-blue px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-blue/90"
+                                    loadingText="Processing..."
                                 >
                                     Process Return / Used Out
                                 </LoadingButton>

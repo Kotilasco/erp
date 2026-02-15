@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { getCurrentUser } from '@/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { getProductivitySettings, computeEstimatesForItems } from '@/app/(protected)/projects/actions';
-
+import { detectAndNotifyConflicts } from '@/lib/conflict-detection';
 
 type ScheduleItemInput = {
   title?: string;
@@ -12,10 +12,10 @@ type ScheduleItemInput = {
   quantity?: number | null;
   plannedStart?: string | Date | null;
   plannedEnd?: string | Date | null;
-  employees?: string | null; // this is that string field you already have
+  employees?: string | null;
   estHours?: number | null;
   note?: string | null;
-  employeeIds?: string[]; // <-- this is what we need for assignees.connect
+  employeeIds?: string[];
 };
 
 
@@ -66,6 +66,24 @@ export async function POST(
   const settings = await getProductivitySettings(projectId);
   const enrichedItems = await computeEstimatesForItems(items, settings);
 
+  // Fetch project details for notification context
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { name: true, projectNumber: true }
+  });
+
+  if (project) {
+    // Detect and notify conflicts
+    await detectAndNotifyConflicts(
+      enrichedItems,
+      projectId,
+      project.name || 'Unknown Project',
+      project.projectNumber || 'No Number'
+    );
+  }
+
+  const hasProjectConflicts = enrichedItems.some(it => it.hasConflict);
+
   let schedule = await prisma.schedule.findFirst({ where: { projectId } });
 
   if (!schedule) {
@@ -74,7 +92,8 @@ export async function POST(
         projectId,
         createdById: user.id,
         note: note ?? null,
-        status: status || 'DRAFT'
+        status: status || 'DRAFT',
+        hasConflict: hasProjectConflicts
       },
     });
   } else {
@@ -82,7 +101,8 @@ export async function POST(
       where: { id: schedule.id },
       data: {
         note: note ?? null,
-        status: status ?? undefined // Only update if provided
+        status: status ?? undefined, // Only update if provided
+        hasConflict: hasProjectConflicts
       },
     });
   }
@@ -100,6 +120,8 @@ export async function POST(
         employees: it.employees ?? null,
         estHours: it.estHours ?? null,
         note: it.note ?? null,
+        hasConflict: it.hasConflict ?? false,
+        conflictNote: it.conflictNote ?? null,
         assignees: Array.isArray((it as any).employeeIds)
           ? {
             connect: (it as any).employeeIds

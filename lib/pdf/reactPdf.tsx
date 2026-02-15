@@ -35,6 +35,8 @@ function toPdfLine(l: any) {
     lineTotalMinor: asNumber(l.lineTotalMinor, 0),
     // stringify meta to avoid objects inside <Text>
     meta: l.metaJson ? String(l.metaJson) : '',
+    section: String(l.section || 'Items'),
+    itemType: String(l.itemType || 'MATERIAL'),
   };
 }
 
@@ -46,6 +48,10 @@ function toPdfQuote(q: any) {
     currency: String(q.currency ?? 'USD'),
     vatBps: asNumber(q.vatBps, 0),
     status: String(q.status ?? ''),
+    pgRate: asNumber(q.pgRate, 0),
+    contingencyRate: asNumber(q.contingencyRate, 0),
+    assumptions: q.assumptions ? String(q.assumptions) : '[]',
+    exclusions: q.exclusions ? String(q.exclusions) : '[]',
     customer: q.customer
       ? { displayName: q.customer.displayName ? String(q.customer.displayName) : '' }
       : null,

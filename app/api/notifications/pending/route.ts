@@ -74,12 +74,85 @@ export async function GET() {
       take: 10,
     });
 
-    const items = quotes.map((quote) => ({
+    const quoteItems = quotes.map((quote) => ({
       id: quote.id,
+      kind: 'QUOTE',
       number: quote.number,
       status: quote.status as QuoteStatus,
       client: quote.customer?.displayName ?? null,
+      link: `/quotes/${quote.id}`,
+      title: `Quote #${quote.number || 'Draft'}`,
+      subtitle: quote.customer?.displayName ?? 'No client',
+      timestamp: quote.updatedAt
     }));
+
+    // Fetch system notifications
+    let systemItems: any[] = [];
+    if (currentUserId) {
+      const systemNotifications = await prisma.notification.findMany({
+        where: {
+          userId: currentUserId,
+          readAt: null
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 20
+      });
+
+      systemItems = systemNotifications.map(n => ({
+        id: n.id,
+        kind: 'SYSTEM',
+        number: null,
+        status: 'ALERT',
+        client: null,
+        link: (n as any).link, // Cast to any until prisma generate
+        title: n.kind, // 'Warning' etc
+        subtitle: n.message,
+        timestamp: n.createdAt
+      }));
+    }
+
+    // Fetch project conflict notifications
+    let conflictItems: any[] = [];
+    if (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'ADMIN' || (role as string) === 'PROJECT_COORDINATOR') {
+      const conflictedSchedules = await prisma.schedule.findMany({
+        where: {
+          hasConflict: true,
+          project: role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: currentUserId } : undefined
+        },
+        include: {
+          project: {
+            include: {
+              quote: {
+                include: {
+                  customer: { select: { displayName: true } }
+                }
+              }
+            }
+          }
+        },
+        take: 5
+      });
+
+      conflictItems = conflictedSchedules.map(s => {
+        const project = (s as any).project;
+        return {
+          id: `conflict-${s.id}`,
+          kind: 'SYSTEM',
+          number: project?.projectNumber,
+          status: 'ALERT',
+          client: project?.quote?.customer?.displayName ?? null,
+          link: `/projects/${s.projectId}/schedule`,
+          title: `Conflict in ${project?.projectNumber || 'Project'}`,
+          subtitle: `Schedule for ${project?.name || 'Unknown'} has resource overlaps.`,
+          timestamp: s.updatedAt
+        };
+      });
+    }
+
+    // Merge and sort
+    const items = [...systemItems, ...quoteItems, ...conflictItems].sort((a, b) =>
+      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
 
     return NextResponse.json({ total: items.length, items });
   } catch (error: any) {

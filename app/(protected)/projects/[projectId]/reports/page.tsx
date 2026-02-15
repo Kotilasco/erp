@@ -1,222 +1,65 @@
-// app/(protected)/projects/[projectId]/reports/page.tsx
-import { prisma } from '@/lib/db';
-import { getCurrentUser } from '@/lib/auth';
-import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
-import {
-  ArrowLeftIcon,
-  ChartBarSquareIcon,
-  BanknotesIcon,
-  ShoppingCartIcon,
-  PresentationChartLineIcon,
-  DocumentDuplicateIcon,
-  ArrowTrendingDownIcon,
-  ExclamationTriangleIcon,
-  ArchiveBoxIcon,
-  UserGroupIcon,
-  ScaleIcon,
-  CalendarDaysIcon
-} from '@heroicons/react/24/outline';
-import PrintHeader from '@/components/PrintHeader';
 
-export default async function ProjectReportsListPage({
+import { getCurrentUser } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/db';
+import ProjectReportsClient from './ProjectReports.client';
+import { getProjectReportData } from './actions';
+import Link from 'next/link';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+export default async function ProjectReportsPage({
   params,
 }: {
   params: Promise<{ projectId: string }>;
 }) {
+  const me = await getCurrentUser();
+  if (!me) redirect('/login');
+  
   const { projectId } = await params;
-  const user = await getCurrentUser();
-  if (!user) redirect('/login');
-
+  
   const project = await prisma.project.findUnique({
     where: { id: projectId },
-    select: {
-      name: true,
-      quote: {
-        select: {
-          customer: { select: { displayName: true } }
-        }
-      }
-    }
+    select: { id: true, name: true, projectNumber: true }
   });
 
-  if (!project) return notFound();
+  if (!project) redirect('/projects');
 
-  type Report = {
-      title: string;
-      description: string;
-      href: string;
-      icon: any;
-      color: string;
-      bgColor: string;
-      roles?: string[];
-      disabled?: boolean;
-  };
-
-  const reports: Report[] = [
-    {
-      title: "Task Progress Tracking",
-      description: "Detailed breakdown of schedule tasks, completion status, and progress variance.",
-      href: `/projects/${projectId}/reports/progress-tracking`,
-      icon: ChartBarSquareIcon,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
-      roles: ['PM_CLERK', 'PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS']
-    },
-    {
-      title: "Profit & Loss Account (Combined)",
-      description: "Comprehensive financial overview including procurement, usage, negotiations, and returns.",
-      href: `/projects/${projectId}/reports/profit-loss`,
-      icon: BanknotesIcon,
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
-    },
-    {
-      title: "Profit & Loss (Procurement)",
-      description: "Focused analysis on procurement efficiency, estimating variances against actual purchase costs.",
-      href: `/projects/${projectId}/reports/profit-loss-procurement`,
-      icon: ShoppingCartIcon,
-      color: "text-indigo-600",
-      bgColor: "bg-indigo-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER', 'PROCUREMENT']
-    },
-    {
-      title: "Profit & Loss (Negotiation)",
-      description: "Track revenue changes driven by post-quote negotiations.",
-      href: `/projects/${projectId}/reports/profit-loss-negotiation`,
-      icon: ArrowTrendingDownIcon,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
-    },
-    {
-      title: "Profit & Loss (Usage)",
-      description: "Monitor material over-usage or under-usage against quoted quantities.",
-      href: `/projects/${projectId}/reports/profit-loss-usage`,
-      icon: ExclamationTriangleIcon,
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
-    },
-    {
-      title: "Profit & Loss (Returns)",
-      description: "Value recovered from materials returned from site.",
-      href: `/projects/${projectId}/reports/profit-loss-returns`,
-      icon: ArchiveBoxIcon,
-      color: "text-cyan-600",
-      bgColor: "bg-cyan-50",
-      roles: ['ADMIN', 'MANAGING_DIRECTOR', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS', 'PROJECT_OPERATIONS_OFFICER']
-    },
-    {
-        title: "Employee Performance Report",
-        description: "Detailed report on employee contributions, tasks completed, and project involvement.",
-        href: `/projects/${projectId}/reports/employee-performance`,
-        icon: UserGroupIcon,
-        color: "text-teal-600",
-        bgColor: "bg-teal-50",
-        roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
-        disabled: false
-    },
-    {
-        title: "Material Efficiency",
-        description: "Compare quantity used vs quoted by employee to identify efficient vs wasteful behaviors.",
-        href: `/projects/${projectId}/reports/material-efficiency`,
-        icon: ScaleIcon,
-        color: "text-orange-600",
-        bgColor: "bg-orange-50",
-        roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
-        disabled: false
-    },
-    {
-        title: "Schedule Reliability",
-        description: "Track which employees consistently complete tasks on time vs delayed delivery.",
-        href: `/projects/${projectId}/reports/schedule-reliability`,
-        icon: CalendarDaysIcon,
-        color: "text-rose-600",
-        bgColor: "bg-rose-50",
-        roles: ['ADMIN', 'MANAGING_DIRECTOR', 'PROJECT_OPERATIONS_OFFICER', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTS'],
-        disabled: false
-    }
-  ];
+  // Fetch all necessary data for reports
+  const reportData = await getProjectReportData(projectId);
 
   return (
-    <div className="p-6 space-y-8 max-w-[1400px] mx-auto bg-gray-50 min-h-screen">
-      <PrintHeader />
-      
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-6">
-        <div>
-           <div className="flex items-center gap-2 mb-2">
-              <span className="inline-flex items-center rounded-md bg-purple-50 px-2 py-1 text-xs font-medium text-purple-700 ring-1 ring-inset ring-purple-700/10">
-                Reports Center
-              </span>
-           </div>
-           <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              Project Reports
-           </h1>
-           <p className="text-gray-500 mt-2">
-              Select a report below to view detailed analysis for 
-              <span className="font-semibold text-gray-900 ml-1">{project.quote?.customer?.displayName || project.name}</span>.
-           </p>
-        </div>
-        <Link
-          href={`/projects/${projectId}`}
-          className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 hover:text-gray-900 transition-all"
-        >
-          <ArrowLeftIcon className="h-4 w-4" />
-          Back to Project
-        </Link>
-      </div>
+    <div className="flex flex-col min-h-screen bg-slate-50">
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+        
+        {/* Header / Nav */}
+        <div className="flex flex-col gap-4">
+            <nav className="flex items-center text-sm font-medium text-gray-500">
+                <Link 
+                    href={`/projects/${projectId}/daily-tasks`}
+                    className="hover:text-green-600 transition-colors flex items-center bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm"
+                >
+                    <ArrowLeftIcon className="h-4 w-4 mr-1.5 text-green-600" />
+                    Back to Project
+                </Link>
+            </nav>
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {reports.map((report) => {
-          if (report.roles && !report.roles.includes(user.role as string)) return null;
-          
-          const CardContent = (
-             <>
+            <div className="flex items-center justify-between">
                 <div>
-                    <div className={`inline-flex items-center justify-center rounded-lg p-3 ${report.bgColor} ${report.color} mb-4`}>
-                        <report.icon className="h-6 w-6" aria-hidden="true" />
-                    </div>
-                    <h3 className={`text-lg font-semibold leading-6 ${report.disabled ? 'text-gray-400' : 'text-gray-900 group-hover:text-indigo-600'} transition-colors`}>
-                        {report.title}
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-gray-500">
-                    {report.description}
+                    <h1 className="text-2xl font-bold tracking-tight text-gray-900">Project Reports</h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        {project.name} ({project.projectNumber || 'No Ref'})
                     </p>
                 </div>
-                {!report.disabled && (
-                    <div className="mt-6 flex items-center gap-4 text-sm font-medium text-gray-500">
-                        <div className="flex items-center gap-1 hover:text-gray-900">
-                            <DocumentDuplicateIcon className="h-4 w-4" />
-                            View Report
-                        </div>
-                    </div>
-                )}
-                {report.disabled && (
-                    <div className="mt-6 flex items-center gap-2 text-xs font-medium text-gray-400 bg-gray-100 rounded-md px-2 py-1 w-fit">
-                        Coming Soon
-                    </div>
-                )}
-             </>
-          );
+            </div>
+        </div>
 
-          if (report.disabled) {
-              return (
-                <div key={report.title} className="group relative flex flex-col justify-between rounded-2xl bg-gray-50 p-6 shadow-sm ring-1 ring-gray-100 opacity-70 cursor-not-allowed">
-                    {CardContent}
-                </div>
-              );
-          }
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[500px]">
+            <ProjectReportsClient data={reportData} projectId={projectId} />
+        </div>
 
-          return (
-            <Link key={report.title} href={report.href} className="group relative flex flex-col justify-between rounded-2xl bg-white p-6 shadow-sm ring-1 ring-gray-200 hover:shadow-md hover:ring-indigo-500 transition-all">
-                {CardContent}
-            </Link>
-          );
-        })}
       </div>
     </div>
   );

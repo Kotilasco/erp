@@ -5,12 +5,11 @@ import clsx from 'clsx';
 import Money from '@/components/Money';
 import { proposeNegotiationAmountOnly } from '@/app/(protected)/quotes/[quoteId]/actions';
 import { prisma } from '@/lib/db';
-import type { QuoteNegotiationItem } from '@prisma/client';
+import type { QuoteLine, QuoteNegotiationItem } from '@prisma/client';
 import { getCurrentUser } from '@/lib/auth';
 import { setFlashMessage } from '@/lib/flash.server';
 import { getErrorMessage } from '@/lib/errors';
 import { fromMinor } from '@/helpers/money';
-import { NEGOTIATION_BADGE_CLASSES } from '@/app/(protected)/quotes/[quoteId]/page';
 import SubmitButton from '@/components/SubmitButton';
 import Image from 'next/image';
 import { PhoneIcon, HomeIcon, EnvelopeIcon, GlobeAltIcon } from '@heroicons/react/24/solid';
@@ -31,8 +30,18 @@ const STATUS_LABELS: Record<string, string> = {
   REVIEWED: 'Reviewed',
   SENT_TO_SALES: 'Sent to Sales',
   NEGOTIATION: 'Negotiation',
+  NEGOTIATION_REVIEW: 'Negotiation Review',
   FINALIZED: 'Finalized',
   ARCHIVED: 'Archived',
+};
+
+const NEGOTIATION_BADGE_CLASSES: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  OK: 'bg-blue-100 text-blue-700',
+  ACCEPTED: 'bg-emerald-100 text-emerald-700',
+  REJECTED: 'bg-red-100 text-red-700',
+  REVIEWED: 'bg-indigo-100 text-indigo-700',
+  FINAL: 'bg-indigo-100 text-indigo-700',
 };
 
 type ClientQuotePageParams = {
@@ -245,6 +254,12 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
 
     revalidatePath(`/client/quotes/${quote.id}`);
     revalidatePath(`/quotes/${quote.id}`);
+
+    const currentUser = await getCurrentUser();
+    if (currentUser?.role === 'SALES') {
+      redirect('/dashboard');
+    }
+
     redirect(`/quotes/${quote.id}`);
   };
 
@@ -253,12 +268,9 @@ export default async function ClientQuotePage({ params }: ClientQuotePageParams)
       <div className="bg-white p-8 shadow-sm border border-gray-200 rounded-lg print:border-none print:shadow-none">
         {/* Top Section: Logo & Contact */}
         <div className="flex flex-col md:flex-row justify-between items-start mb-6">
-          <div className="flex flex-col items-center md:items-start">
-             <div className="relative w-48 h-24 mb-2">
+             <div className="relative w-64 h-32 mb-2">
                 <Image src="/barmlo_logo.png" alt="Barmlo Logo" fill className="object-contain" />
              </div>
-             <p className="text-orange-500 italic font-medium text-sm">Your happiness is our pride</p>
-          </div>
 
           <div className="flex flex-col gap-2 text-sm text-blue-900 mt-4 md:mt-0 text-right md:items-end">
              <div className="flex items-center gap-2 justify-end">

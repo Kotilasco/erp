@@ -130,6 +130,7 @@ export default function SalesEndorsementForm({ action, defaults, grandTotal }: P
           name="deposit"
           value={values.deposit}
           onChange={handleChange}
+          onFocus={(e) => e.target.select()}
           step="0.01"
           min="0"
           max={grandTotal}
@@ -144,6 +145,7 @@ export default function SalesEndorsementForm({ action, defaults, grandTotal }: P
           name="installment"
           value={values.installment}
           onChange={handleChange}
+          onFocus={(e) => e.target.select()}
           step="0.01"
           min="0"
           max={grandTotal}

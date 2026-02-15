@@ -5,15 +5,22 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-   eslint: {
+  eslint: {
     ignoreDuringBuilds: true,
   },
   experimental: {
     serverActions: {
       allowedOrigins: ["*"]
     }
-  }
+  },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'bamlo.com',
+      },
+    ],
+  },
 };
 
 export default nextConfig;
-

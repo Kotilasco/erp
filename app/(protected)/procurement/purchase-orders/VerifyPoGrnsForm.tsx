@@ -85,7 +85,7 @@ export default function VerifyPoGrnsForm({
 
     try {
       await verifyMultipleGRNs(payload, verifierId);
-      router.push('/procurement/purchase-orders');
+      router.push('/accounts?tab=receipts');
       router.refresh();
     } catch (e: any) {
       console.error(e);
@@ -258,7 +258,7 @@ export default function VerifyPoGrnsForm({
                       ></path>
                     </svg>
                   )}
-                  {loading ? 'Submitting...' : 'Submit'}
+                  {loading ? 'Capturing...' : 'Capture'}
                 </button>
              </div>
         </div>
