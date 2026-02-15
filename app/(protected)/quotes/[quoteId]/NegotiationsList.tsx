@@ -37,7 +37,8 @@ function deriveRateFromTotal(total: number, quantity: number, vatRate: number): 
   if (!(quantity > 0) || !Number.isFinite(total)) {
     return 0;
   }
-  const netTotal = total / (1 + vatRate);
+  // const netTotal = total / (1 + vatRate);
+  const netTotal = total; 
   return Number((netTotal / quantity).toFixed(2));
 }
 

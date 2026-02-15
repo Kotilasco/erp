@@ -265,7 +265,8 @@ function deriveUnitRateFromTotal(totalAmount: number, quantity: number, vatRate:
   if (!Number.isFinite(totalAmount) || totalAmount < 0) {
     throw new Error('Amount must be a non-negative number');
   }
-  const netTotal = totalAmount / (1 + vatRate);
+  // const netTotal = totalAmount / (1 + vatRate);
+  const netTotal = totalAmount;
   const rate = netTotal / quantity;
   return Number(rate.toFixed(2));
 }
