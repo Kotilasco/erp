@@ -39,8 +39,8 @@ export default async function EndOfDayReportPage({
     projectName: summary.projectName,
     workforceGroups: summary.workforceGroups ?? [],
     activity: summary.lastActivity,
-    completed: summary.completedTasks,
-    remaining: summary.remainingTasks,
+    used: summary.materialsUsedSummary ?? '',
+    balance: summary.materialsBalanceSummary ?? '',
     status: summary.status,
     reportingDate: summary.lastReportDate,
   }));
@@ -129,13 +129,10 @@ export default async function EndOfDayReportPage({
                     Activity
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                    Reporting Date
+                    Used
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                    Completed
-                  </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-emerald-700">
-                    Remaining
+                    Balance
                   </th>
                   <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-emerald-700">
                     Status
@@ -154,22 +151,24 @@ export default async function EndOfDayReportPage({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-gray-800 max-w-xs align-top">
+                    <td className="px-4 py-3 text-gray-800 max-w-sm align-top">
                       <div className="flex items-start gap-2">
                         <UserGroupIcon className="mt-0.5 h-4 w-4 text-gray-400" />
                         <div className="text-xs leading-relaxed">
                           {Array.isArray(row.workforceGroups) && row.workforceGroups.length > 0 ? (
                             row.workforceGroups.map(
                               (group: { role: string; names: string[] }, index: number) => (
-                                <div key={`${group.role}-${index}`} className={index > 0 ? 'mt-2' : ''}>
+                                <div key={`${group.role}-${index}`} className={index > 0 ? 'mt-3' : ''}>
                                   <div className="font-semibold text-red-600 uppercase">
                                     {group.role}
                                   </div>
-                                  {group.names.map((name) => (
-                                    <div key={name} className="text-gray-900">
-                                      {name}
-                                    </div>
-                                  ))}
+                                  <ol className="list-decimal pl-4 mt-1 space-y-0.5">
+                                    {group.names.map((name, idx) => (
+                                      <li key={`${name}-${idx}`} className="text-gray-900">
+                                        {name}
+                                      </li>
+                                    ))}
+                                  </ol>
                                 </div>
                               ),
                             )
@@ -183,32 +182,34 @@ export default async function EndOfDayReportPage({
                       <span className="text-xs leading-relaxed whitespace-pre-line">{row.activity}</span>
                     </td>
                     <td className="px-4 py-3 text-center text-gray-900">
-                      {row.reportingDate ? (
-                        <span className="inline-flex items-center rounded-full bg-gray-50 px-2.5 py-1 text-xs font-semibold text-gray-700">
-                          {new Date(row.reportingDate).toLocaleDateString(undefined, {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-gray-400">No reports</span>
-                      )}
+                      <span className="inline-flex items-start rounded-md bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 text-left max-w-xs">
+                        {row.used ? (
+                          <ol className="list-decimal pl-4 space-y-0.5">
+                            {row.used.split('\n').map((line: string, index: number) => (
+                              <li key={index}>{line}</li>
+                            ))}
+                          </ol>
+                        ) : (
+                          '—'
+                        )}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-center text-gray-900">
-                      <div className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
-                        <CheckCircleIcon className="h-3.5 w-3.5" />
-                        {row.completed} tasks
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center text-gray-900">
-                      <span className="inline-flex items-center rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
-                        {row.remaining} tasks
+                      <span className="inline-flex items-start rounded-md bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 text-left max-w-xs">
+                        {row.balance ? (
+                          <ol className="list-decimal pl-4 space-y-0.5">
+                            {row.balance.split('\n').map((line: string, index: number) => (
+                              <li key={index}>{line}</li>
+                            ))}
+                          </ol>
+                        ) : (
+                          '—'
+                        )}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center text-gray-900">
                       <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${
                           row.status === 'ONGOING'
                             ? 'bg-blue-50 text-blue-700'
                             : row.status === 'COMPLETED'

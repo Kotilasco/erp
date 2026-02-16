@@ -4402,6 +4402,22 @@ export async function getEndOfDaySummaryData(dateStr: string) {
           customer: { select: { city: true } }
         }
       },
+      dispatches: {
+        select: {
+          id: true,
+          status: true,
+          items: {
+            select: {
+              id: true,
+              description: true,
+              unit: true,
+              qty: true,
+              returnedQty: true,
+              usedOutQty: true
+            }
+          }
+        }
+      },
       schedules: {
         select: {
           items: {
@@ -4445,6 +4461,38 @@ export async function getEndOfDaySummaryData(dateStr: string) {
     const completedTasks = items.filter(i => i.status === "DONE").length;
     const remainingTasks = items.filter(i => i.status !== "DONE").length;
 
+    const materialsMap = new Map<string, { desc: string; unit: string | null; used: number; balance: number }>();
+    for (const d of project.dispatches ?? []) {
+      for (const it of d.items ?? []) {
+        const key = `${(it.description || '').trim()}|${(it.unit || '').trim()}`.toLowerCase();
+        const used = Number(it.usedOutQty || 0);
+        const returned = Number(it.returnedQty || 0);
+        const dispatched = Number(it.qty || 0);
+        const balance = Math.max(0, dispatched - used - returned);
+        const prev = materialsMap.get(key);
+        if (prev) {
+          prev.used += used;
+          prev.balance += balance;
+        } else {
+          materialsMap.set(key, {
+            desc: it.description,
+            unit: it.unit ?? null,
+            used,
+            balance
+          });
+        }
+      }
+    }
+    const materialSummaries = Array.from(materialsMap.values()).sort((a, b) => a.desc.localeCompare(b.desc));
+    const usedSummary = materialSummaries
+      .filter(m => m.used > 0)
+      .map(m => `${m.desc}: ${m.used.toFixed(2)}${m.unit ? ` ${m.unit}` : ''}`)
+      .join('\n');
+    const balanceSummary = materialSummaries
+      .filter(m => m.balance > 0)
+      .map(m => `${m.desc}: ${m.balance.toFixed(2)}${m.unit ? ` ${m.unit}` : ''}`)
+      .join('\n');
+
     let latestReportDate: Date | null = null;
 
     items.forEach(item => {
@@ -4473,7 +4521,7 @@ export async function getEndOfDaySummaryData(dateStr: string) {
         if (item.status === "DONE") return;
 
         item.assignees.forEach(a => {
-          const name = [a.givenName, a.surname].filter(Boolean).join(" ");
+          const name = (a.givenName || a.surname || "").trim();
           if (!name) return;
           const roleKey = (a.role || "").trim() || "Other";
           const set = workforceByRole.get(roleKey) ?? new Set<string>();
@@ -4502,7 +4550,9 @@ export async function getEndOfDaySummaryData(dateStr: string) {
       lastActivity: activities.join(" | ") || "No activity reported",
       lastReportDate: latestReportDate ? latestReportDate.toISOString() : null,
       completedTasks,
-      remainingTasks
+      remainingTasks,
+      materialsUsedSummary: usedSummary,
+      materialsBalanceSummary: balanceSummary
     };
   });
 }
