@@ -165,7 +165,7 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
     type: 'cells',
     cells: [
       { code: 'A39', label: 'BRICKS T/TRIPS', kind: 'calc', expr: 'A36 / A2' },
-      { code: 'B39', label: 'CEMENT T/TRIPS', kind: 'calc', expr: 'B36 / 100' },
+      { code: 'B39', label: 'CEMENT T/TRIPS', kind: 'calc', expr: 'B36 / D2' },
       { code: 'C36', label: 'TOTAL TRIPS', kind: 'calc', expr: 'A39 * B39' },
       { code: 'A40', label: '', kind: 'calc', expr: 'G4 * A39' },
       { code: 'B40', label: '', kind: 'calc', expr: 'G4 * B39' },
@@ -199,7 +199,7 @@ export const TAKEOFF_LAYOUT: SheetRow[] = [
       { code: 'D51', label: 'Pit Sand External', kind: 'calc', expr: 'F22 + F33' },
       { code: 'A52', label: '', kind: 'calc', expr: 'A51 * 3 / 8' },
       { code: 'D52', label: '', kind: 'calc', expr: 'D51 * 3 / 8' },
-      { code: 'A54', label: '115 mm DPC', kind: 'calc', expr: 'B4 / 15' },
+      { code: 'A54', label: '115 mm DPC', kind: 'calc', expr: 'B4 / 10' },
       { code: 'B54', label: '230mm DPC', kind: 'calc', expr: 'A4 / 15' },
       { code: 'G51', label: 'Internal Airvents', kind: 'input' },
       { code: 'H51', label: 'External Airvents', kind: 'input' },
