@@ -4344,14 +4344,10 @@ export async function getGlobalDailyReportData(date: string) {
     throw new Error("Unauthorized");
   }
 
-  // Fetch Active Projects
-  const where: any = {
-    status: 'ONGOING',
-    ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: user.id } : {})
-  };
+  const projectWhere: any = role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: user.id } : {};
 
   const projects = await prisma.project.findMany({
-    where,
+    where: projectWhere,
     select: { id: true, name: true }
   });
 
@@ -4372,4 +4368,141 @@ export async function getGlobalDailyReportData(date: string) {
   }
 
   return reports;
+}
+
+export async function getEndOfDaySummaryData(dateStr: string) {
+  const user = await getCurrentUser();
+  if (!user) throw new Error("Unauthorized");
+
+  const role = assertRole(user.role);
+  if (!['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'MANAGING_DIRECTOR', 'PM_CLERK'].includes(role)) {
+    throw new Error("Unauthorized");
+  }
+
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Invalid date");
+  }
+
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const projectWhere: any = role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: user.id } : {};
+
+  const projects = await prisma.project.findMany({
+    where: projectWhere,
+    select: {
+      id: true,
+      name: true,
+      projectNumber: true,
+      status: true,
+      office: true,
+      quote: {
+        select: {
+          customer: { select: { city: true } }
+        }
+      },
+      schedules: {
+        select: {
+          items: {
+            select: {
+              id: true,
+              status: true,
+              assignees: {
+                select: {
+                  id: true,
+                  givenName: true,
+                  surname: true,
+                  role: true
+                }
+              },
+              reports: {
+                where: {
+                  reportedForDate: {
+                    lte: endOfDay
+                  }
+                },
+                orderBy: {
+                  reportedForDate: "desc"
+                },
+                take: 1,
+                select: {
+                  id: true,
+                  reportedForDate: true,
+                  activity: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  return projects.map(project => {
+    const items = project.schedules?.items ?? [];
+
+    const completedTasks = items.filter(i => i.status === "DONE").length;
+    const remainingTasks = items.filter(i => i.status !== "DONE").length;
+
+    let latestReportDate: Date | null = null;
+
+    items.forEach(item => {
+      const report = item.reports[0];
+      if (report) {
+        const d = report.reportedForDate;
+        if (!latestReportDate || d > latestReportDate) {
+          latestReportDate = d;
+        }
+      }
+    });
+
+    const activities: string[] = [];
+    const workforceByRole = new Map<string, Set<string>>();
+
+    if (latestReportDate) {
+      const ts = latestReportDate.getTime();
+      items.forEach(item => {
+        const report = item.reports[0];
+        if (!report || report.reportedForDate.getTime() !== ts) return;
+
+        if (report.activity && !activities.includes(report.activity)) {
+          activities.push(report.activity);
+        }
+
+        if (item.status === "DONE") return;
+
+        item.assignees.forEach(a => {
+          const name = [a.givenName, a.surname].filter(Boolean).join(" ");
+          if (!name) return;
+          const roleKey = (a.role || "").trim() || "Other";
+          const set = workforceByRole.get(roleKey) ?? new Set<string>();
+          set.add(name);
+          workforceByRole.set(roleKey, set);
+        });
+      });
+    }
+
+    const location = project.quote?.customer?.city || project.office || "-";
+
+    const workforceGroups = Array.from(workforceByRole.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([role, names]) => ({
+        role,
+        names: Array.from(names).sort()
+      }));
+
+    return {
+      projectId: project.id,
+      projectName: project.name,
+      projectNumber: project.projectNumber,
+      status: project.status,
+      location,
+      workforceGroups,
+      lastActivity: activities.join(" | ") || "No activity reported",
+      lastReportDate: latestReportDate ? latestReportDate.toISOString() : null,
+      completedTasks,
+      remainingTasks
+    };
+  });
 }

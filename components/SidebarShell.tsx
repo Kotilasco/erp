@@ -39,7 +39,8 @@ const PAGE_DEFS: PageDef[] = [
   },
   // Senior PM / Coordination / POO
   { label: 'View Schedules', href: '/projects/schedules', icon: 'calendar', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR'] },
-  { label: 'View Daily Tasks', href: '/projects/daily-tasks', icon: 'clipboard', roles: ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR'] },
+  { label: 'View Daily Tasks', href: '/projects/daily-tasks', icon: 'clipboard', roles: ['PROJECT_OPERATIONS_OFFICER'] },
+  { label: 'End Of Day', href: '/reports/end-of-day', icon: 'clipboard', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Active Projects', href: '/projects?tab=active', icon: 'folder', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Unassigned Projects', href: '/projects?tab=assignment', icon: 'users', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Planning Pending', href: '/projects?tab=planning', icon: 'clipboard', roles: ['PROJECT_COORDINATOR'] },
