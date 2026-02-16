@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { updateMaterialUsage } from '@/app/(protected)/projects/actions';
 import SubmitButton from '@/components/SubmitButton';
-import { ArchiveBoxIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { ArchiveBoxIcon, CheckCircleIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
 import { usePathname } from 'next/navigation';
 
 type DispatchItem = {
@@ -28,11 +28,20 @@ export default function MaterialUsageList({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const handleInputChange = (id: string, value: string) => {
+    if (value === '') {
+      setUpdates((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      return;
+    }
+
     const num = parseFloat(value);
     if (isNaN(num) || num < 0) return;
-    setUpdates(prev => ({
+    setUpdates((prev) => ({
       ...prev,
-      [id]: num
+      [id]: num,
     }));
   };
 
@@ -106,17 +115,22 @@ export default function MaterialUsageList({
               <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Material Description
               </th>
+              {/*
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Received
               </th>
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Previously Used
               </th>
+              */}
               <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Remaining
               </th>
-              <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-indigo-600 uppercase tracking-wider w-40">
-                Used Today
+              <th scope="col" className="px-6 py-3 text-right text-xs font-semibold text-indigo-700 uppercase tracking-wider w-48">
+                <span className="inline-flex items-center gap-1 justify-end">
+                  <PencilSquareIcon className="h-4 w-4 text-indigo-500" />
+                  <span>Used Today</span>
+                </span>
               </th>
             </tr>
           </thead>
@@ -124,7 +138,7 @@ export default function MaterialUsageList({
             {items.map((item) => {
               const prevUsed = item.usedOutQty || 0;
               const remaining = item.qty - prevUsed;
-              const currentInput = updates[item.id] || '';
+              const currentInput = updates[item.id] ?? '';
               
               const isOverLimit = (typeof currentInput === 'number') && (currentInput > remaining);
 
@@ -133,12 +147,14 @@ export default function MaterialUsageList({
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {item.description}
                   </td>
+                  {/*
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                     {item.qty} {item.unit}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
                     {prevUsed.toFixed(2)} {item.unit}
                   </td>
+                  */}
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
                     {remaining.toFixed(2)} {item.unit}
                   </td>
@@ -149,10 +165,9 @@ export default function MaterialUsageList({
                         min="0"
                         step="0.01"
                         max={remaining}
-                        placeholder="0"
                         value={currentInput}
                         onChange={(e) => handleInputChange(item.id, e.target.value)}
-                        className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-right ${
+                        className={`block w-full rounded-md border border-indigo-100 bg-indigo-50/60 px-3 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm text-right placeholder:text-indigo-300 ${
                           isOverLimit ? 'border-red-300 text-red-900 focus:border-red-500 focus:ring-red-500' : ''
                         }`}
                       />
@@ -172,7 +187,7 @@ export default function MaterialUsageList({
         <button
           onClick={handleSubmit}
           disabled={isSubmitting || Object.keys(updates).length === 0}
-          className="inline-flex items-center justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          className="inline-flex items-center justify-center rounded-md border border-transparent bg-emerald-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
           {isSubmitting ? 'Saving...' : 'Save Usage'}
         </button>
