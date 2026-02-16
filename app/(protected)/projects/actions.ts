@@ -4506,3 +4506,42 @@ export async function getEndOfDaySummaryData(dateStr: string) {
     };
   });
 }
+
+export async function updateMaterialUsage(
+  updates: { dispatchItemId: string; usedQty: number }[],
+  pathname: string
+) {
+  'use server';
+  const user = await getCurrentUser();
+  if (!user) throw new Error('Not authenticated');
+
+  await prisma.$transaction(async (tx) => {
+    for (const update of updates) {
+      if (update.usedQty > 0) {
+        const item = await tx.dispatchItem.findUnique({
+          where: { id: update.dispatchItemId },
+        });
+
+        if (!item) continue;
+
+        const newUsedQty = (item.usedOutQty || 0) + update.usedQty;
+
+        // Optional: Add validation if strictly enforcing not exceeding handedOutQty
+        // if (newUsedQty > item.handedOutQty) { ... }
+
+        await tx.dispatchItem.update({
+          where: { id: update.dispatchItemId },
+          data: {
+            usedOutQty: newUsedQty,
+            // Track last usage?
+            usedOutAt: new Date(),
+            usedOutById: user.id,
+          },
+        });
+      }
+    }
+  });
+
+  revalidatePath(pathname);
+  return { success: true };
+}

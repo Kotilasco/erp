@@ -16,6 +16,8 @@ import {
   CheckIcon
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
+import ReportTabs from './ReportTabs';
+import MaterialUsageList from './MaterialUsageList';
 
 export default async function TaskReportPage({
   params,
@@ -89,6 +91,32 @@ export default async function TaskReportPage({
   const totalCompleted = item.reports.reduce((sum, r) => sum + (r.usedQty || 0), 0);
   const remaining = Math.max(0, (item.quantity || 0) - totalCompleted);
 
+
+  // Fetch available dispatch items for material usage reporting
+  const dispatchItems = await prisma.dispatchItem.findMany({
+    where: {
+      dispatch: {
+        projectId,
+        status: 'RECEIVED',
+      },
+      // Optional: Filter out items that are fully used if desired?
+      // For now, let's show all received items so they can see history/remaining.
+    },
+    select: {
+      id: true,
+      description: true,
+      unit: true,
+      qty: true,
+      usedOutQty: true,
+    },
+    orderBy: { description: 'asc' },
+  });
+
+  const formattedDispatchItems = dispatchItems.map(d => ({
+    ...d,
+    usedOutQty: d.usedOutQty || 0,
+  }));
+
   const submitReport = async (formData: FormData) => {
     'use server';
     const activity = String(formData.get('activity') || '');
@@ -112,6 +140,111 @@ export default async function TaskReportPage({
 
     redirect(`/projects/${projectId}/daily-tasks`);
   };
+
+  const taskReportForm = (
+    <form action={submitReport} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8">
+      <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
+         <div className="p-2 bg-indigo-50 rounded-lg">
+            <DocumentTextIcon className="h-6 w-6 text-indigo-600" />
+         </div>
+         <h3 className="text-xl font-bold text-gray-900">Today&apos;s Progress Report</h3>
+      </div>
+
+      <div className="space-y-6">
+        <div>
+          <label htmlFor="activity" className="block text-sm font-medium text-gray-700 mb-2">
+            Activity / What was done today <span className="text-red-500">*</span>
+          </label>
+          <textarea
+            id="activity"
+            name="activity"
+            rows={4}
+            required
+            className="w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
+            placeholder="Describe the work completed today..."
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label htmlFor="usedQty" className="block text-sm font-medium text-gray-700 mb-2">
+              Quantity Completed Today <span className="text-red-500">*</span>
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <input
+                type="number"
+                id="usedQty"
+                name="usedQty"
+                step="0.01"
+                min="0"
+                required
+                className="block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
+                placeholder="0.00"
+              />
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                <span className="text-gray-500 sm:text-sm">{item.unit}</span>
+              </div>
+            </div>
+            {/* Hidden input for unit if needed by backend, though we just display it visually above */}
+            <input type="hidden" name="usedUnit" value={item.unit || ''} />
+          </div>
+
+          <div>
+            <label htmlFor="remainingQty" className="block text-sm font-medium text-gray-700 mb-2">
+              Estimated Remaining
+            </label>
+            <div className="relative rounded-md shadow-sm">
+              <input
+                type="number"
+                id="remainingQty"
+                name="remainingQty"
+                step="0.01"
+                min="0"
+                defaultValue={remaining}
+                className="block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
+              />
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+                 <span className="text-gray-500 sm:text-sm">{item.unit}</span>
+              </div>
+            </div>
+            <input type="hidden" name="remainingUnit" value={item.unit || ''} />
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
+            Update Task Status
+          </label>
+          <select
+            id="status"
+            name="status"
+            defaultValue={item.status}
+            className="block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
+          >
+            <option value="ACTIVE">Active - Work continuing</option>
+            <option value="ON_HOLD">On Hold - Temporarily stopped</option>
+            <option value="DONE">Done - Task completed</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-4 pt-8 mt-8 border-t border-gray-100">
+        <Link
+          href={`/projects/${projectId}/daily-tasks`}
+          className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-2 transition-colors"
+        >
+          <XMarkIcon className="h-5 w-5" />
+          Cancel
+        </Link>
+        <SubmitButton
+          className="inline-flex items-center gap-2 rounded-lg border border-transparent bg-green-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
+          loadingText="Submitting..."
+        >
+          Submit Report
+        </SubmitButton>
+      </div>
+    </form>
+  );
 
   return (
     <div className="p-6 space-y-8 max-w-5xl mx-auto bg-gray-50 min-h-screen">
@@ -217,112 +350,14 @@ export default async function TaskReportPage({
            </div>
         </div>
 
-        {/* Right Column: Report Form */}
+        {/* Right Column: Report Form & Tabs */}
         <div className="lg:col-span-2 space-y-6">
-           <form action={submitReport} className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-6 pb-6 border-b border-gray-100">
-                 <div className="p-2 bg-indigo-50 rounded-lg">
-                    <DocumentTextIcon className="h-6 w-6 text-indigo-600" />
-                 </div>
-                 <h3 className="text-xl font-bold text-gray-900">Today&apos;s Progress Report</h3>
-              </div>
+           <ReportTabs
+             taskReportForm={taskReportForm}
+             materialUsageList={<MaterialUsageList items={formattedDispatchItems} />}
+           />
 
-              <div className="space-y-6">
-                <div>
-                  <label htmlFor="activity" className="block text-sm font-medium text-gray-700 mb-2">
-                    Activity / What was done today <span className="text-red-500">*</span>
-                  </label>
-                  <textarea
-                    id="activity"
-                    name="activity"
-                    rows={4}
-                    required
-                    className="w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-                    placeholder="Describe the work completed today..."
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="usedQty" className="block text-sm font-medium text-gray-700 mb-2">
-                      Quantity Completed Today <span className="text-red-500">*</span>
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <input
-                        type="number"
-                        id="usedQty"
-                        name="usedQty"
-                        step="0.01"
-                        min="0"
-                        required
-                        className="block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-                        placeholder="0.00"
-                      />
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                        <span className="text-gray-500 sm:text-sm">{item.unit}</span>
-                      </div>
-                    </div>
-                    {/* Hidden input for unit if needed by backend, though we just display it visually above */}
-                    <input type="hidden" name="usedUnit" value={item.unit || ''} />
-                  </div>
-
-                  <div>
-                    <label htmlFor="remainingQty" className="block text-sm font-medium text-gray-700 mb-2">
-                      Estimated Remaining
-                    </label>
-                    <div className="relative rounded-md shadow-sm">
-                      <input
-                        type="number"
-                        id="remainingQty"
-                        name="remainingQty"
-                        step="0.01"
-                        min="0"
-                        defaultValue={remaining}
-                        className="block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-                      />
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
-                         <span className="text-gray-500 sm:text-sm">{item.unit}</span>
-                      </div>
-                    </div>
-                    <input type="hidden" name="remainingUnit" value={item.unit || ''} />
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">
-                    Update Task Status
-                  </label>
-                  <select
-                    id="status"
-                    name="status"
-                    defaultValue={item.status}
-                    className="block w-full rounded-lg border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:bg-white focus:border-indigo-500 focus:ring-indigo-500 transition-colors"
-                  >
-                    <option value="ACTIVE">Active - Work continuing</option>
-                    <option value="ON_HOLD">On Hold - Temporarily stopped</option>
-                    <option value="DONE">Done - Task completed</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-4 pt-8 mt-8 border-t border-gray-100">
-                <Link
-                  href={`/projects/${projectId}/daily-tasks`}
-                  className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 focus:ring-offset-2 transition-colors"
-                >
-                  <XMarkIcon className="h-5 w-5" />
-                  Cancel
-                </Link>
-                <SubmitButton
-                  className="inline-flex items-center gap-2 rounded-lg border border-transparent bg-green-600 px-6 py-2.5 text-sm font-semibold text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors"
-                  loadingText="Submitting..."
-                >
-                  Submit Report
-                </SubmitButton>
-              </div>
-           </form>
-
-           {/* Previous Reports */}
+           {/* Previous Reports (Existing logic) */}
            {item.reports.length > 0 && (
              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
