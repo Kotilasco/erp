@@ -97,7 +97,7 @@ export default async function TaskReportPage({
     where: {
       dispatch: {
         projectId,
-        status: 'RECEIVED',
+        status: 'DELIVERED',
       },
       // Optional: Filter out items that are fully used if desired?
       // For now, let's show all received items so they can see history/remaining.
