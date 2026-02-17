@@ -2023,7 +2023,9 @@ export default async function DashboardPage({
     user.role === 'ACCOUNTING_OFFICER' ||
     user.role === 'SECURITY' ||
     user.role === 'DRIVER' ||
-    user.role === 'HUMAN_RESOURCE'
+    user.role === 'HUMAN_RESOURCE' ||
+    user.role === 'ADMIN' ||
+    user.role === 'MANAGING_DIRECTOR'
   ) {
     return (
       <div className="space-y-6">
