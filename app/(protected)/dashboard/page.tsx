@@ -2104,6 +2104,7 @@ export default async function DashboardPage({
   }
 
   // For PM, Procurement, Security, and DRIVER, show ONLY the Button Grid (handled by PendingTasks)
+  // For PM, Procurement, Security, and DRIVER, show ONLY the Button Grid (handled by PendingTasks)
   if (
     user.role === 'PROJECT_OPERATIONS_OFFICER' ||
     user.role === 'PROCUREMENT' ||

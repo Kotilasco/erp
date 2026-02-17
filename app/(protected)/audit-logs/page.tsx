@@ -5,7 +5,7 @@ import AuditLogsClient from './AuditLogsClient';
 export default async function AuditLogsPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const user = await getCurrentUser();
 
@@ -20,13 +20,15 @@ export default async function AuditLogsPage({
     );
   }
 
+  const { userId, method, path, dateFrom, dateTo, page } = await searchParams;
+
   const filters = {
-    userId: typeof searchParams.userId === 'string' ? searchParams.userId : undefined,
-    method: typeof searchParams.method === 'string' ? searchParams.method : undefined,
-    path: typeof searchParams.path === 'string' ? searchParams.path : undefined,
-    dateFrom: typeof searchParams.dateFrom === 'string' ? searchParams.dateFrom : undefined,
-    dateTo: typeof searchParams.dateTo === 'string' ? searchParams.dateTo : undefined,
-    page: typeof searchParams.page === 'string' ? parseInt(searchParams.page, 10) : 1,
+    userId: typeof userId === 'string' ? userId : undefined,
+    method: typeof method === 'string' ? method : undefined,
+    path: typeof path === 'string' ? path : undefined,
+    dateFrom: typeof dateFrom === 'string' ? dateFrom : undefined,
+    dateTo: typeof dateTo === 'string' ? dateTo : undefined,
+    page: typeof page === 'string' ? parseInt(page, 10) : 1,
   };
 
   const [logsData, users] = await Promise.all([
