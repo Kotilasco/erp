@@ -55,7 +55,8 @@ export default async function DispatchDetail({
   const canReturn = (role === 'PROJECT_OPERATIONS_OFFICER' || role === 'PROCUREMENT' || role === 'SENIOR_PROCUREMENT' || role === 'ADMIN') && dispatch.status === 'DELIVERED';
 
   // Fetch drivers for security/admin if status is ready for assignment
-  const canAssignDriver = isSecurity && ['APPROVED', 'DISPATCHED', 'IN_TRANSIT'].includes(dispatch.status);
+  // User req: "without even dispatching the items first" -> Must be DISPATCHED (all items handed out)
+  const canAssignDriver = isSecurity && ['DISPATCHED', 'IN_TRANSIT'].includes(dispatch.status);
   const drivers = canAssignDriver ? await getDrivers() : [];
 
   // ---------- server actions ----------
