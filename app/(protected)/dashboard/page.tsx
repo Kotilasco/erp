@@ -171,6 +171,9 @@ async function PendingTasks({
     });
   }
 
+  let pendingFundingCount = 0;
+  let paymentHistoryCount = 0;
+  
   // Logic for Accounts (GRNs & Funding Requests - Outgoing)
   let pendingFundingRequests: any[] = [];
   if (roles.ACCOUNTS) {
@@ -315,7 +318,7 @@ async function PendingTasks({
       // Unplanned: No schedule OR Draft schedule
       prisma.project.count({
         where: {
-          assignedToId: userId,
+          ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: userId } : {}), // Filter by user if just PM
           status: { notIn: ['COMPLETED', 'CLOSED'] },
           OR: [
             { schedules: { is: null } },
@@ -326,7 +329,7 @@ async function PendingTasks({
       // Active: Active schedule
       prisma.project.count({
         where: {
-          assignedToId: userId,
+          ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: userId } : {}),
           status: { notIn: ['COMPLETED', 'CLOSED'] },
           schedules: { status: 'ACTIVE' }
         },
@@ -335,7 +338,7 @@ async function PendingTasks({
       prisma.dispatch.count({
         where: {
           status: 'ARRIVED',
-          project: { assignedToId: userId }
+          ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { project: { assignedToId: userId } } : {}),
         }
       })
     ]);
@@ -403,7 +406,7 @@ async function PendingTasks({
   let fundingNeededCount = 0;
   let actionPurchasesCount = 0;
 
-  if (roles.PROCUREMENT) {
+  if (roles.PROCUREMENT || role === 'ADMIN' || role === 'MANAGING_DIRECTOR') {
     // 1. Pending Tasks List (Existing Logic: Submitted/Approved without pending funding)
     procurementTasks = await prisma.procurementRequisition.findMany({
       where: {
@@ -667,57 +670,60 @@ async function PendingTasks({
 
   // Logic for Accounts (Button Grid)
   // SALES_ACCOUNTS excluded as per user request (they keep the original view)
-  const isAccounts = ['ACCOUNTS', 'ACCOUNTING_OFFICER'].includes(role);
+  const isAccounts = ['ACCOUNTS', 'ACCOUNTING_OFFICER', 'ADMIN', 'MANAGING_DIRECTOR'].includes(role);
   if (isAccounts) {
-    const pendingFundingCount = await prisma.fundingRequest.count({
+    pendingFundingCount = await prisma.fundingRequest.count({
         where: { status: { in: ['REQUESTED', 'PENDING'] } }
     });
-    const paymentHistoryCount = await prisma.clientPayment.count();
+    paymentHistoryCount = await prisma.clientPayment.count();
     
-    return (
-      <div className="flex flex-col items-center justify-center py-6 mb-8">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
-          <Link
-            href="/accounts"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
-          >
-             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-            Approve Purchase Order
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
-                {pendingFundingCount}
-            </span>
-          </Link>
+    // Only return early if NOT Admin/MD
+    if (!['ADMIN', 'MANAGING_DIRECTOR'].includes(role)) {
+       return (
+        <div className="flex flex-col items-center justify-center py-6 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
+            <Link
+                href="/accounts"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Approve Purchase Order
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
+                    {pendingFundingCount}
+                </span>
+            </Link>
 
-          <Link
-            href="/accounts?tab=receipts"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
-          >
+            <Link
+                href="/accounts?tab=receipts"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                Goods Receiving
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
+                    {pendingGrnPos.length}
+                </span>
+            </Link>
+
+            <Link
+                href="/accounts/payments"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
+            >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-            </svg>
-            Goods Receiving
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
-                {pendingGrnPos.length}
-            </span>
-          </Link>
-
-          <Link
-            href="/accounts/payments"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
-          >
-           <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Payment History
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
-                {paymentHistoryCount}
-            </span>
-          </Link>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Payment History
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">
+                    {paymentHistoryCount}
+                </span>
+            </Link>
+            </div>
         </div>
-      </div>
-    );
+       );
+    }
   }
   // Logic for Human Resource
   if (role === 'HUMAN_RESOURCE') {
@@ -874,6 +880,87 @@ async function PendingTasks({
 
   return (
     <div className="space-y-6">
+      {(role === 'PROCUREMENT' || role === 'ADMIN' || role === 'MANAGING_DIRECTOR') && (
+         <div className="flex flex-col items-center justify-center py-6 mb-8 border-b pb-8">
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Procurement</h3>
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 w-full max-w-4xl">
+              <Link href="/procurement/requisitions?tab=funding_needed" className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
+                <div className="flex items-center gap-3 z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>Create Purchase Order</span>
+                </div>
+                <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
+                    {fundingNeededCount}
+                </span>
+              </Link>
+              <Link href="/procurement/requisitions?tab=action_purchases" className="flex flex-col justify-center items-center gap-2 rounded-2xl bg-green-600 px-4 py-8 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1 relative overflow-hidden">
+                <div className="flex items-center gap-3 z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    <span>Procure</span>
+                </div>
+                <span className="absolute top-4 right-4 flex h-8 min-w-[2rem] items-center justify-center rounded-full bg-white px-2 text-sm font-bold text-green-600 shadow-sm">
+                    {actionPurchasesCount}
+                </span>
+              </Link>
+            </div>
+         </div>
+      )}
+
+      {(role === 'SECURITY' || role === 'ADMIN' || role === 'MANAGING_DIRECTOR') && (
+        <div className="flex flex-col items-center justify-center py-6 mb-8 border-b pb-8">
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Security</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl">
+              <Link href="/dispatches?status=APPROVED" className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Outgoing Dispatches
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">{securityOutgoing.length}</span>
+              </Link>
+              <Link href="/procurement/purchase-orders?status=INCOMING" className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                Goods Receiving
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">{securityIncoming.length}</span>
+              </Link>
+            </div>
+        </div>
+      )}
+
+      {(isAccounts || role === 'ADMIN' || role === 'MANAGING_DIRECTOR') && (
+        <div className="flex flex-col items-center justify-center py-6 mb-8 border-b pb-8">
+            <h3 className="text-xl font-semibold mb-4 text-gray-700">Accounts</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
+              <Link href="/accounts" className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1">
+                 <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Approve Purchase Order
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">{pendingFundingCount}</span>
+              </Link>
+              <Link href="/accounts?tab=receipts" className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                Goods Receiving
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">{pendingGrnPos.length}</span>
+              </Link>
+              <Link href="/accounts/payments" className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1">
+               <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Payment History
+                <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600">{paymentHistoryCount}</span>
+              </Link>
+            </div>
+        </div>
+      )}
+
       {roles.PM && (
         <div className="flex flex-col items-center justify-center py-6 mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 w-full max-w-6xl">
@@ -942,6 +1029,7 @@ async function PendingTasks({
         </div>
       )}
 
+      {!['ADMIN', 'MANAGING_DIRECTOR'].includes(role) && (
       <div className="rounded-lg bg-white p-6 shadow">
         <h3 className="text-lg font-medium leading-6 text-gray-900">Pending Tasks</h3>
         <p className="mt-1 text-sm text-gray-500">
@@ -1527,6 +1615,7 @@ async function PendingTasks({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -2015,6 +2104,7 @@ export default async function DashboardPage({
   }
 
   // For PM, Procurement, Security, and DRIVER, show ONLY the Button Grid (handled by PendingTasks)
+  // For PM, Procurement, Security, and DRIVER, show ONLY the Button Grid (handled by PendingTasks)
   if (
     user.role === 'PROJECT_OPERATIONS_OFFICER' ||
     user.role === 'PROCUREMENT' ||
@@ -2023,7 +2113,9 @@ export default async function DashboardPage({
     user.role === 'ACCOUNTING_OFFICER' ||
     user.role === 'SECURITY' ||
     user.role === 'DRIVER' ||
-    user.role === 'HUMAN_RESOURCE'
+    user.role === 'HUMAN_RESOURCE' ||
+    user.role === 'ADMIN' ||
+    user.role === 'MANAGING_DIRECTOR'
   ) {
     return (
       <div className="space-y-6">
