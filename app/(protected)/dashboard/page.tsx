@@ -1029,6 +1029,7 @@ async function PendingTasks({
         </div>
       )}
 
+      {!['ADMIN', 'MANAGING_DIRECTOR'].includes(role) && (
       <div className="rounded-lg bg-white p-6 shadow">
         <h3 className="text-lg font-medium leading-6 text-gray-900">Pending Tasks</h3>
         <p className="mt-1 text-sm text-gray-500">
@@ -1614,6 +1615,7 @@ async function PendingTasks({
           )}
         </div>
       </div>
+      )}
     </div>
   );
 }
