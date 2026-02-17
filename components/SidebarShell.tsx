@@ -280,7 +280,7 @@ export default function SidebarShell({ children, currentUser }: { children: Reac
           className={`bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 transition-all duration-200 ease-in-out
           ${collapsed ? 'w-20' : 'w-64'}
           ${open ? 'translate-x-0' : '-translate-x-full'} block fixed top-0 left-0 h-dvh z-30
-          lg:translate-x-0 lg:static lg:block lg:sticky lg:top-0 lg:h-dvh overflow-y-auto scrollbar-thin scrollbar-thumb-gray-200 dark:scrollbar-thumb-gray-700`}
+          lg:translate-x-0 lg:static lg:block lg:sticky lg:top-0 lg:h-dvh overflow-y-auto scrollbar-none`}
         >
           <div className={`py-5 flex items-center gap-3 border-b border-gray-100 dark:border-gray-700/50 ${collapsed ? 'justify-center px-0' : 'px-6'}`}>
             <div className="relative h-10 w-10 shrink-0 rounded-full overflow-hidden bg-gray-50 border border-gray-100">

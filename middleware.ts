@@ -4,8 +4,8 @@ import { authConfig } from './auth.config';
 const { auth } = NextAuth(authConfig);
 
 export default auth(async (req) => {
-  // Optional request logging: disable by default to avoid exhausting DB connections
-  if (process.env.LOG_ACTIONS === 'true' && req.auth?.user?.id) {
+  // Logging enabled for all authenticated users to populate Audit Logs
+  if (req.auth?.user?.id) {
     const { pathname, search } = req.nextUrl;
     const method = req.method;
     const ip = req.headers.get('x-forwarded-for') || 'unknown';
@@ -22,7 +22,7 @@ export default auth(async (req) => {
         ip,
         userAgent,
       }),
-    }).catch(() => {});
+    }).catch(() => { });
   }
 });
 
