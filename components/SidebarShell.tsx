@@ -45,6 +45,8 @@ const PAGE_DEFS: PageDef[] = [
   { label: 'Unassigned Projects', href: '/projects?tab=assignment', icon: 'users', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Planning Pending', href: '/projects?tab=planning', icon: 'clipboard', roles: ['PROJECT_COORDINATOR'] },
   { label: 'Payment History', href: '/reports/payment-history', icon: 'banknotes', roles: ['PROJECT_COORDINATOR'] },
+  { label: 'Material Reconciliation', href: '/reports/material-reconciliation', icon: 'clipboard', roles: ['PROJECT_COORDINATOR'] },
+  { label: 'Profit and Loss', href: '/reports/profit-loss-projects', icon: 'chart-pie', roles: ['PROJECT_COORDINATOR'] },
   // Sales Accounts
   { label: 'Receive Due Payments', href: '/projects?tab=due_today', icon: 'banknotes', roles: ['SALES_ACCOUNTS'] },
   { label: 'Other Payments', href: '/projects?tab=all_payments', icon: 'credit-card', roles: ['SALES_ACCOUNTS'] },

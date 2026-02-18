@@ -11,7 +11,19 @@ function formatCurrency(amount: number) {
     }).format(amount);
 }
 
-export default function MaterialReconciliationReport({ data, disablePagination = false }: { data: ReportData; disablePagination?: boolean }) {
+export default function MaterialReconciliationReport({
+  data,
+  disablePagination = false,
+  title,
+  description,
+  surplusLabel,
+}: {
+  data: ReportData;
+  disablePagination?: boolean;
+  title?: string;
+  description?: string;
+  surplusLabel?: string;
+}) {
   const { quoteLines, deliveries } = data;
 
   // Enhance Quote Lines with Delivery Data
@@ -31,12 +43,13 @@ export default function MaterialReconciliationReport({ data, disablePagination =
     }
 
     const qtyDelivered = matchedDeliveries.reduce((sum, d) => sum + d.qtyDelivered, 0);
-    const amountDelivered = matchedDeliveries.reduce((sum, d) => sum + d.totalAmount, 0); // This might double count if a delivery maps to multiple lines?
-    // Actually, our deliveryMap in actions.ts creates UNIQUE delivery items per description/unit.
-    // So distinct delivery items won't overlap. We are safe aggregating them here.
+    const amountDelivered = matchedDeliveries.reduce((sum, d) => sum + d.totalAmount, 0);
 
     const varianceQty = qtyDelivered - line.quantity;
     const varianceAmount = amountDelivered - line.amount;
+    const unitDisplay = line.unit || (matchedDeliveries[0]?.unit ?? null);
+    const billRate = line.unitPrice;
+    const deliveredRate = qtyDelivered > 0 ? amountDelivered / qtyDelivered : 0;
     
     // Status Logic
     let statusColor = 'text-gray-500';
@@ -49,7 +62,10 @@ export default function MaterialReconciliationReport({ data, disablePagination =
         amountDelivered,
         varianceQty,
         varianceAmount,
-        statusColor
+        statusColor,
+        unitDisplay,
+        billRate,
+        deliveredRate
     };
   });
 
@@ -66,8 +82,10 @@ export default function MaterialReconciliationReport({ data, disablePagination =
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-            <h2 className="text-lg font-bold text-gray-900">Material Reconciliation</h2>
-            <p className="text-sm text-gray-500">Comparing Quoted Limits vs Actual Deliveries to Site.</p>
+            <h2 className="text-lg font-bold text-gray-900">{title || 'Material Reconciliation'}</h2>
+            <p className="text-sm text-gray-500">
+              {description || 'Comparing Quoted Limits vs Actual Deliveries to Site.'}
+            </p>
         </div>
         <div className="flex gap-8 text-right">
             <div>
@@ -89,20 +107,27 @@ export default function MaterialReconciliationReport({ data, disablePagination =
 
       <div className="border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
         <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 text-[11px]">
+            <thead className="bg-slate-100 text-[10px]">
                 <tr>
-                <th className="px-6 print:px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider whitespace-nowrap">Description</th>
-                <th className="px-6 print:px-2 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-20 whitespace-nowrap">Unit</th>
-                
-                <th className="px-6 print:px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap">Quoted Qty</th>
-                <th className="px-6 print:px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32 whitespace-nowrap">Quoted Amt</th>
-                
-                <th className="px-6 print:px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-24 bg-blue-50/30 whitespace-nowrap">Dlvd Qty</th>
-                <th className="px-6 print:px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32 bg-blue-50/30 whitespace-nowrap">Dlvd Amt</th>
-                
-                <th className="px-6 print:px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-24 whitespace-nowrap">Var Qty</th>
-                <th className="px-6 print:px-2 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider w-32 whitespace-nowrap">Var Amt</th>
+                <th rowSpan={2} className="px-4 print:px-2 py-2 text-left font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap align-bottom border-r border-gray-200">Description</th>
+                <th rowSpan={2} className="px-3 print:px-2 py-2 text-left font-bold text-gray-600 uppercase tracking-wider w-16 whitespace-nowrap align-bottom border-r border-gray-200">Unit</th>
+                <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Rate</th>
+                <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Quantity</th>
+                <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Amount</th>
+                <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                  {surplusLabel || 'Surplus / Undercharge'}
+                </th>
+                </tr>
+                <tr className="bg-slate-50">
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-l border-gray-200">Bill</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Delivered</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-l border-gray-200">Bill</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Delivered</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-l border-gray-200">Bill</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Delivered</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-l border-gray-200">Qty</th>
+                <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Amount</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -126,45 +151,58 @@ export default function MaterialReconciliationReport({ data, disablePagination =
 
                     return (
                         <Fragment key={idx}>
-                            {showHeader && (
-                                <tr key={`hdr-${idx}`} className="bg-gray-100">
+                            {showHeader && (() => {
+                                const isGlobalFirstOfSection =
+                                  reportRows.findIndex(r => r.section === row.section) === globalIdx;
+                                const isFirstOverallSection = reportRows.length > 0 && reportRows[0].section === row.section;
+                                const shouldBreakBefore = isGlobalFirstOfSection && !isFirstOverallSection;
+                                return (
+                                <tr
+                                  key={`hdr-${idx}`}
+                                  className="bg-gray-100"
+                                  {...(shouldBreakBefore ? { 'data-print-break': 'true' } : {})}
+                                  style={shouldBreakBefore ? { breakBefore: 'page', pageBreakBefore: 'always' } as any : undefined}
+                                >
                                     <td colSpan={8} className="px-6 py-2 text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         {row.section || 'General'}
                                     </td>
                                 </tr>
-                            )}
+                                );
+                            })()}
                             <tr className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 print:px-2 py-4 text-xs font-normal text-gray-900">
+                                <td className="px-4 print:px-2 py-3 text-[11px] font-normal text-gray-900">
                                     <div className="truncate max-w-[200px] print:max-w-[150px]" title={row.description}>
                                         {row.description}
                                     </div>
                                 </td>
-                                <td className="px-6 print:px-2 py-4 text-xs text-gray-500 whitespace-nowrap">{row.unit || '-'}</td>
-                                
-                                <td className="px-6 print:px-2 py-4 text-xs text-gray-900 text-right whitespace-nowrap">{row.quantity.toFixed(2)}</td>
-                                <td className="px-6 print:px-2 py-4 text-xs text-gray-900 text-right whitespace-nowrap">{formatCurrency(row.amount)}</td>
-                                
-                                <td className="px-6 print:px-2 py-4 text-xs text-blue-900 text-right font-medium bg-blue-50/30 whitespace-nowrap">{row.qtyDelivered.toFixed(2)}</td>
-                                <td className="px-6 print:px-2 py-4 text-xs text-blue-900 text-right bg-blue-50/30 whitespace-nowrap">{formatCurrency(row.amountDelivered)}</td>
-                                
-                                <td className={`px-6 print:px-2 py-4 text-xs text-right font-bold whitespace-nowrap ${row.statusColor}`}>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-gray-500 whitespace-nowrap">{row.unitDisplay || '-'}</td>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-gray-900 text-right whitespace-nowrap">{formatCurrency(row.billRate)}</td>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-blue-900 text-right bg-blue-50/30 whitespace-nowrap">{row.deliveredRate ? formatCurrency(row.deliveredRate) : '-'}</td>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-gray-900 text-right whitespace-nowrap">{row.quantity.toFixed(2)}</td>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-blue-900 text-right bg-blue-50/30 whitespace-nowrap">{row.qtyDelivered.toFixed(2)}</td>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-gray-900 text-right whitespace-nowrap">{formatCurrency(row.amount)}</td>
+                                <td className="px-3 print:px-2 py-3 text-[11px] text-blue-900 text-right bg-blue-50/30 whitespace-nowrap">{formatCurrency(row.amountDelivered)}</td>
+                                <td className={`px-3 print:px-2 py-3 text-[11px] text-right font-bold whitespace-nowrap ${row.statusColor}`}>
                                     {row.varianceQty > 0 ? '+' : ''}{row.varianceQty.toFixed(2)}
                                 </td>
-                                <td className={`px-6 print:px-2 py-4 text-xs text-right whitespace-nowrap ${row.varianceAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                <td className={`px-3 print:px-2 py-3 text-[11px] text-right whitespace-nowrap ${row.varianceAmount > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                     {row.varianceAmount > 0 ? '+' : ''}{formatCurrency(row.varianceAmount)}
                                 </td>
                             </tr>
                             
                             {isLastOfSection && (
-                                <tr className="bg-blue-50/50 font-bold border-t-2 border-gray-300 border-b-4 border-double">
-                                    <td colSpan={3} className="px-6 py-3 text-left text-xs text-gray-900 font-bold uppercase tracking-wide">
+                                <tr className="bg-blue-50/50 font-bold border-t-2 border-gray-300 border-b-4 border-double text-[11px]">
+                                    <td colSpan={6} className="px-4 py-2 text-left text-gray-900 font-bold uppercase tracking-wide">
                                         TOTAL {row.section} SUMMARY
                                     </td>
-                                    <td className="px-6 py-3 text-right text-xs text-gray-900 border-x border-gray-200">{formatCurrency(sectionQuoted)}</td>
-                                    <td className="px-6 py-3 text-right text-xs text-gray-900 border-x border-gray-200">-</td>
-                                    <td className="px-6 py-3 text-right text-xs text-blue-900 border-x border-gray-200">{formatCurrency(sectionDelivered)}</td>
-                                    <td className="px-6 py-3 text-right text-xs text-gray-900 border-x border-gray-200">-</td>
-                                    <td className={`px-6 py-3 text-right text-xs font-bold border-x border-gray-200 ${sectionVariance > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                    <td className="px-3 py-2 text-right text-gray-900 border-x border-gray-200">
+                                        {formatCurrency(sectionQuoted)}
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-blue-900 border-x border-gray-200">
+                                        {formatCurrency(sectionDelivered)}
+                                    </td>
+                                    <td className="px-3 py-2 text-right text-gray-900 border-x border-gray-200">-</td>
+                                    <td className={`px-3 py-2 text-right font-bold border-x border-gray-200 ${sectionVariance > 0 ? 'text-green-600' : 'text-red-600'}`}>
                                         {formatCurrency(sectionVariance)}
                                     </td>
                                 </tr>
@@ -176,13 +214,11 @@ export default function MaterialReconciliationReport({ data, disablePagination =
             {(!disablePagination && currentPage === Math.ceil(reportRows.length / pageSize)) || disablePagination ? (
             <tfoot className="bg-gray-100 font-bold border-t border-gray-200">
                 <tr>
-                    <td colSpan={3} className="px-6 py-3 text-right text-xs uppercase text-gray-900 font-bold whitespace-nowrap">GRAND TOTAL</td>
-                    
-                    <td className="px-6 py-3 text-right text-sm text-gray-900 font-bold">{formatCurrency(totalQuoted)}</td>
-                    
+                    <td colSpan={4} className="px-6 py-3 text-right text-xs uppercase text-gray-900 font-bold whitespace-nowrap">GRAND TOTAL</td>
                     <td className="px-6 py-3 text-right text-sm text-gray-900">-</td>
+                    <td className="px-6 py-3 text-right text-sm text-gray-900">-</td>
+                    <td className="px-6 py-3 text-right text-sm text-gray-900 font-bold">{formatCurrency(totalQuoted)}</td>
                     <td className="px-6 py-3 text-right text-sm text-gray-900 font-bold">{formatCurrency(totalDelivered)}</td>
-                    
                     <td className="px-6 py-3 text-right text-sm text-gray-900">-</td>
                     <td className={`px-6 py-3 text-right text-sm font-bold ${totalVariance > 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {formatCurrency(totalVariance)}

@@ -33,17 +33,30 @@ export default async function EndOfDayReportPage({
 
   const summaries = await getEndOfDaySummaryData(date);
 
-  const rows = summaries.map((summary: any) => ({
-    id: summary.projectId,
-    site: summary.location || '-',
-    projectName: summary.projectName,
-    workforceGroups: summary.workforceGroups ?? [],
-    activity: summary.lastActivity,
-    used: summary.materialsUsedSummary ?? '',
-    balance: summary.materialsBalanceSummary ?? '',
-    status: summary.status,
-    reportingDate: summary.lastReportDate,
-  }));
+  const rows = summaries.map((summary: any) => {
+    const reportingDate =
+      summary.lastReportDate ? new Date(summary.lastReportDate) : null;
+    const reportingDateLabel = reportingDate
+      ? reportingDate.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+        })
+      : null;
+
+    return {
+      id: summary.projectId,
+      site: summary.location || '-',
+      projectName: summary.projectName,
+      workforceGroups: summary.workforceGroups ?? [],
+      activity: summary.lastActivity,
+      used: summary.materialsUsedSummary ?? '',
+      balance: summary.materialsBalanceSummary ?? '',
+      status: summary.status,
+      reportingDate,
+      reportingDateLabel,
+    };
+  });
 
   const sortedRows = rows.sort((a, b) => a.site.localeCompare(b.site));
 
@@ -148,6 +161,16 @@ export default async function EndOfDayReportPage({
                         <div>
                           <div className="font-semibold uppercase">{row.site}</div>
                           <div className="text-xs text-gray-500">{row.projectName}</div>
+                          {row.reportingDateLabel && (
+                            <div className="mt-1 text-left">
+                              <div className="text-[11px] font-semibold text-emerald-700">
+                                Last update:
+                              </div>
+                              <div className="mt-0.5 inline-flex items-center justify-start rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">
+                                {row.reportingDateLabel}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </td>
