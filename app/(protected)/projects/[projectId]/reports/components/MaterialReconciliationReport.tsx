@@ -11,7 +11,19 @@ function formatCurrency(amount: number) {
     }).format(amount);
 }
 
-export default function MaterialReconciliationReport({ data, disablePagination = false }: { data: ReportData; disablePagination?: boolean }) {
+export default function MaterialReconciliationReport({
+  data,
+  disablePagination = false,
+  title,
+  description,
+  surplusLabel,
+}: {
+  data: ReportData;
+  disablePagination?: boolean;
+  title?: string;
+  description?: string;
+  surplusLabel?: string;
+}) {
   const { quoteLines, deliveries } = data;
 
   // Enhance Quote Lines with Delivery Data
@@ -70,8 +82,10 @@ export default function MaterialReconciliationReport({ data, disablePagination =
     <div className="space-y-6">
       <div className="flex justify-between items-end">
         <div>
-            <h2 className="text-lg font-bold text-gray-900">Material Reconciliation</h2>
-            <p className="text-sm text-gray-500">Comparing Quoted Limits vs Actual Deliveries to Site.</p>
+            <h2 className="text-lg font-bold text-gray-900">{title || 'Material Reconciliation'}</h2>
+            <p className="text-sm text-gray-500">
+              {description || 'Comparing Quoted Limits vs Actual Deliveries to Site.'}
+            </p>
         </div>
         <div className="flex gap-8 text-right">
             <div>
@@ -101,7 +115,9 @@ export default function MaterialReconciliationReport({ data, disablePagination =
                 <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Rate</th>
                 <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Quantity</th>
                 <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-r border-gray-200">Amount</th>
-                <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">Surplus / Undercharge</th>
+                <th colSpan={2} className="px-3 print:px-2 py-2 text-center font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap">
+                  {surplusLabel || 'Surplus / Undercharge'}
+                </th>
                 </tr>
                 <tr className="bg-slate-50">
                 <th className="px-3 print:px-2 py-2 text-right font-bold text-gray-600 uppercase tracking-wider whitespace-nowrap border-l border-gray-200">Bill</th>
