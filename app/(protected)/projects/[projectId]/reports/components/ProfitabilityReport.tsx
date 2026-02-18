@@ -164,13 +164,24 @@ export default function ProfitabilityReport({ data, disablePagination = false }:
 
                     return (
                         <Fragment key={idx}>
-                            {showHeader && (
-                                <tr key={`hdr-${idx}`} className="bg-gray-100">
+                            {showHeader && (() => {
+                                const globalIdx = reportRows.findIndex(r => r.id === row.id);
+                                const isGlobalFirstOfSection =
+                                  reportRows.findIndex(r => r.section === row.section) === globalIdx;
+                                const isFirstOverallSection = reportRows.length > 0 && reportRows[0].section === row.section;
+                                const shouldBreakBefore = isGlobalFirstOfSection && !isFirstOverallSection;
+                                return (
+                                <tr
+                                  key={`hdr-${idx}`}
+                                  className="bg-gray-100"
+                                  style={shouldBreakBefore ? { breakBefore: 'page', pageBreakBefore: 'always' } as any : undefined}
+                                >
                                     <td colSpan={6} className="px-6 py-2 text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         {sectionName}
                                     </td>
                                 </tr>
-                            )}
+                                );
+                            })()}
                             <tr className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 print:px-2 py-4 text-xs font-normal text-gray-900">
                                     <div className="truncate max-w-[200px] print:max-w-[150px]" title={row.description}>

@@ -157,4 +157,10 @@ html, body, :root {
   tfoot {
     display: table-footer-group;
   }
+
+  /* Explicit page breaks before a section */
+  .print-break-before-page {
+    break-before: page;
+    page-break-before: always;
+  }
 }

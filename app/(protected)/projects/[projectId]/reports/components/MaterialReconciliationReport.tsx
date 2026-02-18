@@ -37,6 +37,7 @@ export default function MaterialReconciliationReport({ data, disablePagination =
 
     const varianceQty = qtyDelivered - line.quantity;
     const varianceAmount = amountDelivered - line.amount;
+    const unitDisplay = line.unit || (matchedDeliveries[0]?.unit ?? null);
     
     // Status Logic
     let statusColor = 'text-gray-500';
@@ -49,7 +50,8 @@ export default function MaterialReconciliationReport({ data, disablePagination =
         amountDelivered,
         varianceQty,
         varianceAmount,
-        statusColor
+        statusColor,
+        unitDisplay
     };
   });
 
@@ -126,20 +128,31 @@ export default function MaterialReconciliationReport({ data, disablePagination =
 
                     return (
                         <Fragment key={idx}>
-                            {showHeader && (
-                                <tr key={`hdr-${idx}`} className="bg-gray-100">
+                            {showHeader && (() => {
+                                const isGlobalFirstOfSection =
+                                  reportRows.findIndex(r => r.section === row.section) === globalIdx;
+                                const isFirstOverallSection = reportRows.length > 0 && reportRows[0].section === row.section;
+                                const shouldBreakBefore = isGlobalFirstOfSection && !isFirstOverallSection;
+                                return (
+                                <tr
+                                  key={`hdr-${idx}`}
+                                  className="bg-gray-100"
+                                  {...(shouldBreakBefore ? { 'data-print-break': 'true' } : {})}
+                                  style={shouldBreakBefore ? { breakBefore: 'page', pageBreakBefore: 'always' } as any : undefined}
+                                >
                                     <td colSpan={8} className="px-6 py-2 text-xs font-bold text-gray-700 uppercase tracking-wider">
                                         {row.section || 'General'}
                                     </td>
                                 </tr>
-                            )}
+                                );
+                            })()}
                             <tr className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 print:px-2 py-4 text-xs font-normal text-gray-900">
                                     <div className="truncate max-w-[200px] print:max-w-[150px]" title={row.description}>
                                         {row.description}
                                     </div>
                                 </td>
-                                <td className="px-6 print:px-2 py-4 text-xs text-gray-500 whitespace-nowrap">{row.unit || '-'}</td>
+                                <td className="px-6 print:px-2 py-4 text-xs text-gray-500 whitespace-nowrap">{row.unitDisplay || '-'}</td>
                                 
                                 <td className="px-6 print:px-2 py-4 text-xs text-gray-900 text-right whitespace-nowrap">{row.quantity.toFixed(2)}</td>
                                 <td className="px-6 print:px-2 py-4 text-xs text-gray-900 text-right whitespace-nowrap">{formatCurrency(row.amount)}</td>

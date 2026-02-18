@@ -10,7 +10,12 @@ type ProjectSummary = {
   status: string;
 };
 
-export default function ReportsProjectList({ projects }: { projects: ProjectSummary[] }) {
+type ReportsProjectListProps = {
+  projects: ProjectSummary[];
+  viewPath?: string;
+};
+
+export default function ReportsProjectList({ projects, viewPath }: ReportsProjectListProps) {
   if (projects.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-12 text-center text-gray-500 border border-gray-200">
@@ -63,7 +68,7 @@ export default function ReportsProjectList({ projects }: { projects: ProjectSumm
               </td>
               <td className="py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                 <Link
-                  href={`/projects/${project.id}/reports`}
+                  href={`/projects/${project.id}/${viewPath || 'reports'}`}
                   className="text-indigo-600 hover:text-indigo-900 font-bold"
                 >
                   View<span className="sr-only">, {project.name}</span>
