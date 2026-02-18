@@ -5,6 +5,7 @@ import MaterialReconciliationReport from '../components/MaterialReconciliationRe
 import { getProjectReportData } from '../actions';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import ReportPrintHeader from '@/components/reports/ReportPrintHeader';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -41,24 +42,18 @@ export default async function ProjectMaterialReconciliationPage({
               Back to Material Reconciliation
             </Link>
           </nav>
-
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-                Material Reconciliation
-              </h1>
-              <p className="text-sm text-gray-500 mt-1">
-                {project.name} ({project.projectNumber || 'No Ref'})
-              </p>
-            </div>
-          </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[500px]">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[500px] p-6">
+          <ReportPrintHeader
+            title="Materials Reconciliation"
+            subTitle={`${project.name} (${project.projectNumber || 'No Ref'})`}
+            hideTinVendor
+            centerTitle
+          />
           <MaterialReconciliationReport data={reportData} />
         </div>
       </div>
     </div>
   );
 }
-
