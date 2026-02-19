@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircleIcon, XCircleIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { approveTopup, rejectTopup, approveRequisition } from './actions';
+import { approveTopup, rejectTopup } from './actions';
 
 import TablePagination from '@/components/ui/table-pagination';
 import ApprovalsTableToolbar from './components/ApprovalsTableToolbar';
@@ -221,16 +221,13 @@ export default async function ApprovalsPage({
                                {req.items.length}
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <form action={approveRequisition}>
-                                  <input type="hidden" name="id" value={req.id} />
-                                  <button
-                                  type="submit"
-                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-600 border border-transparent rounded-lg text-xs font-bold text-white shadow-sm transition-all hover:bg-green-700 hover:shadow-md focus:ring-2 focus:ring-green-500 focus:ring-offset-1"
-                                  >
-                                      <CheckCircleIcon className="h-4 w-4" />
-                                      Approve
-                                  </button>
-                              </form>
+                              <Link
+                                href={`/procurement/requisitions/${req.id}`}
+                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-600 border border-transparent rounded-lg text-xs font-bold text-white shadow-sm transition-all hover:bg-indigo-700 hover:shadow-md focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                              >
+                                  <EyeIcon className="h-4 w-4" />
+                                  View & Review
+                              </Link>
                             </td>
                          </tr>
                        ))
