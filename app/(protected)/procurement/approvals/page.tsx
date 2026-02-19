@@ -3,7 +3,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { CheckCircleIcon, XCircleIcon, EyeIcon } from '@heroicons/react/24/outline';
-import { approveTopup, rejectTopup } from './actions';
+import { approveTopup, rejectTopup, approveRequisition } from './actions';
 
 import TablePagination from '@/components/ui/table-pagination';
 import ApprovalsTableToolbar from './components/ApprovalsTableToolbar';
@@ -221,7 +221,7 @@ export default async function ApprovalsPage({
                                {req.items.length}
                             </td>
                             <td className="px-6 py-4 text-center">
-                              <form action={handleApprove}>
+                              <form action={approveRequisition}>
                                   <input type="hidden" name="id" value={req.id} />
                                   <button
                                   type="submit"

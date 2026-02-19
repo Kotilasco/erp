@@ -67,3 +67,21 @@ export async function rejectTopup(fd: FormData) {
     revalidatePath('/procurement/approvals');
     revalidatePath('/dashboard');
 }
+
+export async function approveRequisition(fd: FormData) {
+    const user = await getCurrentUser();
+    if (!user) throw new Error('Unauthenticated');
+    assertRoles(user.role, ['SENIOR_PROCUREMENT', 'ADMIN', 'MANAGING_DIRECTOR', 'GENERAL_MANAGER']);
+
+    const id = String(fd.get('id'));
+
+    await prisma.procurementRequisition.update({
+        where: { id },
+        data: {
+            status: 'APPROVED'
+        }
+    });
+
+    revalidatePath('/procurement/approvals');
+    revalidatePath('/dashboard');
+}

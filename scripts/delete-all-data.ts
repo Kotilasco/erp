@@ -40,6 +40,9 @@ async function main() {
     await prisma.projectTask.deleteMany({});
     await prisma.projectMember.deleteMany({});
     await prisma.projectProductivitySetting.deleteMany({});
+    console.log('Deleting ScheduleTaskReports...');
+    await prisma.scheduleTaskReport.deleteMany({});
+    console.log('Deleting ScheduleItems...');
     await prisma.scheduleItem.deleteMany({});
     await prisma.schedule.deleteMany({});
 
