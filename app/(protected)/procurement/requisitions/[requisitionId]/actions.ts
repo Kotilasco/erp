@@ -237,4 +237,6 @@ export async function rejectItemReview(requisitionId: string, itemId: string, re
   }
 
   revalidatePath(`/procurement/requisitions/${requisitionId}`);
+  revalidatePath('/procurement/requisitions');
+  revalidatePath('/procurement/approvals');
 }

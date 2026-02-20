@@ -327,7 +327,8 @@ export default async function DispatchDetail({
                                                         </LoadingButton>
                                                     </form>
                                                 )}
-                                                {isDriver &&
+                                                {/* Hidden for now as requested by user - Driver item acknowledgement */}
+                                                {/* {isDriver &&
                                                     (dispatch.status === 'IN_TRANSIT' ||
                                                     dispatch.status === 'APPROVED' ||
                                                     dispatch.status === 'DELIVERED') &&
@@ -343,7 +344,7 @@ export default async function DispatchDetail({
                                                             Received
                                                         </LoadingButton>
                                                     </form>
-                                                )}
+                                                )} */}
                                             </div>
                                         </td>
                                     )}
