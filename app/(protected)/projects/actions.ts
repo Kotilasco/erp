@@ -2705,6 +2705,8 @@ export async function requestTopUpForItem(requisitionItemId: string, qty: number
   });
 
   revalidatePath(`/procurement/requisitions/${item.requisitionId}`);
+  revalidatePath('/procurement/requisitions');
+  revalidatePath('/procurement/approvals');
   if (item.requisition?.projectId) revalidatePath(`/projects/${item.requisition.projectId}`);
   return { ok: true };
 }
@@ -2799,6 +2801,8 @@ export async function requestItemReview(requisitionItemId: string, flag: boolean
   if (!flag) await clearReviewSubmissionIfNone(item.requisitionId);
 
   revalidatePath(`/procurement/requisitions/${item.requisitionId}`);
+  revalidatePath('/procurement/requisitions');
+  revalidatePath('/procurement/approvals');
   if (item.requisition?.projectId) revalidatePath(`/projects/${item.requisition.projectId}`);
   return { ok: true };
 }
@@ -2848,6 +2852,8 @@ export async function approveItemReview(requisitionItemId: string) {
   await clearReviewSubmissionIfNone(item.requisitionId);
 
   revalidatePath(`/procurement/requisitions/${item.requisitionId}`);
+  revalidatePath('/procurement/requisitions');
+  revalidatePath('/procurement/approvals');
   if (item.requisition?.projectId) revalidatePath(`/projects/${item.requisition.projectId}`);
   return { ok: true };
 }
@@ -2883,6 +2889,8 @@ export async function rejectItemReview(requisitionItemId: string) {
   await clearReviewSubmissionIfNone(item.requisitionId);
 
   revalidatePath(`/procurement/requisitions/${item.requisitionId}`);
+  revalidatePath('/procurement/requisitions');
+  revalidatePath('/procurement/approvals');
   if (item.requisition?.projectId) revalidatePath(`/projects/${item.requisition.projectId}`);
   return { ok: true };
 }
@@ -2941,6 +2949,8 @@ export async function updateRequisitionItemUnitPrice(
   }
 
   revalidatePath(`/procurement/requisitions/${item.requisitionId}`);
+  revalidatePath('/procurement/requisitions');
+  revalidatePath('/procurement/approvals');
   if (item.requisition?.projectId) revalidatePath(`/projects/${item.requisition.projectId}`);
   return { ok: true };
 }
