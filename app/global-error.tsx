@@ -19,17 +19,17 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className={`${montserrat.className} antialiased bg-gray-50 text-gray-900`}>
-        <div className="flex min-h-screen flex-col items-center justify-center p-4">
-          <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-10 shadow-xl ring-1 ring-gray-900/5 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
-              <svg
-                className="h-8 w-8 text-red-600"
+      <body className={`${montserrat.className} antialiased bg-[#F8FAFC] text-slate-900`}>
+        <div className="flex min-h-screen flex-col items-center justify-center p-6">
+          <div className="w-full max-w-lg space-y-10 rounded-3xl bg-white p-12 shadow-2xl ring-1 ring-slate-900/5 text-center">
+            
+            <div className="relative mx-auto w-24 h-24 flex items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+               <svg
+                className="h-12 w-12"
                 fill="none"
                 viewBox="0 0 24 24"
                 strokeWidth="1.5"
                 stroke="currentColor"
-                aria-hidden="true"
               >
                 <path
                   strokeLinecap="round"
@@ -39,34 +39,37 @@ export default function GlobalError({
               </svg>
             </div>
             
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold tracking-tight text-gray-900">
-                Critical Error
+            <div className="space-y-4">
+              <h2 className="text-4xl font-extrabold tracking-tight text-slate-900">
+                System Halt
               </h2>
-              <p className="text-gray-500">
-                Something went wrong at the system level. We apologize for the inconvenience.
+              <p className="text-lg text-slate-500 leading-relaxed max-w-sm mx-auto">
+                A critical system interruption occurred. Most operations are paused to maintain data integrity.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 pt-4">
+            <div className="flex flex-col gap-4 pt-6">
               <button
                 onClick={() => reset()}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 transition-colors"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-slate-900 px-8 py-4 text-sm font-bold text-white shadow-xl hover:bg-emerald-600 focus:outline-none transition-all active:scale-95"
               >
-                Try again
+                Attempt Recovery
               </button>
               <button
                 onClick={() => window.location.href = '/'}
-                className="inline-flex w-full items-center justify-center rounded-lg bg-white px-5 py-3 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 transition-colors"
+                className="inline-flex w-full items-center justify-center rounded-2xl bg-white px-8 py-4 text-sm font-bold text-slate-700 shadow-sm ring-1 ring-inset ring-slate-200 hover:bg-slate-50 transition-all active:scale-95"
               >
-                Go back home
+                Back to Dashboard
               </button>
             </div>
             
             {error.digest && (
-              <p className="text-xs text-gray-400 mt-4">
-                Error ID: {error.digest}
-              </p>
+              <div className="pt-6 border-t border-slate-100">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-2">Internal Reference</p>
+                <code className="text-[11px] font-mono text-slate-500 bg-slate-50 px-2 py-1 rounded">
+                  {error.digest}
+                </code>
+              </div>
             )}
           </div>
         </div>

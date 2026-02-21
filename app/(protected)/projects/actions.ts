@@ -69,7 +69,7 @@ export async function ensureProjectIsPaidFor(projectId: string) {
   return project.status;
 }
 
-async function clearReviewSubmissionIfNone(requisitionId: string) {
+export async function clearReviewSubmissionIfNone(requisitionId: string) {
   const pending = await prisma.procurementRequisitionItem.count({
     where: { requisitionId, reviewRequested: true },
   });
@@ -86,8 +86,10 @@ async function clearReviewSubmissionIfNone(requisitionId: string) {
     let newNote = current?.note;
     if (newNote && newNote.includes('Review request from Req')) {
       newNote = newNote.split('\n').filter(line => !line.includes('Review request from Req')).join('\n').trim();
+      updates.note = newNote === '' ? null : newNote;
+    } else {
+      updates.note = newNote;
     }
-    updates.note = newNote;
 
     await prisma.procurementRequisition.update({
       where: { id: requisitionId },
@@ -2858,7 +2860,7 @@ export async function approveItemReview(requisitionItemId: string) {
   return { ok: true };
 }
 
-export async function rejectItemReview(requisitionItemId: string) {
+export async function rejectItemReview(requisitionItemId: string, reason?: string) {
   const user = await getCurrentUser();
   if (!user) throw new Error('Authentication required');
   const role = assertRole(user.role);
@@ -2870,9 +2872,6 @@ export async function rejectItemReview(requisitionItemId: string) {
     select: {
       requisitionId: true,
       requisition: { select: { projectId: true } },
-      qty: true,
-      qtyRequested: true,
-      amountMinor: true,
     },
   });
   if (!item) throw new Error('Requisition item not found');
@@ -2883,6 +2882,8 @@ export async function rejectItemReview(requisitionItemId: string) {
       reviewRequested: false,
       reviewApproved: false,
       requestedUnitPriceMinor: 0n,
+      // @ts-ignore
+      reviewRejectionReason: reason || 'Rejected by Senior Procurement',
     },
   });
 
