@@ -373,7 +373,7 @@ export default async function DispatchDetail({
             {/* Action Footer */}
             <div className="flex flex-col gap-6">
                 <div className="flex flex-wrap items-center justify-center gap-4">
-                    <div className="flex gap-3">
+                    <div className="flex gap-3 w-full">
                         <DispatchAcknowledgment 
                             dispatch={dispatch} 
                             userId={me.id!} 
@@ -492,10 +492,10 @@ export default async function DispatchDetail({
                                 ))}
                             </div>
                             
-                            <div className="mt-6 flex justify-end">
+                            <div className="mt-6 border-t border-gray-100 pt-4">
                                 <LoadingButton 
                                     type="submit"
-                                    className="rounded-xl bg-barmlo-blue px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-blue/90"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-barmlo-green px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-green/90 hover:shadow-lg"
                                     loadingText="Processing..."
                                 >
                                     Process Return / Used Out
