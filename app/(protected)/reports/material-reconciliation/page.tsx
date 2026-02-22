@@ -9,6 +9,10 @@ export default async function MaterialReconciliationReportsPage() {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
 
+  if (['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTING_AUDITOR'].includes(user.role)) {
+    redirect('/dashboard');
+  }
+
   const projects = await getProjectsForReports();
 
   return (
@@ -37,4 +41,3 @@ export default async function MaterialReconciliationReportsPage() {
     </div>
   );
 }
-

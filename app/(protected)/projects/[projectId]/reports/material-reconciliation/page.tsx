@@ -17,6 +17,9 @@ export default async function ProjectMaterialReconciliationPage({
 }) {
   const me = await getCurrentUser();
   if (!me) redirect('/login');
+  if (['ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTING_AUDITOR'].includes(me.role)) {
+    redirect('/dashboard');
+  }
 
   const { projectId } = await params;
 

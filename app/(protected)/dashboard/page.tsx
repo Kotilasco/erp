@@ -755,7 +755,7 @@ async function PendingTasks({
             </Link>
 
             <Link
-                href="/accounts/payments"
+                href="/reports/payment-history"
                 className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
             >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
