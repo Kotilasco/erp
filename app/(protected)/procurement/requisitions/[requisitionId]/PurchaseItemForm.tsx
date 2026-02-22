@@ -111,6 +111,7 @@ export default function PurchaseItemForm({
       <QuantityInput
         name="qty"
         max={remainingQty}
+        defaultValue={remainingQty}
         className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
       />
       <input
@@ -118,6 +119,7 @@ export default function PurchaseItemForm({
         type="number"
         step="0.01"
         min="0"
+        defaultValue={approvedUnitPrice > 0 ? approvedUnitPrice : ''}
         placeholder="Unit Price"
         className="rounded-md border border-gray-300 bg-gray-50/50 px-2 py-1.5 text-sm focus:border-indigo-500 focus:ring-indigo-500"
         required

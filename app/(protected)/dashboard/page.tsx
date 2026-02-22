@@ -348,6 +348,52 @@ async function PendingTasks({
     awaitingDeliveryCount = awaiting;
   }
 
+  // Logic for Project Manager (Projects with Due Daily Reports)
+  let dueReportsProjects: any[] = [];
+  if (roles.PM) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+
+    const activeProjects = await prisma.project.findMany({
+      where: {
+        ...(role === 'PROJECT_OPERATIONS_OFFICER' ? { assignedToId: userId } : {}),
+        status: { notIn: ['COMPLETED', 'CLOSED'] },
+        schedules: { status: 'ACTIVE' },
+      },
+      include: {
+        quote: { select: { customer: { select: { displayName: true } } } },
+        schedules: {
+          include: {
+            items: {
+              where: {
+                status: 'ACTIVE',
+                plannedStart: { lte: new Date() },
+              },
+              include: {
+                reports: {
+                  where: {
+                    reportedForDate: {
+                      gte: today,
+                      lt: tomorrow,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    dueReportsProjects = activeProjects.filter((p) => {
+      if (!p.schedules) return false;
+      // Project is "due" if any active item that should be worked on today has no report today
+      return p.schedules.items.some((item) => item.reports.length === 0);
+    });
+  }
+
   // Logic for Project Manager (My Assigned Projects)
   let myProjectTasks: any[] = [];
   if (roles.PM) {
@@ -807,6 +853,11 @@ async function PendingTasks({
       data: r,
       date: r.createdAt,
     })),
+    ...dueReportsProjects.map((p) => ({
+      type: 'DUE_DAILY_REPORT' as const,
+      data: p,
+      date: new Date(),
+    })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Pagination logic
@@ -873,6 +924,29 @@ async function PendingTasks({
                {awaitingDeliveryCount}
              </span>
            </Link>
+           <Link
+            href="/dashboard?filter=due_reports"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-10 w-10"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            Due Reports
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+              {dueReportsProjects.length}
+            </span>
+          </Link>
         </div>
       </div>
     );
@@ -1025,6 +1099,18 @@ async function PendingTasks({
                     {awaitingDeliveryCount}
                   </span>
                 </Link>
+                <Link
+                href="/dashboard?filter=due_reports"
+                className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+              >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Due Reports
+                  <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+                    {dueReportsProjects.length}
+                  </span>
+                </Link>
            </div>
         </div>
       )}
@@ -1040,6 +1126,41 @@ async function PendingTasks({
           {paginatedItems.length > 0 ? (
             <div className="space-y-3">
               {paginatedItems.map((item) => {
+                if (item.type === 'DUE_DAILY_REPORT') {
+                  const data = item.data as any;
+                  return (
+                    <div
+                      key={`due-report-${data.id}`}
+                      className="block rounded-lg border border-gray-200 p-4 hover:border-orange-300 transition-all border-l-4 border-l-orange-400"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-900">
+                            Daily Report Due
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {data.quote?.customer?.displayName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            Project: {data.projectNumber}
+                          </p>
+                        </div>
+                        <div className="text-right ml-4 flex items-center gap-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            DUE TODAY
+                          </span>
+                          <Link
+                            href={`/projects/${data.id}/daily-tasks`}
+                            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
                 if (item.type === 'PENDING_DISPATCH') {
                   const data = item.data as any; // { id, projectNumber, quote: { customer }, pendingCount }
                   return (

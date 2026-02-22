@@ -116,6 +116,8 @@ export default async function NewRequisitionPage({
       const meta =
         typeof line.metaJson === 'string' ? JSON.parse(line.metaJson || '{}') : (line.metaJson ?? {});
       const category = (meta.section || meta.category || 'Uncategorized') as string;
+      const isLabourType = line.itemType === 'LABOUR' || meta.itemType === 'LABOUR' || meta.type === 'LABOUR' || meta.isLabour === true;
+
       const unitFromMeta = typeof meta?.unit === 'string' ? meta.unit : null;
       const alreadyRequested = requestedByLine.get(line.id) ?? 0;
       const approvedExtra = approvedByLine.get(line.id) ?? 0;
@@ -132,9 +134,10 @@ export default async function NewRequisitionPage({
         remaining,
         category,
         approvedExtra,
+        isLabour: isLabourType,
       };
     })
-    .filter((ln) => !ln.category.toUpperCase().startsWith('LABOUR'));
+    .filter((ln) => !ln.category.toUpperCase().startsWith('LABOUR') && !ln.isLabour);
 
   // group by category (ordered)
   const grouped: Record<string, LineRow[]> = {};
