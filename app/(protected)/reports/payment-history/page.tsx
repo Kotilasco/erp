@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SearchInput } from '@/components/ui/search-input';
+import TablePagination from '@/components/ui/table-pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -10,13 +11,17 @@ export const revalidate = 0;
 export default async function PaymentHistoryProjectsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ q?: string }>;
+  searchParams?: Promise<{ q?: string; page?: string; pageSize?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
-  if (!['PROJECT_COORDINATOR'].includes(user.role)) redirect('/dashboard');
+  if (!['PROJECT_COORDINATOR', 'ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTING_AUDITOR'].includes(user.role)) redirect('/dashboard');
 
-  const { q } = (await searchParams) ?? {};
+  const { q, page: pageParam, pageSize: pageSizeParam } = (await searchParams) ?? {};
+  const currentPage = parseInt(pageParam || '1', 10);
+  const pageSize = parseInt(pageSizeParam || '20', 10);
+  const skip = (currentPage - 1) * pageSize;
+
   const where: any = q
     ? {
         OR: [
@@ -27,16 +32,21 @@ export default async function PaymentHistoryProjectsPage({
       }
     : {};
 
-  const projects = await prisma.project.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    select: {
-      id: true,
-      name: true,
-      projectNumber: true,
-      quote: { select: { customer: { select: { displayName: true } } } },
-    },
-  });
+  const [projects, totalItems] = await Promise.all([
+    prisma.project.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        projectNumber: true,
+        quote: { select: { customer: { select: { displayName: true } } } },
+      },
+      take: pageSize,
+      skip,
+    }),
+    prisma.project.count({ where }),
+  ]);
 
   return (
     <div className="p-6 space-y-6">
@@ -78,6 +88,7 @@ export default async function PaymentHistoryProjectsPage({
             </tbody>
           </table>
         </div>
+        <TablePagination currentPage={currentPage} pageSize={pageSize} totalItems={totalItems} />
       </div>
     </div>
   );

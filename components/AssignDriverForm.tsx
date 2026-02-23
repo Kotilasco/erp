@@ -39,7 +39,7 @@ export default function AssignDriverForm({
     if (!selectedDriver) return;
     startTransition(async () => {
       await assignDriverToDispatch(dispatchId, selectedDriver);
-      router.refresh();
+      router.push('/dashboard');
     });
   };
 
@@ -47,8 +47,8 @@ export default function AssignDriverForm({
   const selectedDriverObj = drivers.find(d => d.id === selectedDriver);
 
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full max-w-lg">
-        <div className="relative w-full sm:w-72" ref={containerRef}>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+        <div className="relative w-full sm:flex-1" ref={containerRef}>
             <button
                 type="button"
                 onClick={() => !isPending && setIsOpen(!isOpen)}
@@ -124,7 +124,7 @@ export default function AssignDriverForm({
            onClick={handleAssign}
            disabled={!selectedDriver || isPending || (isReassign && selectedDriver === currentDriverId)}
            className={clsx(
-             "inline-flex w-full sm:w-auto items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
+             "inline-flex w-full sm:flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95"
            )}
         >
           {isPending ? (

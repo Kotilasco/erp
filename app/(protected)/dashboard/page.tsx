@@ -755,7 +755,7 @@ async function PendingTasks({
             </Link>
 
             <Link
-                href="/accounts/payments"
+                href="/reports/payment-history"
                 className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-600 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-700 hover:shadow-xl hover:-translate-y-1"
             >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -912,10 +912,10 @@ async function PendingTasks({
 
         {/* Row 2 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-4xl mt-6">
-           <Link
-             href="/dispatches?status=ARRIVED"
-             className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
-           >
+          <Link
+            href="/dispatches?status=ARRIVED"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
+          >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
              </svg>
@@ -925,8 +925,8 @@ async function PendingTasks({
              </span>
            </Link>
            <Link
-            href="/dashboard?filter=due_reports"
-            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-orange-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-orange-600 hover:shadow-xl hover:-translate-y-1"
+            href="/projects/daily-tasks"
+            className="inline-flex w-full justify-center items-center gap-4 rounded-2xl bg-green-500 px-8 py-10 text-xl font-bold text-white shadow-lg transition-all hover:bg-green-600 hover:shadow-xl hover:-translate-y-1"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -943,7 +943,7 @@ async function PendingTasks({
               />
             </svg>
             Due Reports
-            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-orange-600 border border-orange-200">
+            <span className="ml-2 flex h-8 w-8 items-center justify-center rounded-full bg-white text-sm text-green-600 border border-green-200">
               {dueReportsProjects.length}
             </span>
           </Link>

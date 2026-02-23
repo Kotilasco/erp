@@ -15,7 +15,7 @@ export default async function ProjectPaymentHistoryPage({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect('/login');
-  if (!['PROJECT_COORDINATOR'].includes(user.role)) redirect('/dashboard');
+  if (!['PROJECT_COORDINATOR', 'ACCOUNTS', 'ACCOUNTING_CLERK', 'ACCOUNTING_OFFICER', 'ACCOUNTING_AUDITOR'].includes(user.role)) redirect('/dashboard');
 
   const { projectId } = await params;
 

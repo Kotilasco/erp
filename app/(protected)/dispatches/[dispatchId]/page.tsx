@@ -93,6 +93,13 @@ export default async function DispatchDetail({
     redirect('/dispatches');
   };
 
+  const deleteAction = async () => {
+    'use server';
+    const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
+    await deleteDispatch(dispatchId);
+    redirect('/dispatches');
+  };
+
   // DRIVER: acknowledge received for a single line
   const acknowledgeReceived = async (fd: FormData) => {
     'use server';
@@ -320,7 +327,7 @@ export default async function DispatchDetail({
                                                         <input type="hidden" name="qty" value={it.qty.toString()} />
                                                         <LoadingButton
                                                             type="submit"
-                                                            className="inline-flex items-center rounded border border-transparent bg-barmlo-blue px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-barmlo-blue/90"
+                                                            className="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700"
                                                             loadingText="..."
                                                         >
                                                             Dispatch
@@ -365,8 +372,8 @@ export default async function DispatchDetail({
 
             {/* Action Footer */}
             <div className="flex flex-col gap-6">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex gap-3">
+                <div className="flex flex-wrap items-center justify-center gap-4">
+                    <div className="flex gap-3 w-full">
                         <DispatchAcknowledgment 
                             dispatch={dispatch} 
                             userId={me.id!} 
@@ -377,56 +384,52 @@ export default async function DispatchDetail({
                         )}
                     </div>
 
-                    {canAssignDriver && (
-                        <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm">
-                            <h4 className="text-sm font-bold text-gray-700 mb-3">Assign Transport / Driver</h4>
-                            <AssignDriverForm 
-                                dispatchId={dispatch.id} 
-                                drivers={drivers} 
-                                currentDriverId={dispatch.assignedToDriverId} 
-                            />
-                        </div>
-                    )}
-
                     {canEdit && (
-                        <div className="flex flex-wrap gap-3">
-                            <form id="editForm" action={saveAction} className="flex gap-2">
-                                <LoadingButton 
-                                    type="submit"
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50 text-nowrap"
-                                    loadingText="Saving..."
-                                >
-                                    {!isProjectOps && <CheckIcon className="h-4 w-4" />}
-                                    Save Changes
-                                </LoadingButton>
-                                <LoadingButton
-                                    formAction={submitAction}
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-barmlo-green px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-green/90 hover:shadow-lg text-nowrap"
-                                    loadingText="Dispatching..."
-                                >
-                                    {!isProjectOps && <ShieldCheckIcon className="h-4 w-4" />}
-                                    Dispatch
-                                </LoadingButton>
-                            </form>
-                            
-                            <form action={async () => {
-                                'use server';
-                                const { deleteDispatch } = await import('@/app/(protected)/projects/actions');
-                                await deleteDispatch(dispatchId);
-                                redirect('/dispatches');
-                            }}>
-                                <LoadingButton 
-                                    type="submit" 
-                                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-50 px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-100"
-                                    loadingText="Deleting..."
-                                >
-                                    {!isProjectOps && <TrashIcon className="h-4 w-4" />}
-                                    Delete Draft
-                                </LoadingButton>
-                            </form>
+                      <form
+                        id="editForm"
+                        action={saveAction}
+                        className="w-full border-t border-gray-100 pt-4"
+                      >
+                        <div className="grid w-full gap-3 sm:grid-cols-3">
+                          <LoadingButton
+                            type="submit"
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-6 py-3 text-sm font-bold text-gray-700 shadow-sm hover:bg-gray-50"
+                            loadingText="Saving..."
+                          >
+                            {!isProjectOps && <CheckIcon className="h-4 w-4" />}
+                            Save Changes
+                          </LoadingButton>
+                          <LoadingButton
+                            formAction={submitAction}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-barmlo-green px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-green/90 hover:shadow-lg"
+                            loadingText="Dispatching..."
+                          >
+                            {!isProjectOps && <ShieldCheckIcon className="h-4 w-4" />}
+                            Dispatch
+                          </LoadingButton>
+                          <LoadingButton
+                            formAction={deleteAction}
+                            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-50 px-6 py-3 text-sm font-bold text-red-600 hover:bg-red-100"
+                            loadingText="Deleting..."
+                          >
+                            {!isProjectOps && <TrashIcon className="h-4 w-4" />}
+                            Delete Draft
+                          </LoadingButton>
                         </div>
+                      </form>
                     )}
                 </div>
+
+                {canAssignDriver && (
+                    <div className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm w-full">
+                        <h4 className="text-sm font-bold text-gray-700 mb-3">Assign Driver</h4>
+                        <AssignDriverForm 
+                            dispatchId={dispatch.id} 
+                            drivers={drivers} 
+                            currentDriverId={dispatch.assignedToDriverId} 
+                        />
+                    </div>
+                )}
 
                 {/* Return Section (if applicable) */}
                 {canReturn && (
@@ -489,10 +492,10 @@ export default async function DispatchDetail({
                                 ))}
                             </div>
                             
-                            <div className="mt-6 flex justify-end">
+                            <div className="mt-6 border-t border-gray-100 pt-4">
                                 <LoadingButton 
                                     type="submit"
-                                    className="rounded-xl bg-barmlo-blue px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-blue/90"
+                                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-barmlo-green px-6 py-3 text-sm font-bold text-white shadow-md hover:bg-barmlo-green/90 hover:shadow-lg"
                                     loadingText="Processing..."
                                 >
                                     Process Return / Used Out

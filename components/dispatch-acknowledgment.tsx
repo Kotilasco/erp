@@ -58,6 +58,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
     try {
       await markDispatchArrived(dispatch.id);
       router.refresh();
+      router.push('/dashboard');
       setShowMarkArrivedModal(false);
     } catch (e: any) {
       alert(e.message);
@@ -108,9 +109,7 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
   }
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mt-6">
-       <h3 className="text-lg font-bold mb-4">Actions</h3>
-       
+    <div className="mt-6 w-full bg-white p-6 rounded-lg shadow-sm border border-gray-200">
        {canConfirmPickup && (
          <button 
            onClick={handleConfirmPickup}
@@ -187,20 +186,22 @@ export default function DispatchAcknowledgment({ dispatch, userId, userRole }: P
               </table>
             </div>
             
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="mt-4 border-t border-gray-100 pt-4">
+              <div className="grid w-full gap-3 sm:grid-cols-2">
                 <button 
-                   onClick={() => setShowAckForm(false)}
-                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 from-gray-50"
+                  onClick={() => setShowAckForm(false)}
+                  className="w-full px-4 py-3 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
-                   Cancel
+                  Cancel
                 </button>
                 <button 
-                   onClick={handleAcknowledge}
-                   disabled={loading}
-                   className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                  onClick={handleAcknowledge}
+                  disabled={loading}
+                  className="w-full px-4 py-3 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
                 >
-                   {loading ? 'Processing...' : 'Confirm & Sign'}
+                  {loading ? 'Processing...' : 'Confirm & Sign'}
                 </button>
+              </div>
             </div>
          </div>
        )}
