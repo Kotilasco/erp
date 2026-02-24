@@ -7,6 +7,7 @@ import { pdf } from '@react-pdf/renderer';
 import { Document, Page, View, Text, StyleSheet } from "@react-pdf/renderer";
 import { prisma } from '@/lib/db';
 import QuoteDoc from './QuoteDoc';
+import { BARMLO_LOGO_BASE64 } from "./logo";
 import type { PdfRenderer, PdfRequest, PdfResult } from './index';
 
 /** Coerce any DB scalar to a plain number (no BigInt leaks into React-PDF). */
@@ -76,7 +77,7 @@ export async function renderReactPdf(quoteId: string): Promise<PdfResult> {
   const lines = linesRaw.map(toPdfLine);
   const q = toPdfQuote(quote);
 
-  let logoData: string | undefined;
+  let logoData: string = BARMLO_LOGO_BASE64;
   try {
     const logoPath = path.join(process.cwd(), 'public', 'barmlo_logo.png');
     if (fs.existsSync(logoPath)) {

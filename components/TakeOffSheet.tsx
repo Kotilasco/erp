@@ -58,7 +58,7 @@ export default function TakeOffSheet() {
     section: string;
   };
   const [customItems, setCustomItems] = useState<CustomItem[]>([
-    { description: '', unit: '', qty: 0, rate: 0, section: '' },
+    { description: '', unit: '', qty: 0, rate: 0, section: 'FOUNDATIONS' },
   ]);
   const [notesText, setNotesText] = useState(DEFAULT_NOTES);
   const [formError, setFormError] = useState<string | null>(null);
@@ -197,6 +197,17 @@ export default function TakeOffSheet() {
     return { ctx, missing };
   }, [vals, applyOverrides]);
 
+  const sections = useMemo(() => {
+    const s = new Set<string>();
+    QUOTE_LINE_MAP.forEach(m => {
+      if (m.section) s.add(m.section.toUpperCase());
+    });
+    // Add common fallback ones if not present
+    s.add('PRELIMINARIES');
+    s.add('LABOUR');
+    return Array.from(s).sort();
+  }, []);
+
   const quoteLinesPreview = useMemo(() => {
     const lines: any[] = [];
     const ctx = normalizeContext(context);
@@ -222,7 +233,6 @@ export default function TakeOffSheet() {
     for (const ci of customItems) {
       if (!ci.description || !(Number.isFinite(ci.qty) && ci.qty > 0)) continue;
       
-      // Heuristic: if description contains 'labour' or 'labor', it's labour.
       // Or if the section is 'LABOUR'
       const isLabour = ci.description.toLowerCase().includes('labour') || 
                        ci.description.toLowerCase().includes('labor') ||
@@ -232,7 +242,7 @@ export default function TakeOffSheet() {
         description: ci.description,
         quantity: Math.ceil(Number(ci.qty)),
         unitPrice: Number(ci.rate || 0),
-        section: ci.section || 'CUSTOM',
+        section: ci.section || 'PRELIMINARIES',
         itemType: isLabour ? 'LABOUR' : 'MATERIAL',
         lineTotalMinor: BigInt(Math.round(Math.ceil(Number(ci.qty)) * Number(ci.rate || 0) * 100)),
         unit: ci.unit,
@@ -727,16 +737,37 @@ export default function TakeOffSheet() {
               </div>
               <div className="w-full md:w-32 space-y-1">
                 <label className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Section</label>
-                <input
-                  className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                  placeholder="Section"
-                  value={ci.section}
-                  onChange={(e) =>
-                    setCustomItems((arr) =>
-                      arr.map((x, i) => (i === idx ? { ...x, section: e.target.value } : x))
-                    )
-                  }
-                />
+                <div className="space-y-1.5">
+                  <select
+                    className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-sm text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                    value={sections.includes((ci.section || '').toUpperCase()) ? (ci.section || '').toUpperCase() : 'OTHER'}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomItems((arr) =>
+                        arr.map((x, i) => (i === idx ? { ...x, section: val } : x))
+                      );
+                    }}
+                  >
+                    {sections.map(s => (
+                      <option key={s} value={s}>{s}</option>
+                    ))}
+                    <option value="OTHER">OTHER (TYPE BELOW)</option>
+                  </select>
+                  
+                  {(!sections.includes((ci.section || '').toUpperCase()) || (ci.section || '').toUpperCase() === 'OTHER') && (
+                    <input
+                      className="block w-full rounded-lg border border-gray-200 bg-white py-1.5 px-3 text-xs text-gray-900 transition-all focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white placeholder:italic"
+                      placeholder="Type custom section..."
+                      value={ci.section === 'OTHER' ? '' : ci.section}
+                      autoFocus={ci.section === 'OTHER'}
+                      onChange={(e) =>
+                        setCustomItems((arr) =>
+                          arr.map((x, i) => (i === idx ? { ...x, section: e.target.value.toUpperCase() } : x))
+                        )
+                      }
+                    />
+                  )}
+                </div>
               </div>
               <div className="pt-6">
                 <button
@@ -755,7 +786,7 @@ export default function TakeOffSheet() {
             onClick={() =>
               setCustomItems((arr) => [
                 ...arr,
-                { description: '', unit: '', qty: 0, rate: 0, section: '' },
+                { description: '', unit: '', qty: 0, rate: 0, section: sections[0] || 'FOUNDATIONS' },
               ])
             }
           >

@@ -191,9 +191,10 @@ interface GlobalDailyReportProps {
       totalTasksReported: number;
     };
   }>;
+  logoData?: string;
 }
 
-const GlobalDailyReport = ({ reports }: GlobalDailyReportProps) => (
+const GlobalDailyReport = ({ reports, logoData }: GlobalDailyReportProps) => (
   <Document>
     {reports.map((data, index) => (
         <Page key={index} size="A4" style={styles.page}>
@@ -204,10 +205,12 @@ const GlobalDailyReport = ({ reports }: GlobalDailyReportProps) => (
             <Text style={styles.reportTitle}>Site Daily Report</Text>
             <Text style={styles.reportDate}>{new Date(data.date).toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</Text>
             </View>
-            <Image 
-            src="https://bamlo.com/wp-content/uploads/2021/04/bamlo-logo-1.png" 
-            style={styles.logo} 
-            />
+            {logoData && (
+                <Image 
+                src={logoData} 
+                style={styles.logo} 
+                />
+            )}
         </View>
 
         {/* Project Info */}

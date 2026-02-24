@@ -16,18 +16,21 @@ export async function createDispatch(
   projectId: string,
   input: {
     note?: string | null;
+    driverId?: string | null;
+    driverName?: string | null;
+    vehicleReg?: string | null;
     items: Array<{
       requisitionItemId?: string | null;
       description: string;
       unit?: string | null;
       qty: number;
-      estPriceMinor?: bigint | number | null;
+      estPriceMinor?: bigint | number | string | null;
     }>;
   }
 ) {
   try {
     const user = await getCurrentUser();
-    assertRole(user?.role, ['PROJECT_OPERATIONS_OFFICER', 'ADMIN']);
+    assertRole(user?.role, ['PROJECT_OPERATIONS_OFFICER', 'ADMIN', 'SECURITY']);
 
     if (!Array.isArray(input.items) || input.items.length === 0) {
       throw new Error('Add at least one item to dispatch.');
@@ -59,23 +62,75 @@ export async function createDispatch(
       }
     }
 
-    const dispatch = await prisma.dispatch.create({
-      data: {
-        projectId,
-        status: 'DRAFT',
-        note: input.note || null,
-        createdById: user!.id!,
-        items: {
-          create: input.items.map((it) => ({
-            requisitionItemId: it.requisitionItemId || null,
-            description: it.description,
-            unit: it.unit || null,
-            qty: it.qty,
-            estPriceMinor: it.estPriceMinor ? BigInt(it.estPriceMinor as any) : 0n,
-          })),
+    const isDirectDispatch = !!input.driverId || !!input.driverName;
+    const status = isDirectDispatch ? 'DISPATCHED' : 'DRAFT';
+
+    const dispatch = await prisma.$transaction(async (tx) => {
+      // 1) Create the dispatch record
+      const d = await tx.dispatch.create({
+        data: {
+          projectId,
+          status,
+          note: input.note || null,
+          createdById: user!.id!,
+          assignedToDriverId: input.driverId || null,
+          driverName: input.driverName || null,
+          vehicleReg: input.vehicleReg || null,
+          securityById: isDirectDispatch ? user!.id! : null,
+          securitySignedAt: isDirectDispatch ? new Date() : null,
+          items: {
+            create: input.items.map((it) => ({
+              requisitionItemId: it.requisitionItemId || null,
+              description: it.description,
+              unit: it.unit || null,
+              qty: it.qty,
+              estPriceMinor: it.estPriceMinor ? BigInt(it.estPriceMinor as any) : 0n,
+              handedOutAt: isDirectDispatch ? new Date() : null,
+              handedOutById: isDirectDispatch ? user!.id! : null,
+              handedOutQty: isDirectDispatch ? it.qty : 0,
+            })),
+          },
         },
-      },
-      select: { id: true },
+        include: { items: true },
+      });
+
+      // 2) If direct dispatch, decrement inventory for each item
+      if (isDirectDispatch) {
+        for (const it of d.items) {
+          // Resolve inventory item (logic similar to markItemHandedOut)
+          let inventoryItem = await tx.inventoryItem.findFirst({
+            where: {
+              OR: [
+                { purchaseId: it.purchaseId || undefined },
+                { name: it.description.trim(), unit: it.unit || null }
+              ]
+            }
+          });
+
+          if (inventoryItem) {
+            const updated = await tx.inventoryItem.updateMany({
+              where: { id: inventoryItem.id, quantity: { gte: it.qty } },
+              data: { quantity: { decrement: it.qty } }
+            });
+            if (updated.count === 0) {
+              throw new Error(`Insufficient stock for "${it.description}" (Needed: ${it.qty}, Available: ${inventoryItem.quantity})`);
+            }
+
+            // Record movement
+            await tx.inventoryMove.create({
+              data: {
+                inventoryItemId: inventoryItem.id,
+                changeById: user!.id!,
+                delta: -it.qty,
+                reason: 'DIRECT_DISPATCH',
+                metaJson: JSON.stringify({ dispatchItemId: it.id, dispatchId: d.id }),
+              }
+            });
+          }
+        }
+      }
+
+      return d;
     });
 
     revalidatePath(`/projects/${projectId}`);

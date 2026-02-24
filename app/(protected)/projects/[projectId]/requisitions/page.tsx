@@ -14,7 +14,7 @@ export default async function ProjectRequisitionsPage({
   params, 
   searchParams 
 }: { 
-  params: { projectId: string };
+  params: Promise<{ projectId: string }>;
   searchParams: Promise<{ q?: string; status?: string; page?: string; pageSize?: string }>;
 }) {
   const user = await getCurrentUser();
@@ -30,8 +30,8 @@ export default async function ProjectRequisitionsPage({
   if (!projectCheck) return notFound();
 
   // Role checks
-  const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role);
-  const opsLocked = projectCheck.status === 'DEPOSIT_PENDING' || projectCheck.status === 'QUOTE_ACCEPTED' || !projectCheck.schedules; // Simplify lock check logic
+  const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role as string);
+  const opsLocked = (projectCheck.status as string) === 'DEPOSIT_PENDING' || (projectCheck.status as string) === 'QUOTE_ACCEPTED' || !projectCheck.schedules; // Simplify lock check logic
 
   // Pagination & Filtering
   const currentPage = Math.max(1, parseInt(page || '1', 10));
@@ -107,7 +107,7 @@ export default async function ProjectRequisitionsPage({
         </div>
         <div className="flex gap-3">
             <Link
-                href={`/projects/${projectId}`}
+                href="/dashboard"
                 className="inline-flex items-center justify-center gap-2 rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm border border-gray-300 transition-all hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
             >
                 <ArrowLeftIcon className="h-4 w-4 stroke-2" />

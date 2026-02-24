@@ -5,6 +5,7 @@ import DispatchSelector from './DispatchSelector';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import QuoteHeader from '@/components/QuoteHeader';
+import { getDrivers } from '@/app/(protected)/dispatches/driver-actions';
 
 export default async function NewDispatchPage({ 
   params 
@@ -22,7 +23,10 @@ export default async function NewDispatchPage({
 
   if (!project) return notFound();
 
-  const availableItems = await getProjectDispatchableItems(projectId);
+  const [availableItems, drivers] = await Promise.all([
+     getProjectDispatchableItems(projectId),
+     getDrivers().catch(() => [])
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50/50 pb-20 font-sans">
@@ -38,7 +42,7 @@ export default async function NewDispatchPage({
               Back to Dispatches
             </Link>
           </nav>
-
+ 
           {/* Header */}
           {project.quote ? (
             <QuoteHeader quote={project.quote} title="Dispatch Form" />
@@ -49,10 +53,11 @@ export default async function NewDispatchPage({
             </div>
           )}
         </div>
-
+ 
         <DispatchSelector 
           projectId={projectId} 
           availableItems={availableItems as any} 
+          drivers={drivers}
         />
       </div>
     </div>

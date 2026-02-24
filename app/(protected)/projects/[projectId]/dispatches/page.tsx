@@ -64,7 +64,7 @@ export default async function ProjectDispatchesPage(props: {
   ]);
 
   // Role checks
-  const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN'].includes(user.role ?? '');
+  const isPM = ['PROJECT_OPERATIONS_OFFICER', 'PROJECT_COORDINATOR', 'ADMIN', 'SECURITY'].includes(user.role ?? '');
   // Safely handle schedules whether it is 1-1 or 1-many
   const schedule = project.schedules;
   const opsLocked = project.status === 'DEPOSIT_PENDING' || !schedule;
@@ -161,7 +161,7 @@ export default async function ProjectDispatchesPage(props: {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-end">
             <div className="flex flex-wrap items-center gap-2">
                 <Link
-                    href={`/projects/${projectId}`}
+                    href="/dashboard"
                     className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50"
                 >
                     Back to Dashboard

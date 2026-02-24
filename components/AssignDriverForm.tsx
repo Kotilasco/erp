@@ -38,8 +38,18 @@ export default function AssignDriverForm({
   const handleAssign = () => {
     if (!selectedDriver) return;
     startTransition(async () => {
-      await assignDriverToDispatch(dispatchId, selectedDriver);
-      router.push('/dashboard');
+      const res = await assignDriverToDispatch(dispatchId, selectedDriver);
+      if (res.redirected && res.nextDispatchId) {
+        // Find projectId in params or URL to construct path? 
+        // Actually the server action could return the full redirect path or we can find it.
+        // Let's assume the router can just handle the dispatch Id redirect if we have a global route /dispatches/[id]
+        // But the current page is /projects/[projectId]/dispatches/[dispatchId]
+        const currentPath = window.location.pathname;
+        const projectPath = currentPath.substring(0, currentPath.lastIndexOf('/dispatches/'));
+        router.push(`${projectPath}/dispatches/${res.nextDispatchId}`);
+      } else {
+        router.push('/dashboard');
+      }
     });
   };
 

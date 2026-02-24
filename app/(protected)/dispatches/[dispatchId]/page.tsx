@@ -56,7 +56,13 @@ export default async function DispatchDetail({
 
   // Fetch drivers for security/admin if status is ready for assignment
   // User req: "without even dispatching the items first" -> Must be DISPATCHED (all items handed out)
-  const canAssignDriver = isSecurity && ['DISPATCHED', 'IN_TRANSIT'].includes(dispatch.status);
+  // Allow driver assignment as soon as it's submitted/approved for loading
+  // Allow driver assignment as soon as it's submitted/approved for loading
+  // User req: "assign and handover button appear only if there are items marked out"
+  const hasHandedOutItems = dispatch.items.some(it => it.handedOutAt);
+  const canAssignDriver = isSecurity && 
+    ['SUBMITTED', 'APPROVED', 'DISPATCHED', 'IN_TRANSIT'].includes(dispatch.status) && 
+    hasHandedOutItems;
   const drivers = canAssignDriver ? await getDrivers() : [];
 
   // ---------- server actions ----------
@@ -320,19 +326,45 @@ export default async function DispatchDetail({
                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                             <div className="flex justify-center gap-2">
                                                 {isSecurity &&
-                                                    (dispatch.status === 'APPROVED' || dispatch.status === 'IN_TRANSIT') &&
+                                                    (dispatch.status === 'APPROVED' || dispatch.status === 'IN_TRANSIT' || dispatch.status === 'DISPATCHED') &&
                                                     !it.handedOutAt && (
-                                                    <form action={markItemHandedOut}>
+                                                    <form action={markItemHandedOut} className="flex items-center gap-1.5">
                                                         <input type="hidden" name="itemId" value={it.id} />
-                                                        <input type="hidden" name="qty" value={it.qty.toString()} />
+                                                        <input 
+                                                            type="number" 
+                                                            name="qty" 
+                                                            defaultValue={Number(it.qty)} 
+                                                            min={0.01} 
+                                                            max={Number(it.qty)}
+                                                            step="0.01"
+                                                            className="w-20 rounded-md border-gray-300 py-1 px-2 text-xs font-medium focus:border-green-500 focus:ring-green-500 shadow-sm transition-all hover:border-green-400" 
+                                                        />
                                                         <LoadingButton
                                                             type="submit"
-                                                            className="inline-flex items-center rounded border border-transparent bg-green-600 px-2.5 py-1.5 text-xs font-medium text-white shadow-sm hover:bg-green-700"
+                                                            className="inline-flex items-center rounded-md border border-transparent bg-green-600 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-green-700 transition-all active:scale-95"
                                                             loadingText="..."
                                                         >
                                                             Dispatch
                                                         </LoadingButton>
                                                     </form>
+                                                )}
+                                                {isSecurity && it.handedOutAt && (
+                                                    <div className="flex flex-col items-center">
+                                                        <span className={cn(
+                                                            "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold border",
+                                                            dispatch.status === 'DISPATCHED' || dispatch.status === 'IN_TRANSIT' || dispatch.status === 'DELIVERED'
+                                                                ? "bg-blue-50 text-blue-700 border-blue-200"
+                                                                : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                                        )}>
+                                                            <CheckIcon className="h-4 w-4" />
+                                                            {dispatch.status === 'DISPATCHED' || dispatch.status === 'IN_TRANSIT' || dispatch.status === 'DELIVERED' 
+                                                                ? 'Dispatched' 
+                                                                : 'Handed Out'}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-500 mt-1 font-medium">
+                                                            {new Date(it.handedOutAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
                                                 )}
                                                 {/* Hidden for now as requested by user - Driver item acknowledgement */}
                                                 {/* {isDriver &&

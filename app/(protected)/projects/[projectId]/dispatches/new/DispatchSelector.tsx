@@ -15,22 +15,32 @@ interface DispatchableItem {
 
 export default function DispatchSelector({ 
   projectId, 
-  availableItems 
+  availableItems,
+  drivers = []
 }: { 
   projectId: string; 
-  availableItems: DispatchableItem[] 
+  availableItems: DispatchableItem[];
+  drivers?: Array<{ id: string; name: string | null; email: string | null }>;
 }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState('');
   const [selectedItems, setSelectedItems] = useState<Array<{ id: string; qty: number }>>([]);
+  
+  // Local inventory tracking to allow continuous batching without refresh
+  const [localItems, setLocalItems] = useState(availableItems);
+  
+  // Driver Allocation
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [driverName, setDriverName] = useState('');
+  const [vehicleReg, setVehicleReg] = useState('');
 
   const getQty = (id: string) => {
     return selectedItems.find(i => i.id === id)?.qty || 0;
   };
 
   const updateQty = (id: string, qty: number) => {
-    const item = availableItems.find(i => i.id === id);
+    const item = localItems.find(i => i.id === id);
     if (!item) return;
 
     // Ensure qty is within bounds
@@ -63,15 +73,37 @@ export default function DispatchSelector({
           description: item.description,
           unit: item.unit,
           qty: si.qty,
-          estPriceMinor: BigInt(item.estPriceMinor)
+          estPriceMinor: item.estPriceMinor
         };
       });
 
-      const res = await createDispatch(projectId, { note, items });
+      const res = await createDispatch(projectId, { 
+        note, 
+        items,
+        driverId: selectedDriverId === 'other' ? null : (selectedDriverId || null),
+        driverName: selectedDriverId === 'other' ? driverName : (drivers.find(d => d.id === selectedDriverId)?.name || null),
+        vehicleReg: vehicleReg || null
+      });
+
       if (res.ok) {
-        toast.success('Dispatch created successfully');
-        router.push(`/projects/${projectId}/dispatches/${res.dispatchId}`);
-        router.refresh();
+        toast.success(`Dispatch created for ${selectedDriverId ? 'Driver' : 'Draft'}. You can continue batching.`);
+        
+        // Update local items to reflect what was just dispatched
+        setLocalItems(prev => prev.map(item => {
+          const dispatched = selectedItems.find(si => si.id === item.id);
+          if (dispatched) {
+            return { ...item, remaining: item.remaining - dispatched.qty };
+          }
+          return item;
+        }).filter(item => item.remaining > 0)); // Remove items that are finished
+
+        // Reset form for next batch
+        setSelectedItems([]);
+        setSelectedDriverId('');
+        setDriverName('');
+        setVehicleReg('');
+        setNote('');
+        
       } else {
         toast.error(res.error || 'Failed to create dispatch');
       }
@@ -84,9 +116,19 @@ export default function DispatchSelector({
 
   return (
     <div className="space-y-8">
+      <div className="flex justify-between items-center">
+        <h2 className="text-xl font-bold text-gray-900">New Dispatch Tool</h2>
+        <button
+          onClick={() => router.push('/dispatches')}
+          className="text-sm font-bold text-green-600 hover:text-green-700 bg-green-50 px-4 py-2 rounded-lg border border-green-100"
+        >
+          Finish & View History
+        </button>
+      </div>
+
       {/* Table Section */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        {availableItems.length === 0 ? (
+        {localItems.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-gray-500 text-sm italic">No items currently available for dispatch.</p>
             <p className="text-gray-400 text-xs mt-1">Items become available after they are received via GRN.</p>
@@ -111,7 +153,7 @@ export default function DispatchSelector({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {availableItems.map(item => {
+                {localItems.map(item => {
                   const currentQty = getQty(item.id);
                   const isSelected = currentQty > 0;
                   
@@ -154,34 +196,97 @@ export default function DispatchSelector({
         )}
       </div>
 
-      {/* Footer / Action Section */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-6">
-        <div>
-          <label className="block text-sm font-bold text-gray-700 mb-2">Dispatch Note (Optional)</label>
-          <textarea 
-            placeholder="e.g. Dispatched to site for Phase 1..." 
-            rows={3}
-            className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder:text-gray-400 text-sm"
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Driver Allocation */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+            Driver Allocation
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Select Driver</label>
+              <select 
+                value={selectedDriverId}
+                onChange={(e) => setSelectedDriverId(e.target.value)}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all text-sm"
+              >
+                <option value="">-- No Driver (Draft Only) --</option>
+                {drivers.map(d => (
+                  <option key={d.id} value={d.id}>{d.name || d.email}</option>
+                ))}
+                <option value="other">Other / Manual Entry</option>
+              </select>
+            </div>
+
+            {selectedDriverId === 'other' && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Driver Name</label>
+                <input 
+                  type="text" 
+                  placeholder="Full Name"
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all text-sm"
+                  value={driverName}
+                  onChange={(e) => setDriverName(e.target.value)}
+                />
+              </div>
+            )}
+
+            {(selectedDriverId !== '') && (
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-1">Vehicle Registration</label>
+                <input 
+                  type="text" 
+                  placeholder="Reg No."
+                  className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all text-sm"
+                  value={vehicleReg}
+                  onChange={(e) => setVehicleReg(e.target.value)}
+                />
+              </div>
+            )}
+            
+            {selectedDriverId && (
+              <p className="text-[10px] text-orange-600 font-medium bg-orange-50 p-2 rounded border border-orange-100 italic">
+                Note: Assigning a driver will automatically mark the dispatch as "DISPATCHED" and finalize the items.
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="pt-4 border-t border-gray-100">
-          <button 
-            onClick={handleSubmit}
-            disabled={loading || selectedItems.length === 0}
-            className={`
-              w-full flex items-center justify-center gap-2 rounded-xl px-8 py-3 text-sm font-bold text-white shadow-md transition-all
-              ${loading || selectedItems.length === 0
-                ? "bg-gray-300 cursor-not-allowed shadow-none"
-                : "bg-green-600 hover:bg-green-700 hover:shadow-lg hover:shadow-green-200"
-              }
-            `}
-          >
-            {loading ? 'Processing...' : 'Create Dispatch'}
-          </button>
+        {/* Note Section */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 space-y-4">
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider border-b border-gray-100 pb-2">
+            Additional Info
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-1">Dispatch Note (Optional)</label>
+              <textarea 
+                placeholder="e.g. Dispatched to site for Phase 1..." 
+                rows={4}
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition-all placeholder:text-gray-400 text-sm"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Action Footer */}
+      <div className="pt-4">
+        <button 
+          onClick={handleSubmit}
+          disabled={loading || selectedItems.length === 0}
+          className={`
+            w-full flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-base font-bold text-white shadow-md transition-all
+            ${loading || selectedItems.length === 0
+              ? "bg-gray-300 cursor-not-allowed shadow-none"
+              : "bg-green-600 hover:bg-green-700 hover:shadow-lg hover:shadow-green-200"
+            }
+          `}
+        >
+          {loading ? 'Processing...' : selectedDriverId ? 'Dispatch & Allocate Driver' : 'Create Dispatch Draft'}
+        </button>
       </div>
     </div>
   );

@@ -287,6 +287,8 @@ export async function markItemHandedOut(formData: FormData) {
       purchaseId: true,
       handedOutQty: true,
       description: true,
+      requisitionItemId: true,
+      estPriceMinor: true,
       dispatch: { select: { id: true, status: true, projectId: true } },
     },
   });
@@ -301,8 +303,13 @@ export async function markItemHandedOut(formData: FormData) {
     );
   }
 
-  const qtyToHand = Number(it.qty ?? 0);
+  const rawQty = formData.get("qty");
+  let qtyToHand = rawQty ? Number(rawQty) : Number(it.qty ?? 0);
+
   if (!(qtyToHand > 0)) throw new Error("Invalid dispatch quantity to hand out");
+  if (qtyToHand > it.qty) {
+    throw new Error(`Requested quantity (${qtyToHand}) exceeds available quantity (${it.qty})`);
+  }
 
   // ---- 2) Resolve/create inventory item (outside tx to keep tx short) ----
   let inventoryId: string | null = it.inventoryItemId ?? null;
@@ -414,21 +421,83 @@ export async function markItemHandedOut(formData: FormData) {
       throw new Error("Insufficient stock to hand out the requested quantity");
     }
 
-    // Ensure we don't exceed dispatched quantity
-    const already = Number(it.handedOutQty ?? 0);
-    if (already + qtyToHand > Number(it.qty)) {
-      throw new Error("Handed out quantity exceeds dispatched quantity");
-    }
+    const isPartial = qtyToHand < it.qty;
 
-    // Mark dispatched item as handed out
-    await tx.dispatchItem.update({
-      where: { id: it.id },
-      data: {
-        handedOutAt: new Date(),
-        handedOutById: me.id!,
-        handedOutQty: { increment: qtyToHand },
+    // Check if there is already a Handed Out row for this same item in this dispatch to merge into
+    const mergeTarget = await tx.dispatchItem.findFirst({
+      where: {
+        dispatchId: it.dispatch!.id,
+        handedOutAt: { not: null },
+        description: it.description,
+        unit: it.unit,
+        requisitionItemId: it.requisitionItemId,
+        inventoryItemId: it.inventoryItemId,
+        purchaseId: it.purchaseId,
       },
+      select: { id: true, qty: true, handedOutQty: true }
     });
+
+    if (mergeTarget) {
+      // Option A: Merge into existing row
+      await tx.dispatchItem.update({
+        where: { id: mergeTarget.id },
+        data: {
+          qty: { increment: qtyToHand },
+          handedOutQty: { increment: qtyToHand },
+        }
+      });
+
+      if (isPartial) {
+        // Subtract from the source row
+        await tx.dispatchItem.update({
+          where: { id: it.id },
+          data: { qty: { decrement: qtyToHand } }
+        });
+      } else {
+        // Delete the source row as it's fully merged
+        await tx.dispatchItem.delete({
+          where: { id: it.id }
+        });
+      }
+    } else if (isPartial) {
+      // Option B: Split if partial and no merge target
+      // 1) Update current row to be the Loaded portion
+      await tx.dispatchItem.update({
+        where: { id: it.id },
+        data: {
+          qty: qtyToHand,
+          handedOutAt: new Date(),
+          handedOutById: me.id!,
+          handedOutQty: qtyToHand,
+        },
+      });
+
+      // 2) Create the Leftover portion row
+      await tx.dispatchItem.create({
+        data: {
+          dispatchId: it.dispatch!.id,
+          description: it.description,
+          unit: it.unit,
+          qty: it.qty - qtyToHand,
+          estPriceMinor: it.estPriceMinor,
+          requisitionItemId: it.requisitionItemId,
+          inventoryItemId: it.inventoryItemId,
+          purchaseId: it.purchaseId,
+          handedOutAt: null,
+          handedOutQty: 0,
+        }
+      });
+    } else {
+      // Option C: Mark current row as handed out (full handover, no merge target)
+      await tx.dispatchItem.update({
+        where: { id: it.id },
+        data: {
+          handedOutAt: new Date(),
+          handedOutById: me.id!,
+          handedOutQty: qtyToHand,
+        },
+      });
+    }
   });
 
   // ---- 4) Best-effort audit record (outside tx to avoid session loss) ----
